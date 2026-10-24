@@ -44,7 +44,9 @@ import {
   Share2,
   Image as ImageIcon,
   ShieldAlert,
-  Cpu
+  Cpu,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 import { generateId } from '@/lib/utils';
@@ -412,6 +414,27 @@ export function AgentCanvas({
                         <span>Inspect in Stage</span>
                       </button>
                     </div>
+
+                    {msg.artifact.type === 'research' && msg.artifact.data.sources && (
+                      <div className="flex flex-wrap items-center gap-1.5 py-1">
+                        <span className="text-[10.5px] font-mono text-slate-500 uppercase flex items-center gap-1">
+                          <Globe className="w-3 h-3 text-teal-400" />
+                          Fetched From:
+                        </span>
+                        {msg.artifact.data.sources.map(s => (
+                          <a
+                            key={s.id}
+                            href={s.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[10.5px] font-mono text-teal-300 hover:border-teal-500/40 transition cursor-pointer"
+                          >
+                            <span>{s.domain}</span>
+                            <ExternalLink className="w-2.5 h-2.5 text-slate-500" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
 
                     {msg.artifact.type === 'research' && (
                       <ResearchReportCard report={msg.artifact.data} />

@@ -14,7 +14,9 @@ import {
   Volume2,
   VolumeX,
   Play,
-  Square
+  Square,
+  Compass,
+  Globe
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 
@@ -145,6 +147,44 @@ export function ResearchReportCard({ report }: Props) {
           {report.executiveSummary}
         </p>
       </div>
+
+      {/* Prominently Displayed Sources - Always Visible Upfront */}
+      {report.sources && report.sources.length > 0 && (
+        <div className="px-5 py-3.5 border-b border-slate-800/80 bg-slate-950/60">
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-teal-300 font-semibold flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5 text-teal-400" />
+              Information Fetched From ({report.sources.length} Verified Sources)
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">Live Grounding</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            {report.sources.map((src) => (
+              <a
+                key={src.id}
+                href={src.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 rounded-xl border border-slate-800 bg-slate-900/60 hover:border-teal-500/40 hover:bg-slate-900 transition group block"
+              >
+                <div className="flex items-center justify-between gap-1.5 mb-1">
+                  <span className="text-xs font-semibold text-slate-200 group-hover:text-teal-300 truncate flex items-center gap-1">
+                    {src.title}
+                  </span>
+                  <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-teal-400 flex-shrink-0" />
+                </div>
+                <p className="text-[10.5px] text-slate-400 line-clamp-2 leading-snug mb-1.5">
+                  {src.snippet}
+                </p>
+                <div className="flex items-center justify-between text-[9.5px] font-mono text-slate-500">
+                  <span className="text-teal-400/90 font-semibold">{src.domain}</span>
+                  <span className="px-1.5 py-0.2 rounded bg-slate-800 text-teal-300 border border-slate-700">{src.relevanceScore}% Match</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-slate-800 bg-slate-950/40 px-5 text-xs font-medium">

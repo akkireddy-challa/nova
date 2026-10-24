@@ -267,6 +267,41 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                   </p>
                 </div>
 
+                {/* Verified Grounding Sources & Origins */}
+                {artifact.data.sources && artifact.data.sources.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-teal-300 uppercase font-mono flex items-center justify-between">
+                      <span>Fetched Sources & Origins ({artifact.data.sources.length})</span>
+                      <span className="text-[10px] text-slate-500 font-mono">Verified Web Grounding</span>
+                    </h4>
+                    <div className="space-y-2">
+                      {artifact.data.sources.map((src) => (
+                        <a
+                          key={src.id}
+                          href={src.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-teal-500/40 hover:bg-slate-900/60 transition group block"
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="text-xs font-semibold text-slate-200 group-hover:text-teal-300 truncate">
+                              {src.title}
+                            </span>
+                            <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-teal-400 flex-shrink-0" />
+                          </div>
+                          <p className="text-[11px] text-slate-400 leading-snug line-clamp-2 mb-1.5">
+                            {src.snippet}
+                          </p>
+                          <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
+                            <span className="text-teal-400 font-medium">{src.domain}</span>
+                            <span className="px-1.5 py-0.2 rounded bg-slate-900 text-teal-300 border border-slate-800">{src.relevanceScore}% Match</span>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-slate-300 uppercase font-mono">Key Findings & Evidence</h4>
                   {artifact.data.keyFindings.map((finding, idx) => (
