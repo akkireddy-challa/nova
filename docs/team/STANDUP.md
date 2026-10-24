@@ -26,3 +26,11 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Docker image build not verified (Docker daemon was not running).
   - Custom MCP plugin endpoints have no SSRF guard; no route exposes plugin registration today — any future route must validate endpoints.
   - /api/v1/embeddings and /api/intelligence were not refactored (embeddings fallback is a word hash; usage is estimated).
+
+## Sprint 3 — Browser test, honest memory search, lint (Claude subagents)
+- [qa] [done] Drove the app in headless Chrome against real Anthropic: model picker, research answer with citations, card, and step list all work; no console errors. Fixed: Quick mode's 2048-token cap truncated research JSON (caps now 4096/8192/16384); "Deterministic Recommendation" and "emerging confidence" labels.
+- [memory] [done] Deleted the fake "cognitive stack" (intelligence-layers.ts) and word-hash embeddings. Providers gained embed() for Gemini, OpenAI-compatible and Ollama; /api/v1/embeddings is a real proxy (503 without an embeddings provider). Memory search uses real embeddings or BM25 keyword search and reports which. Verified with real Gemini embeddings (gemini-embedding-001, 3072 dims).
+- [providers] [done] Gemini model list excludes non-chat models (TTS, image, music, robotics...).
+- [lint] [done] 0 errors, 0 warnings.
+- RESOLVED from Sprint 2: embeddings/intelligence fake data.
+- STILL OPEN: DuckDuckGo intermittently blocked (Tavily/Brave recommended); Docker image build unverified; custom MCP endpoints unguarded (no route exposes registration).
