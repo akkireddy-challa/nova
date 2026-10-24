@@ -7,6 +7,8 @@ import { AgentCanvas } from '@/components/AgentCanvas';
 import { MemoryModal } from '@/components/MemoryModal';
 import { CommandPalette } from '@/components/CommandPalette';
 import { McpInspector } from '@/components/McpInspector';
+import { DevHubModal } from '@/components/DevHubModal';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { 
   StudioMode, 
   Session, 
@@ -17,6 +19,7 @@ import {
 } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { sound } from '@/lib/sound';
+import { sanitizeUserInput } from '@/lib/sanitizer';
 
 export default function Home() {
   const [currentMode, setCurrentMode] = useState<StudioMode>('research');
@@ -29,10 +32,11 @@ export default function Home() {
   const [isMemoryOpen, setIsMemoryOpen] = useState<boolean>(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState<boolean>(false);
   const [isMcpOpen, setIsMcpOpen] = useState<boolean>(false);
+  const [isDevHubOpen, setIsDevHubOpen] = useState<boolean>(false);
   
   const [memoryItems, setMemoryItems] = useState<KnowledgeMemoryItem[]>([]);
 
-  // Keyboard shortcut listener (⌘K for palette, ⌘J for context memory)
+  // Keyboard shortcut listener (⌘K for palette, ⌘J for context memory, ⌘D for dev hub)
   useEffect(() => {
     const handleGlobalKeys = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -41,6 +45,9 @@ export default function Home() {
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
         e.preventDefault();
         setIsMemoryOpen(prev => !prev);
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+        e.preventDefault();
+        setIsDevHubOpen(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleGlobalKeys);
@@ -138,6 +145,10 @@ export default function Home() {
   };
 
   const handlePromptSubmit = async (promptText: string, attachments?: Attachment[]) => {
+    // Security sanitization & hardening
+    const sanitized = sanitizeUserInput(promptText);
+    const cleanPrompt = sanitized.text;
+
     let sessId = activeSessionId;
     let currentSess = sessions.find(s => s.id === sessId);
 
@@ -145,7 +156,7 @@ export default function Home() {
     if (!currentSess) {
       const newSession: Session = {
         id: generateId(),
-        title: (promptText || attachments?.[0]?.name || 'Workspace').slice(0, 36),
+        title: (cleanPrompt || attachments?.[0]?.name || 'Workspace').slice(0, 36),
         mode: currentMode,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -160,7 +171,7 @@ export default function Home() {
     const userMsg: ChatMessage = {
       id: generateId(),
       role: 'user',
-      content: promptText || 'Attached documents for analysis',
+      content: cleanPrompt || 'Attached documents for analysis',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       mode: currentMode,
       attachments: attachments && attachments.length > 0 ? attachments : undefined,
@@ -168,7 +179,7 @@ export default function Home() {
 
     const updatedWithUser = {
       ...currentSess,
-      title: currentSess.messages.length === 0 ? (promptText || 'Workspace').slice(0, 36) : currentSess.title,
+      title: currentSess.messages.length === 0 ? (cleanPrompt || 'Workspace').slice(0, 36) : currentSess.title,
       messages: [...currentSess.messages, userMsg],
       updatedAt: new Date().toISOString(),
     };
@@ -183,7 +194,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: promptText,
+          prompt: cleanPrompt,
           mode: currentMode,
           context: contextStr,
           model: currentModel,
@@ -244,64 +255,73 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-teal-500/30 selection:text-teal-200">
-      {/* Top Navigation */}
-      <Navbar
-        currentMode={currentMode}
-        onSelectMode={setCurrentMode}
-        onOpenMemory={() => setIsMemoryOpen(true)}
-        onOpenMcp={() => setIsMcpOpen(true)}
-        onOpenPalette={() => setIsPaletteOpen(true)}
-        onNewSession={handleNewSession}
-        memoryCount={memoryItems.length}
-        currentModel={currentModel}
-        onSelectModel={setCurrentModel}
-      />
-
-      {/* Main Workspace Layout */}
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
+    <ErrorBoundary>
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-teal-500/30 selection:text-teal-200">
+        {/* Top Navigation */}
+        <Navbar
           currentMode={currentMode}
           onSelectMode={setCurrentMode}
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          onSelectSession={handleSelectSession}
-          onApplyPrompt={handleApplyPreset}
+          onOpenMemory={() => setIsMemoryOpen(true)}
+          onOpenMcp={() => setIsMcpOpen(true)}
+          onOpenPalette={() => setIsPaletteOpen(true)}
+          onNewSession={handleNewSession}
+          memoryCount={memoryItems.length}
+          currentModel={currentModel}
+          onSelectModel={setCurrentModel}
         />
 
-        <AgentCanvas
-          messages={currentMessages}
-          currentMode={currentMode}
-          isLoading={isLoading}
-          onSubmitPrompt={handlePromptSubmit}
+        {/* Main Workspace Layout */}
+        <div className="flex-1 flex overflow-hidden">
+          <Sidebar
+            currentMode={currentMode}
+            onSelectMode={setCurrentMode}
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={handleSelectSession}
+            onApplyPrompt={handleApplyPreset}
+            onOpenDevHub={() => setIsDevHubOpen(true)}
+          />
+
+          <AgentCanvas
+            messages={currentMessages}
+            currentMode={currentMode}
+            isLoading={isLoading}
+            onSubmitPrompt={handlePromptSubmit}
+            onSelectMode={setCurrentMode}
+          />
+        </div>
+
+        {/* Modern Command Palette (⌘K) */}
+        <CommandPalette
+          isOpen={isPaletteOpen}
+          onClose={() => setIsPaletteOpen(false)}
           onSelectMode={setCurrentMode}
+          onOpenMemory={() => setIsMemoryOpen(true)}
+          onOpenMcp={() => setIsMcpOpen(true)}
+          onNewSession={handleNewSession}
+        />
+
+        {/* Model Context Protocol (MCP) Tools Registry Modal */}
+        <McpInspector
+          isOpen={isMcpOpen}
+          onClose={() => setIsMcpOpen(false)}
+        />
+
+        {/* Developer & Contributor Architecture Hub (⌘D) */}
+        <DevHubModal
+          isOpen={isDevHubOpen}
+          onClose={() => setIsDevHubOpen(false)}
+        />
+
+        {/* Personal Context Memory Modal (⌘J) */}
+        <MemoryModal
+          isOpen={isMemoryOpen}
+          onClose={() => setIsMemoryOpen(false)}
+          memoryItems={memoryItems}
+          onSaveItem={handleSaveMemoryItem}
+          onDeleteItem={handleDeleteMemoryItem}
         />
       </div>
-
-      {/* Modern Command Palette (⌘K) */}
-      <CommandPalette
-        isOpen={isPaletteOpen}
-        onClose={() => setIsPaletteOpen(false)}
-        onSelectMode={setCurrentMode}
-        onOpenMemory={() => setIsMemoryOpen(true)}
-        onOpenMcp={() => setIsMcpOpen(true)}
-        onNewSession={handleNewSession}
-      />
-
-      {/* Model Context Protocol (MCP) Tools Registry Modal */}
-      <McpInspector
-        isOpen={isMcpOpen}
-        onClose={() => setIsMcpOpen(false)}
-      />
-
-      {/* Personal Context Memory Modal */}
-      <MemoryModal
-        isOpen={isMemoryOpen}
-        onClose={() => setIsMemoryOpen(false)}
-        memoryItems={memoryItems}
-        onSaveItem={handleSaveMemoryItem}
-        onDeleteItem={handleDeleteMemoryItem}
-      />
-    </div>
+    </ErrorBoundary>
   );
 }

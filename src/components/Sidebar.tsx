@@ -13,8 +13,10 @@ import {
   FolderGit2, 
   ChevronRight,
   Lightbulb,
-  ExternalLink
+  GitBranch,
+  BookOpen
 } from 'lucide-react';
+import { sound } from '@/lib/sound';
 
 interface Props {
   currentMode: StudioMode;
@@ -23,6 +25,7 @@ interface Props {
   activeSessionId: string;
   onSelectSession: (id: string) => void;
   onApplyPrompt: (prompt: string, mode: StudioMode) => void;
+  onOpenDevHub?: () => void;
 }
 
 export function Sidebar({
@@ -32,6 +35,7 @@ export function Sidebar({
   activeSessionId,
   onSelectSession,
   onApplyPrompt,
+  onOpenDevHub,
 }: Props) {
   const modes: { id: StudioMode; label: string; icon: React.ReactNode }[] = [
     { id: 'research', label: 'Deep Research', icon: <Compass className="w-4 h-4" /> },
@@ -72,7 +76,7 @@ export function Sidebar({
             return (
               <button
                 key={m.id}
-                onClick={() => onSelectMode(m.id)}
+                onClick={() => { sound.playCheck(); onSelectMode(m.id); }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition ${
                   isActive
                     ? 'bg-slate-900 text-teal-300 border border-slate-700/80 shadow-sm'
@@ -145,13 +149,26 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Open source footer info */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950/80 text-[11px] text-slate-400 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <FolderGit2 className="w-3.5 h-3.5 text-teal-400" />
-          <span>MIT Licensed</span>
+      {/* Architecture & Open Source Dev Hub footer */}
+      <div className="p-3 border-t border-slate-800 bg-slate-950/80 text-[11px] space-y-2">
+        <button
+          onClick={() => { sound.playStart(); onOpenDevHub?.(); }}
+          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 transition text-xs font-medium"
+        >
+          <div className="flex items-center gap-2">
+            <GitBranch className="w-3.5 h-3.5 text-teal-400" />
+            <span>Developer & Contributor Hub</span>
+          </div>
+          <span className="text-[9px] font-mono bg-teal-950/60 px-1 rounded border border-teal-800">⌘D</span>
+        </button>
+
+        <div className="flex items-center justify-between text-slate-500 px-1 text-[10px]">
+          <span className="flex items-center gap-1">
+            <FolderGit2 className="w-3 h-3 text-slate-400" />
+            MIT Open Source
+          </span>
+          <span>100% Local-First</span>
         </div>
-        <span className="text-slate-500">Local-First</span>
       </div>
     </aside>
   );

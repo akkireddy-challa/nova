@@ -1,0 +1,31 @@
+name: "✨ Feature Request"
+description: "Suggest a new autonomous engine, MCP connector, or visual artifact card"
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: "Have an idea to make Nova better? We'd love to hear your proposal!"
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem or Opportunity"
+      description: "What pain point or use-case does this address?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: "Proposed Solution"
+      description: "How should Nova handle this? (e.g., new engine mode, MCP tool, visual card)."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: "Would you be willing to submit a Pull Request?"
+      options:
+        - label: "Yes, I can build and submit this feature."
