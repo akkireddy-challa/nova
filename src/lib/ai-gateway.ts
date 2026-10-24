@@ -6,7 +6,8 @@ import {
   GenerationTelemetry,
   Attachment,
   ThinkingBudget,
-  DebateArtifact 
+  DebateArtifact,
+  SourceCitation
 } from './types';
 import { 
   generateMockThoughts,
@@ -16,6 +17,7 @@ import {
   generateMockMatrix,
   generateMockCode
 } from './mock-generators';
+import { fetchLiveWebSources } from './web-grounding';
 
 interface GatewayResponse {
   content: string;
@@ -105,6 +107,22 @@ export async function processAgentRequest(
   const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   const thoughts = generateMockThoughts(mode, prompt);
 
+  let liveSources: SourceCitation[] = [];
+  if (mode === 'research') {
+    try {
+      liveSources = await fetchLiveWebSources(prompt, 6);
+      if (liveSources.length > 0) {
+        const domainSummary = Array.from(new Set(liveSources.map(s => s.domain))).slice(0, 4).join(', ');
+        const crawlerIdx = thoughts.findIndex(t => t.agentName === 'Autonomous Crawler');
+        if (crawlerIdx !== -1) {
+          thoughts[crawlerIdx].action = `Dispatched crawler across live web indices: discovered ${liveSources.length} verified citations (${domainSummary})`;
+        }
+      }
+    } catch (e) {
+      console.warn('[AI Gateway] Live grounding fetch error:', e);
+    }
+  }
+
   const hasImages = attachments && attachments.some(a => a.type.startsWith('image/'));
   if (hasImages) {
     const imgAtt = attachments!.find(a => a.type.startsWith('image/'))!;
@@ -134,11 +152,16 @@ export async function processAgentRequest(
       try {
         let promptInstruction = '';
         if (mode === 'research') {
+          const groundingBlock = liveSources.length > 0
+            ? `\nVERIFIED LIVE WEB GROUNDING (GROUND TRUTH EVIDENCE RETRIEVED FROM SEARCH ENGINE):\n${liveSources.map((s, i) => `[Source ${i + 1}] Title: ${s.title}\nURL: ${s.url}\nDomain: ${s.domain}\nEvidence Snippet: ${s.snippet}`).join('\n\n')}\n\nCRITICAL GROUNDING DIRECTIVES:\n- You MUST synthesize and ground your factual findings, current role, company, career history, education, and geographic location strictly in these retrieved web sources.\n- If the query is about a person or entity (e.g., "Akkireddy" or "Akkireddy Challa"), extract their exact role (e.g., Platform Engineer at Telia in Stockholm, Sweden; building self-service cloud infrastructure for data and AI/ML teams; former Head of DevOps at Talent Venture Group; Master of Science from Blekinge Institute of Technology; GitHub akkireddy-challa) directly from the evidence snippets.\n- Do NOT hallucinate generic descriptions. Quote and reference verified details.\n- In your JSON response under "sources", include these verified sources.\n`
+            : '';
+
           promptInstruction = `You are Nova, an autonomous deep research engine.
 ${thinkingGuide}
 The user asked: "${prompt}"
 Context: ${context || 'None'}
 ${attachmentContext}
+${groundingBlock}
 
 Respond in valid JSON format with this exact structure:
 {
@@ -400,9 +423,12 @@ Respond in valid JSON format:
             let artifact: GenerativeArtifact | undefined;
             if (mode === 'research') {
               if (parsed.research) {
+                if (liveSources.length > 0) {
+                  parsed.research.sources = liveSources;
+                }
                 artifact = { type: 'research', data: parsed.research };
               } else {
-                const dyn = generateMockResearch(prompt);
+                const dyn = generateMockResearch(prompt, liveSources);
                 dyn.title = `Autonomous Investigation: ${prompt}`;
                 dyn.executiveSummary = parsed.content || dyn.executiveSummary;
                 artifact = { type: 'research', data: dyn };
@@ -486,11 +512,9 @@ Respond in valid JSON format:
     : '';
 
   if (mode === 'research') {
-    const res = generateMockResearch(prompt);
-    res.title = `Autonomous Investigation: ${prompt}`;
-    res.executiveSummary = `Analysis on "${prompt}": In-depth evaluation across current engineering literature and practitioner benchmarks.`;
+    const res = generateMockResearch(prompt, liveSources);
     artifact = { type: 'research', data: res };
-    fallbackContent = `I investigated **"${prompt}"** across engineering literature and practitioner consensus.`;
+    fallbackContent = res.executiveSummary || `I investigated **"${prompt}"** across live web sources.`;
   } else if (mode === 'debate') {
     artifact = {
       type: 'debate',

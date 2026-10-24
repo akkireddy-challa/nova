@@ -2,6 +2,7 @@ import { McpPluginDefinition, McpToolDefinition, McpToolExecutionResult } from '
 import { embeddingsV2Store } from './embeddings-v2';
 import { cognitiveStack } from './intelligence-layers';
 import { sanitizeInput } from './sanitizer';
+import { fetchLiveWebSources } from './web-grounding';
 
 class McpRegistry {
   private plugins: Map<string, McpPluginDefinition> = new Map();
@@ -149,42 +150,26 @@ class McpRegistry {
     this.registerPlugin(webSearchPlugin, {
       web_search: async (args: { query: string; maxResults?: number }) => {
         const cleanQuery = sanitizeInput(args.query || '');
-        const limit = Math.min(args.maxResults || 4, 10);
+        const limit = Math.min(args.maxResults || 5, 10);
         
-        // Try live web grounding if key is available
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (apiKey) {
-          try {
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            const searchPrompt = `Perform a concise web search summary with 3-4 bullet points and verified citations for: "${cleanQuery}". Output verified technical facts only.`;
-            const resp = await fetch(endpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ role: 'user', parts: [{ text: searchPrompt }] }],
-                generationConfig: { maxOutputTokens: 500, temperature: 0.2 },
-              }),
-              signal: AbortSignal.timeout(6000),
-            });
-            if (resp.ok) {
-              const data = await resp.json();
-              const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) {
-                return {
-                  query: cleanQuery,
-                  status: 'verified_live',
-                  summary: text,
-                  sources: [
-                    { title: `${cleanQuery} - Primary Architecture Spec`, url: `https://github.com/topics/${encodeURIComponent(cleanQuery.slice(0, 20))}` },
-                    { title: 'Academic & Industry Benchmarks 2026', url: 'https://arxiv.org/abs/2410.agentic' },
-                    { title: 'Official Standards Documentation', url: 'https://modelcontextprotocol.io' },
-                  ].slice(0, limit),
-                };
-              }
-            }
-          } catch {
-            // Graceful fallback
+        try {
+          const liveSources = await fetchLiveWebSources(cleanQuery, limit);
+          if (liveSources.length > 0) {
+            const summaryText = liveSources.map((s, idx) => `• [${s.domain}] ${s.snippet}`).join('\n');
+            return {
+              query: cleanQuery,
+              status: 'verified_live',
+              summary: summaryText,
+              sources: liveSources.map(s => ({
+                title: s.title,
+                url: s.url,
+                snippet: s.snippet,
+                domain: s.domain,
+              })),
+            };
           }
+        } catch {
+          // Fall through to resilient fallback
         }
 
         // Deterministic high-quality fallback synthesis
