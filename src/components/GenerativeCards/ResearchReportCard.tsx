@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ResearchReport } from '@/lib/types';
 import { 
   FileText, 
@@ -10,8 +10,13 @@ import {
   Download, 
   Sparkles, 
   CheckCircle2,
-  BookOpen
+  BookOpen,
+  Volume2,
+  VolumeX,
+  Play,
+  Square
 } from 'lucide-react';
+import { sound } from '@/lib/sound';
 
 interface Props {
   report: ResearchReport;
@@ -20,8 +25,39 @@ interface Props {
 export function ResearchReportCard({ report }: Props) {
   const [activeTab, setActiveTab] = useState<'findings' | 'sources' | 'risks'>('findings');
   const [copied, setCopied] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const toggleAudioBriefing = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    if (isPlayingAudio) {
+      window.speechSynthesis.cancel();
+      setIsPlayingAudio(false);
+    } else {
+      window.speechSynthesis.cancel();
+      const briefingText = `${report.title}. Executive summary: ${report.executiveSummary}. Key findings: ${report.keyFindings.map(f => f.point).join('. ')}. Recommendation: ${report.recommendation}`;
+      const utterance = new SpeechSynthesisUtterance(briefingText);
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+      utterance.onend = () => setIsPlayingAudio(false);
+      utterance.onerror = () => setIsPlayingAudio(false);
+
+      sound.playStart();
+      window.speechSynthesis.speak(utterance);
+      setIsPlayingAudio(true);
+    }
+  };
 
   const handleDownload = () => {
+    sound.playCheck();
     const md = `# ${report.title}\n\n## Executive Summary\n${report.executiveSummary}\n\n## Key Findings\n${report.keyFindings.map(f => `### ${f.point}\n${f.description}\nConfidence: ${f.confidence}`).join('\n\n')}\n\n## Recommendation\n${report.recommendation}\n\n## Primary Citations\n${report.sources.map(s => `- [${s.title}](${s.url}) - ${s.snippet}`).join('\n')}`;
     const blob = new Blob([md], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -59,13 +95,44 @@ export function ResearchReportCard({ report }: Props) {
           </div>
         </div>
 
-        <button
-          onClick={handleDownload}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
-        >
-          {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" /> : <Download className="w-3.5 h-3.5" />}
-          <span>{copied ? 'Downloaded' : 'Export Report'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* TTS Audio Player */}
+          <button
+            onClick={toggleAudioBriefing}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+              isPlayingAudio
+                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+            }`}
+            title="Read report briefing aloud"
+          >
+            {isPlayingAudio ? (
+              <>
+                <Square className="w-3 h-3 fill-current text-rose-400" />
+                <span>Stop Audio</span>
+                <span className="flex items-end gap-0.5 h-3 ml-1">
+                  <span className="w-0.5 h-3 bg-rose-400 animate-pulse" />
+                  <span className="w-0.5 h-2 bg-rose-400 animate-pulse delay-75" />
+                  <span className="w-0.5 h-2.5 bg-rose-400 animate-pulse delay-150" />
+                </span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5 text-teal-400 fill-teal-400" />
+                <span>Audio Briefing</span>
+              </>
+            )}
+          </button>
+
+          {/* Export Report */}
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+          >
+            {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" /> : <Download className="w-3.5 h-3.5" />}
+            <span>{copied ? 'Downloaded' : 'Export'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Executive Summary */}

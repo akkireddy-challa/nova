@@ -1,6 +1,6 @@
-export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix';
+export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'mcp';
 
-export type ModelProvider = 'gemini' | 'claude' | 'ollama' | 'mock';
+export type ModelProvider = 'gemini-2.0-flash' | 'claude-3-7-sonnet' | 'deepseek-r1' | 'llama-3-3-local';
 
 export interface SourceCitation {
   id: string;
@@ -108,6 +108,16 @@ export interface CodeArtifact {
   explanation: string;
 }
 
+export interface McpTool {
+  id: string;
+  name: string;
+  server: string;
+  description: string;
+  enabled: boolean;
+  latencyMs: number;
+  inputSchemaSummary: string;
+}
+
 export type GenerativeArtifact = 
   | { type: 'research'; data: ResearchReport }
   | { type: 'plan'; data: GoalPlan }
@@ -124,6 +134,21 @@ export interface AgentThought {
   status: 'running' | 'success' | 'warn';
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  content: string;
+}
+
+export interface GenerationTelemetry {
+  latencyMs: number;
+  tokenCount: number;
+  tokensPerSec: number;
+  model: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -132,7 +157,8 @@ export interface ChatMessage {
   mode?: StudioMode;
   thoughts?: AgentThought[];
   artifact?: GenerativeArtifact;
-  isStreaming?: boolean;
+  telemetry?: GenerationTelemetry;
+  attachments?: Attachment[];
 }
 
 export interface KnowledgeMemoryItem {
@@ -150,4 +176,13 @@ export interface Session {
   createdAt: string;
   updatedAt: string;
   messages: ChatMessage[];
+}
+
+export interface SwarmAgentState {
+  id: string;
+  name: string;
+  role: string;
+  color: string;
+  status: 'idle' | 'thinking' | 'active' | 'done';
+  currentAction?: string;
 }

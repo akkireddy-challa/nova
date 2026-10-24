@@ -5,7 +5,8 @@ import {
   ChatMessage, 
   StudioMode, 
   AgentThought, 
-  GenerativeArtifact 
+  GenerativeArtifact,
+  Attachment
 } from '@/lib/types';
 import { ResearchReportCard } from './GenerativeCards/ResearchReportCard';
 import { TaskDagCard } from './GenerativeCards/TaskDagCard';
@@ -13,6 +14,7 @@ import { ChartCard } from './GenerativeCards/ChartCard';
 import { DecisionMatrixCard } from './GenerativeCards/DecisionMatrixCard';
 import { CodeSandboxCard } from './GenerativeCards/CodeSandboxCard';
 import { VoiceInput } from './VoiceInput';
+import { SwarmHUD } from './SwarmHUD';
 import { 
   Send, 
   Loader2, 
@@ -25,15 +27,20 @@ import {
   Scale, 
   Code2, 
   CheckCircle2, 
-  ShieldAlert,
-  ArrowRight
+  Paperclip,
+  X,
+  FileText,
+  Zap,
+  Cpu
 } from 'lucide-react';
+import { sound } from '@/lib/sound';
+import { generateId } from '@/lib/utils';
 
 interface Props {
   messages: ChatMessage[];
   currentMode: StudioMode;
   isLoading: boolean;
-  onSubmitPrompt: (text: string) => void;
+  onSubmitPrompt: (text: string, attachments?: Attachment[]) => void;
   onSelectMode: (mode: StudioMode) => void;
 }
 
@@ -45,6 +52,9 @@ export function AgentCanvas({
   onSelectMode,
 }: Props) {
   const [input, setInput] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -55,18 +65,46 @@ export function AgentCanvas({
     scrollToBottom();
   }, [messages, isLoading]);
 
+  const handleFileUpload = (files: FileList | null) => {
+    if (!files) return;
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string || '';
+        const newAtt: Attachment = {
+          id: generateId(),
+          name: file.name,
+          size: file.size,
+          type: file.type || 'text/plain',
+          content,
+        };
+        sound.playCheck();
+        setAttachments(prev => [...prev, newAtt]);
+      };
+      reader.readAsText(file);
+    });
+  };
+
+  const removeAttachment = (id: string) => {
+    sound.playCheck();
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && attachments.length === 0) || isLoading) return;
     const text = input.trim();
+    const currentAtts = [...attachments];
     setInput('');
-    onSubmitPrompt(text);
+    setAttachments([]);
+    sound.playStart();
+    onSubmitPrompt(text, currentAtts);
   };
 
   const getPlaceholder = (mode: StudioMode) => {
     switch (mode) {
       case 'research':
-        return 'Enter a complex question or topic for autonomous deep research...';
+        return 'Enter a topic for autonomous deep research (or attach documents)...';
       case 'planner':
         return 'Enter any high-level objective to generate an interactive milestone DAG...';
       case 'canvas':
@@ -75,54 +113,81 @@ export function AgentCanvas({
         return 'Enter alternatives to evaluate across weighted multi-variable criteria...';
       case 'coder':
         return 'Describe a component, architecture, or script to synthesize...';
+      case 'mcp':
+        return 'Enter MCP tool parameters or query to dispatch to connected servers...';
     }
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] bg-slate-950 overflow-hidden relative">
+    <div 
+      className="flex-1 flex flex-col h-[calc(100vh-4rem)] bg-slate-950 overflow-hidden relative"
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        handleFileUpload(e.dataTransfer.files);
+      }}
+    >
+      {/* Real-time Multi-Agent Swarm Pipeline Status */}
+      <SwarmHUD isExecuting={isLoading} activeMode={currentMode} />
+
+      {/* Drag & Drop Overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-30 bg-teal-500/10 backdrop-blur-sm border-2 border-dashed border-teal-400 flex items-center justify-center p-6 pointer-events-none">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-teal-500/40 text-center shadow-2xl">
+            <Paperclip className="w-8 h-8 text-teal-400 mx-auto mb-2 animate-bounce" />
+            <h4 className="text-sm font-semibold text-slate-100">Drop files to attach to agent context</h4>
+            <p className="text-xs text-slate-400 mt-1">Accepts code, markdown, JSON, CSV, and text</p>
+          </div>
+        </div>
+      )}
+
       {/* Scrollable messages and artifacts area */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto w-full">
         {messages.length === 0 ? (
           /* Welcome Hero for New Workspace */
-          <div className="py-12 md:py-16 text-center space-y-6 max-w-2xl mx-auto">
-            <div className="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-teal-500/10 via-indigo-500/10 to-purple-500/10 border border-teal-500/20 text-teal-400">
+          <div className="py-10 md:py-14 text-center space-y-6 max-w-2xl mx-auto animate-in fade-in duration-300">
+            <div className="inline-flex p-3.5 rounded-2xl bg-gradient-to-tr from-teal-500/20 via-indigo-500/20 to-purple-500/20 border border-teal-500/30 text-teal-300 shadow-xl shadow-teal-500/10">
               <Sparkles className="w-8 h-8" />
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-2xl md:text-3xl font-extrabold text-slate-100 tracking-tight">
-                What shall we build or solve today?
-              </h2>
-              <p className="text-sm text-slate-400 leading-relaxed max-w-lg mx-auto">
-                Nova is an open-source autonomous intelligence studio. Choose an engine below or type any open-ended request.
+              <div className="flex items-center justify-center gap-2">
+                <h2 className="text-2xl md:text-3xl font-extrabold text-slate-100 tracking-tight">
+                  What shall we build or solve today?
+                </h2>
+              </div>
+              <p className="text-xs md:text-sm text-slate-400 leading-relaxed max-w-lg mx-auto">
+                Nova orchestrates autonomous multi-agent pipelines to produce verified research, milestone DAGs, interactive charts, and production code.
               </p>
             </div>
 
             {/* Quick Action Mode Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-4 text-left">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-3 text-left">
               <button
-                onClick={() => { onSelectMode('research'); setInput('Deep research on future solid-state battery breakthroughs and commercialization timelines'); }}
+                onClick={() => { onSelectMode('research'); setInput('Deep research on local SLM quantization (4-bit vs 8-bit) and inference throughput in 2026'); }}
                 className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-teal-500/40 transition group"
               >
                 <div className="flex items-center gap-2 text-teal-400 mb-1.5 font-semibold text-xs">
                   <Compass className="w-4 h-4" />
                   <span>Deep Research</span>
                 </div>
-                <p className="text-[11px] text-slate-400 line-clamp-2">
-                  Multi-source autonomous crawling, citation verification, and comprehensive synthesis.
+                <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                  Autonomous crawling, source triangulation, and verified citations with audio briefing.
                 </p>
               </button>
 
               <button
-                onClick={() => { onSelectMode('planner'); setInput('Plan a 30-day product launch strategy for a local-first open source tool'); }}
+                onClick={() => { onSelectMode('planner'); setInput('Plan a 14-day execution sprint to build an open-source MCP tool server'); }}
                 className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-indigo-500/40 transition group"
               >
                 <div className="flex items-center gap-2 text-indigo-400 mb-1.5 font-semibold text-xs">
                   <ListTodo className="w-4 h-4" />
                   <span>Goal-to-DAG Planner</span>
                 </div>
-                <p className="text-[11px] text-slate-400 line-clamp-2">
-                  Decompose goals into ordered execution milestones with interactive checkboxes.
+                <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                  Dependency-ordered milestone roadmap with live checkbox tracking and confetti.
                 </p>
               </button>
 
@@ -134,18 +199,18 @@ export function AgentCanvas({
                   <Scale className="w-4 h-4" />
                   <span>Decision Matrix</span>
                 </div>
-                <p className="text-[11px] text-slate-400 line-clamp-2">
-                  Weighted criteria comparison with real-time recalculated ranking sliders.
+                <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                  Multi-variable criteria comparison with real-time recalculation sliders.
                 </p>
               </button>
             </div>
           </div>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className="space-y-3">
+            <div key={msg.id} className="space-y-3 animate-in fade-in duration-200">
               {/* Message Header */}
               <div className="flex items-start gap-3">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs ${
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs shadow-md ${
                   msg.role === 'assistant' 
                     ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' 
                     : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
@@ -154,19 +219,32 @@ export function AgentCanvas({
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-xs font-semibold text-slate-200">
                       {msg.role === 'assistant' ? 'Nova Autonomous Studio' : 'You'}
                     </span>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-slate-500 font-mono">
                       {msg.timestamp}
                     </span>
                     {msg.mode && (
-                      <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-800 text-teal-400 border border-slate-700 font-mono">
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-900 text-teal-400 border border-slate-800 font-mono">
                         {msg.mode}
                       </span>
                     )}
                   </div>
+
+                  {/* Attached files preview */}
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {msg.attachments.map(att => (
+                        <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300">
+                          <FileText className="w-3.5 h-3.5 text-teal-400" />
+                          <span className="truncate max-w-[180px]">{att.name}</span>
+                          <span className="text-[9px] text-slate-500 font-mono">({Math.round(att.size / 1024)}KB)</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Message content text */}
                   <div className="text-xs md:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
@@ -175,10 +253,10 @@ export function AgentCanvas({
 
                   {/* Agent Thoughts disclosure */}
                   {msg.thoughts && msg.thoughts.length > 0 && (
-                    <div className="my-3 p-3 rounded-lg border border-slate-800/80 bg-slate-900/50 space-y-1.5 text-xs">
+                    <div className="my-3 p-3 rounded-xl border border-slate-800/80 bg-slate-900/60 space-y-1.5 text-xs">
                       <div className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider flex items-center gap-1.5">
                         <CheckCircle2 className="w-3 h-3 text-teal-400" />
-                        Autonomous Agent Execution Trail
+                        Autonomous Swarm Execution Trail
                       </div>
                       <div className="space-y-1">
                         {msg.thoughts.map((th) => (
@@ -211,6 +289,22 @@ export function AgentCanvas({
                       )}
                     </div>
                   )}
+
+                  {/* Telemetry pill */}
+                  {msg.telemetry && (
+                    <div className="mt-2.5 flex items-center gap-3 text-[10px] text-slate-500 font-mono">
+                      <span className="flex items-center gap-1 text-teal-400/80">
+                        <Zap className="w-3 h-3" />
+                        {msg.telemetry.latencyMs}ms
+                      </span>
+                      <span>•</span>
+                      <span>{msg.telemetry.tokenCount} tokens</span>
+                      <span>•</span>
+                      <span>{msg.telemetry.tokensPerSec} t/s</span>
+                      <span>•</span>
+                      <span>{msg.telemetry.model}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -220,7 +314,7 @@ export function AgentCanvas({
         {/* Loading indicator with agent steps */}
         {isLoading && (
           <div className="flex items-start gap-3 p-4 rounded-xl border border-teal-500/20 bg-teal-500/5 animate-pulse">
-            <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center">
               <Loader2 className="w-4 h-4 animate-spin" />
             </div>
             <div className="space-y-1">
@@ -239,34 +333,72 @@ export function AgentCanvas({
 
       {/* Input Dock */}
       <div className="p-4 bg-slate-950/80 border-t border-slate-800 backdrop-blur-md">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex items-center gap-2">
-          {/* Voice Input Button */}
-          <VoiceInput onTranscription={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} />
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-2">
+          {/* Pending attachments pill bar */}
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 pb-1">
+              {attachments.map(att => (
+                <div key={att.id} className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900 border border-teal-500/40 text-xs text-teal-200">
+                  <FileText className="w-3.5 h-3.5 text-teal-400" />
+                  <span className="font-medium truncate max-w-[200px]">{att.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(att.id)}
+                    className="p-0.5 rounded text-slate-400 hover:text-rose-400 ml-1 transition"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
-          {/* Main prompt input */}
-          <div className="flex-1 relative">
+          <div className="flex items-center gap-2">
+            {/* File attachment button */}
             <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={getPlaceholder(currentMode)}
-              disabled={isLoading}
-              className="w-full pl-4 pr-10 py-3 rounded-xl bg-slate-900 border border-slate-700/80 text-xs md:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition shadow-inner"
+              type="file"
+              ref={fileInputRef}
+              onChange={(e) => handleFileUpload(e.target.files)}
+              className="hidden"
+              multiple
             />
-          </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              title="Attach documents, data files, or code"
+              className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
 
-          {/* Submit button */}
-          <button
-            type="submit"
-            disabled={!input.trim() || isLoading}
-            className="p-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 disabled:opacity-40 font-semibold transition flex items-center justify-center shadow-lg shadow-teal-500/10"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </button>
+            {/* Voice Input Button */}
+            <VoiceInput onTranscription={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} />
+
+            {/* Main prompt input */}
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={getPlaceholder(currentMode)}
+                disabled={isLoading}
+                className="w-full pl-4 pr-10 py-3 rounded-xl bg-slate-900 border border-slate-700/80 text-xs md:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition shadow-inner"
+              />
+            </div>
+
+            {/* Submit button */}
+            <button
+              type="submit"
+              disabled={(!input.trim() && attachments.length === 0) || isLoading}
+              className="p-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 disabled:opacity-40 font-semibold transition flex items-center justify-center shadow-lg shadow-teal-500/10"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>

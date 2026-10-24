@@ -13,6 +13,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { sound } from '@/lib/sound';
 
 interface Props {
   plan: GoalPlan;
@@ -28,6 +29,7 @@ export function TaskDagCard({ plan }: Props) {
   const progressPercent = allTasks.length > 0 ? Math.round((completedCount / allTasks.length) * 100) : 0;
 
   const toggleTask = (phaseId: string, taskId: string) => {
+    sound.playCheck();
     setPhases(prev =>
       prev.map(phase => {
         if (phase.id !== phaseId) return phase;

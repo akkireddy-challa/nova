@@ -5,21 +5,47 @@ import { Navbar } from '@/components/Navbar';
 import { Sidebar } from '@/components/Sidebar';
 import { AgentCanvas } from '@/components/AgentCanvas';
 import { MemoryModal } from '@/components/MemoryModal';
+import { CommandPalette } from '@/components/CommandPalette';
+import { McpInspector } from '@/components/McpInspector';
 import { 
   StudioMode, 
   Session, 
   ChatMessage, 
-  KnowledgeMemoryItem 
+  KnowledgeMemoryItem,
+  ModelProvider,
+  Attachment 
 } from '@/lib/types';
 import { generateId } from '@/lib/utils';
+import { sound } from '@/lib/sound';
 
 export default function Home() {
   const [currentMode, setCurrentMode] = useState<StudioMode>('research');
+  const [currentModel, setCurrentModel] = useState<ModelProvider>('gemini-2.0-flash');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  
+  // Modals state
   const [isMemoryOpen, setIsMemoryOpen] = useState<boolean>(false);
+  const [isPaletteOpen, setIsPaletteOpen] = useState<boolean>(false);
+  const [isMcpOpen, setIsMcpOpen] = useState<boolean>(false);
+  
   const [memoryItems, setMemoryItems] = useState<KnowledgeMemoryItem[]>([]);
+
+  // Keyboard shortcut listener (⌘K for palette, ⌘J for context memory)
+  useEffect(() => {
+    const handleGlobalKeys = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsPaletteOpen(prev => !prev);
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+        e.preventDefault();
+        setIsMemoryOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeys);
+    return () => window.removeEventListener('keydown', handleGlobalKeys);
+  }, []);
 
   // Load saved memory and sessions from localStorage on mount
   useEffect(() => {
@@ -28,7 +54,6 @@ export default function Home() {
       if (savedMem) {
         setMemoryItems(JSON.parse(savedMem));
       } else {
-        // Initial default knowledge memory items
         const initialMem: KnowledgeMemoryItem[] = [
           {
             id: 'mem-1',
@@ -64,6 +89,7 @@ export default function Home() {
 
   // Save memory changes
   const handleSaveMemoryItem = (item: KnowledgeMemoryItem) => {
+    sound.playCheck();
     const updated = [item, ...memoryItems];
     setMemoryItems(updated);
     try {
@@ -72,6 +98,7 @@ export default function Home() {
   };
 
   const handleDeleteMemoryItem = (id: string) => {
+    sound.playCheck();
     const updated = memoryItems.filter(m => m.id !== id);
     setMemoryItems(updated);
     try {
@@ -84,9 +111,10 @@ export default function Home() {
   const currentMessages = activeSession ? activeSession.messages : [];
 
   const handleNewSession = () => {
+    sound.playStart();
     const newSession: Session = {
       id: generateId(),
-      title: 'New Investigation',
+      title: 'New Goal Workspace',
       mode: currentMode,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -101,6 +129,7 @@ export default function Home() {
   };
 
   const handleSelectSession = (id: string) => {
+    sound.playCheck();
     setActiveSessionId(id);
     const s = sessions.find(sess => sess.id === id);
     if (s) {
@@ -108,7 +137,7 @@ export default function Home() {
     }
   };
 
-  const handlePromptSubmit = async (promptText: string) => {
+  const handlePromptSubmit = async (promptText: string, attachments?: Attachment[]) => {
     let sessId = activeSessionId;
     let currentSess = sessions.find(s => s.id === sessId);
 
@@ -116,7 +145,7 @@ export default function Home() {
     if (!currentSess) {
       const newSession: Session = {
         id: generateId(),
-        title: promptText.slice(0, 36) + (promptText.length > 36 ? '...' : ''),
+        title: (promptText || attachments?.[0]?.name || 'Workspace').slice(0, 36),
         mode: currentMode,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -131,15 +160,15 @@ export default function Home() {
     const userMsg: ChatMessage = {
       id: generateId(),
       role: 'user',
-      content: promptText,
+      content: promptText || 'Attached documents for analysis',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       mode: currentMode,
+      attachments: attachments && attachments.length > 0 ? attachments : undefined,
     };
 
-    // Append user message immediately
     const updatedWithUser = {
       ...currentSess,
-      title: currentSess.messages.length === 0 ? promptText.slice(0, 36) : currentSess.title,
+      title: currentSess.messages.length === 0 ? (promptText || 'Workspace').slice(0, 36) : currentSess.title,
       messages: [...currentSess.messages, userMsg],
       updatedAt: new Date().toISOString(),
     };
@@ -148,7 +177,6 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      // Prepare context from active memory items
       const contextStr = memoryItems.map(m => `[${m.title}]: ${m.content}`).join('\n');
 
       const res = await fetch('/api/agent', {
@@ -158,10 +186,13 @@ export default function Home() {
           prompt: promptText,
           mode: currentMode,
           context: contextStr,
+          model: currentModel,
+          attachments,
         }),
       });
 
       const data = await res.json();
+      sound.playSuccess();
 
       const assistantMsg: ChatMessage = {
         id: generateId(),
@@ -171,6 +202,7 @@ export default function Home() {
         mode: currentMode,
         thoughts: data.thoughts,
         artifact: data.artifact,
+        telemetry: data.telemetry,
       };
 
       const finalSess = {
@@ -187,7 +219,6 @@ export default function Home() {
       });
     } catch (err) {
       console.error('Agent execution error:', err);
-      // Defensive fallback response
       const fallbackMsg: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -219,8 +250,12 @@ export default function Home() {
         currentMode={currentMode}
         onSelectMode={setCurrentMode}
         onOpenMemory={() => setIsMemoryOpen(true)}
+        onOpenMcp={() => setIsMcpOpen(true)}
+        onOpenPalette={() => setIsPaletteOpen(true)}
         onNewSession={handleNewSession}
         memoryCount={memoryItems.length}
+        currentModel={currentModel}
+        onSelectModel={setCurrentModel}
       />
 
       {/* Main Workspace Layout */}
@@ -242,6 +277,22 @@ export default function Home() {
           onSelectMode={setCurrentMode}
         />
       </div>
+
+      {/* Modern Command Palette (⌘K) */}
+      <CommandPalette
+        isOpen={isPaletteOpen}
+        onClose={() => setIsPaletteOpen(false)}
+        onSelectMode={setCurrentMode}
+        onOpenMemory={() => setIsMemoryOpen(true)}
+        onOpenMcp={() => setIsMcpOpen(true)}
+        onNewSession={handleNewSession}
+      />
+
+      {/* Model Context Protocol (MCP) Tools Registry Modal */}
+      <McpInspector
+        isOpen={isMcpOpen}
+        onClose={() => setIsMcpOpen(false)}
+      />
 
       {/* Personal Context Memory Modal */}
       <MemoryModal
