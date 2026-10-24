@@ -35,7 +35,7 @@ export const researchOutputSchema = z.object({
         z.object({
           point: nonEmpty,
           description: nonEmpty,
-          confidence: z.enum(['high', 'medium', 'emerging']),
+          confidence: z.enum(['high', 'medium', 'low']),
           citations: z.array(citationRef).default([]),
         }),
       )

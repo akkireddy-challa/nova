@@ -53,6 +53,19 @@ Configure one or more in `.env`. Only configured providers show up in the model 
 
 Ollama only counts as configured when the server is reachable.
 
+### Embeddings and memory search
+
+Saved memories (Memory, ⌘J) live in your browser. **Memory Search** in the sidebar ranks them against a query:
+
+- With an embeddings provider it embeds the memories and query and ranks by cosine similarity. Providers are tried in the order OpenAI, Gemini, Ollama. Anthropic has no embeddings API.
+- Without one, or if the embeddings call fails, it falls back to keyword (BM25) search. The result always says which method was used, which embedding model was used, and why it fell back if it did.
+
+| Provider | Embedding model (override) | Default |
+|---|---|---|
+| OpenAI / OpenAI-compatible | `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` |
+| Gemini | `GEMINI_EMBEDDING_MODEL` | `gemini-embedding-001` |
+| Ollama | `OLLAMA_EMBEDDING_MODEL` | first installed model whose name looks like an embedding model (e.g. `nomic-embed-text`) |
+
 ## Search providers
 
 | Provider | Setup |
@@ -67,6 +80,7 @@ Nova exposes a small OpenAI-style API, so you can point existing tools and SDKs 
 
 - `GET /api/v1/models` lists the models of your configured providers (an empty `data` array when none are configured).
 - `POST /api/v1/chat/completions` handles chat completions.
+- `POST /api/v1/embeddings` returns embeddings from the first configured embeddings provider (or the `provider:model` you pass as `model`). It returns `503` when no embeddings provider is configured. `usage` is included only when the provider reports it (Gemini doesn't).
 
 ```bash
 curl http://localhost:3000/api/v1/models
@@ -87,7 +101,7 @@ The app UI itself uses `POST /api/agent`. See [ARCHITECTURE.md](ARCHITECTURE.md)
 - Answer quality depends on the model you pick and on what the search provider returns. Small local models often fail schema validation more than hosted ones do.
 - DuckDuckGo HTML search is unofficial and can be rate-limited or change without notice. Use Tavily or Brave if you need it to be reliable.
 - Some pages block fetching or need JavaScript, so their content can't be used as a source.
-- There's no persistent storage or memory across sessions yet.
+- Sessions and saved memories are stored only in your browser's localStorage. There's no server-side storage. Memories are sent with each question as context, and to the embeddings provider when you use Memory Search.
 
 ## Roadmap
 

@@ -1,21 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ResearchReport } from '@/lib/types';
 import { 
-  FileText, 
   ExternalLink, 
-  ShieldCheck, 
   AlertTriangle, 
   Download, 
   Sparkles, 
   CheckCircle2,
   BookOpen,
-  Volume2,
-  VolumeX,
-  Play,
-  Square,
-  Compass,
   Globe
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
@@ -246,7 +239,7 @@ export function ResearchReportCard({ report }: Props) {
         {report.recommendation && (
           <div className="mt-5 p-3.5 rounded-lg border border-teal-500/30 bg-teal-500/5">
             <span className="text-[11px] uppercase tracking-wider font-semibold text-teal-400 block mb-1">
-              Deterministic Recommendation
+              Recommendation
             </span>
             <p className="text-xs text-teal-200 leading-relaxed">
               {report.recommendation}

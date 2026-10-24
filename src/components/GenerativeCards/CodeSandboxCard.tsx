@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { CodeArtifact } from '@/lib/types';
-import { Code2, Copy, Check, Download, Terminal, Eye, Play } from 'lucide-react';
+import { Copy, Check, Download, Terminal, Eye } from 'lucide-react';
 import { sound } from '@/lib/sound';
 
 interface Props {

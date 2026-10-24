@@ -1,53 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { embeddingsV2Store, ChunkWithEmbedding } from '@/lib/embeddings-v2';
-import { cognitiveStack } from '@/lib/intelligence-layers';
-import { KnowledgeMemoryItem } from '@/lib/types';
+import { z } from 'zod';
+import { searchMemories } from '@/lib/memory-search';
 
+const CATEGORIES = ['preference', 'project_context', 'personal_fact', 'document'] as const;
+
+const requestSchema = z.object({
+  query: z.string().max(2_000),
+  memories: z
+    .array(
+      z.object({
+        id: z.string().max(200),
+        title: z.string().max(500),
+        content: z.string().max(50_000),
+        category: z.enum(CATEGORIES).optional(),
+      }),
+    )
+    .max(500)
+    .default([]),
+  topK: z.number().int().min(1).max(50).optional(),
+});
+
+/**
+ * Search the caller's saved memories (they live in the browser, so the client sends them).
+ * Response: { query, method: 'embeddings' | 'keyword', embeddingModel?, fallbackReason?, results }.
+ */
 export async function POST(req: NextRequest) {
+  let raw: unknown;
   try {
-    const body = await req.json();
-    const action = body.action || 'search';
-    const query = body.query?.trim() || '';
-    const memories = (body.memories || []) as KnowledgeMemoryItem[];
+    raw = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Request body must be valid JSON.' }, { status: 400 });
+  }
 
-    // Ensure memories are indexed into Embeddings v2 store
-    if (memories.length > 0) {
-      for (const m of memories) {
-        await embeddingsV2Store.addDocument(m.id, m.title, m.content);
-      }
-    }
+  const parsed = requestSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return NextResponse.json(
+      { error: `Invalid request: ${issue.path.join('.') || 'body'} ${issue.message}` },
+      { status: 400 },
+    );
+  }
+  const { query, memories, topK } = parsed.data;
+  if (!query.trim()) {
+    return NextResponse.json({ error: 'Query is required.' }, { status: 400 });
+  }
 
-    if (action === 'search') {
-      const results: ChunkWithEmbedding[] = query ? await embeddingsV2Store.search(query, 5) : [];
-      const stats = embeddingsV2Store.getStats();
-
-      return NextResponse.json({
-        query,
-        results,
-        stats,
-        layers: [
-          cognitiveStack.getWorkingMemoryLayer(),
-          cognitiveStack.getSemanticMemoryLayer(),
-          cognitiveStack.getKnowledgeGraphLayer(memories),
-          cognitiveStack.getCognitiveExecutiveLayer(),
-        ],
-      });
-    }
-
-    if (action === 'layers_status') {
-      return NextResponse.json({
-        layers: [
-          cognitiveStack.getWorkingMemoryLayer(),
-          cognitiveStack.getSemanticMemoryLayer(),
-          cognitiveStack.getKnowledgeGraphLayer(memories),
-          cognitiveStack.getCognitiveExecutiveLayer(),
-        ],
-      });
-    }
-
-    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  try {
+    return NextResponse.json(await searchMemories(query, memories, { topK, signal: req.signal }));
   } catch (error) {
-    console.error('Intelligence API error:', error);
-    return NextResponse.json({ error: 'Internal server error in intelligence engine' }, { status: 500 });
+    console.error('[api/intelligence] memory search failed:', error instanceof Error ? error.name : 'unknown');
+    return NextResponse.json({ error: 'Memory search failed.' }, { status: 500 });
   }
 }

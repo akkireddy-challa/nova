@@ -1,15 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  GenerativeArtifact, 
-  CodeArtifact, 
-  ResearchReport, 
-  GoalPlan, 
-  ChartArtifact, 
-  DecisionMatrix, 
-  DebateArtifact 
-} from '@/lib/types';
+import { GenerativeArtifact } from '@/lib/types';
 import { 
   X, 
   Maximize2, 
@@ -17,17 +9,11 @@ import {
   Copy, 
   Check, 
   Download, 
-  Play, 
-  FileCode, 
   Sparkles, 
-  Share2, 
   ExternalLink,
   Sliders,
   CheckCircle2,
-  AlertTriangle,
-  Layers,
-  ArrowRight,
-  ShieldCheck
+  AlertTriangle
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 

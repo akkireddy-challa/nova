@@ -14,9 +14,7 @@ import {
   Volume2, 
   VolumeX, 
   Sparkles,
-  Command,
-  ArrowRight,
-  X
+  ArrowRight
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 
@@ -44,7 +42,7 @@ export function CommandPalette({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        isOpen ? onClose() : null; // Handled by parent toggle
+        if (isOpen) onClose(); // Handled by parent toggle
       } else if (e.key === 'Escape' && isOpen) {
         onClose();
       }

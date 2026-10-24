@@ -37,7 +37,6 @@ interface Props {
 
 export function Navbar({ 
   currentMode, 
-  onSelectMode, 
   onOpenMemory, 
   onOpenPalette, 
   onNewSession, 

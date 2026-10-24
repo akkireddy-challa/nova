@@ -1,4 +1,5 @@
 import {
+  checkVectors,
   elapsedSince,
   errorFromException,
   errorFromResponse,
@@ -6,12 +7,14 @@ import {
   redact,
   withTimeout,
 } from './openai';
-import { ProviderError, type LLMProvider, type LLMRequest, type LLMResult, type ProviderId } from './types';
+import { ProviderError, type EmbedResult, type LLMProvider, type LLMRequest, type LLMResult, type ProviderId } from './types';
 
 const ID: ProviderId = 'ollama';
 const LABEL = 'Ollama';
 const PROBE_TIMEOUT_MS = 1_500;
 const PROBE_CACHE_MS = 30_000;
+/** Installed models whose names look like embedding models (nomic-embed-text, bge-m3, all-minilm, ...). */
+const EMBEDDING_MODEL = /(embed|bge|minilm|gte-|e5-)/i;
 
 interface OllamaTags {
   models?: Array<{ name?: string; model?: string }>;
@@ -29,6 +32,13 @@ interface OllamaChatResponse {
   done?: boolean;
   prompt_eval_count?: number;
   eval_count?: number;
+  error?: string;
+}
+
+interface OllamaEmbedResponse {
+  model?: string;
+  embeddings?: unknown[];
+  prompt_eval_count?: number;
   error?: string;
 }
 
@@ -197,5 +207,45 @@ export const ollamaProvider: LLMProvider = {
     } catch (err) {
       throw errorFromException(ID, LABEL, err, request.signal);
     }
+  },
+
+  /** OLLAMA_EMBEDDING_MODEL, else the first installed model that looks like an embedding model. */
+  async defaultEmbeddingModel() {
+    const models = await probe();
+    if (models === null) return null;
+    const configured = process.env.OLLAMA_EMBEDDING_MODEL?.trim();
+    if (configured) return configured;
+    return models.find(model => EMBEDDING_MODEL.test(model)) ?? null;
+  },
+
+  async embed({ model, texts, signal }): Promise<EmbedResult> {
+    const embeddingModel = model?.trim() || (await ollamaProvider.defaultEmbeddingModel?.());
+    if (!embeddingModel) {
+      throw new ProviderError(
+        'No Ollama embedding model is installed (set OLLAMA_EMBEDDING_MODEL or pull nomic-embed-text)',
+        ID,
+        404,
+      );
+    }
+    let data: OllamaEmbedResponse;
+    try {
+      const res = await fetch(`${baseUrl()}/api/embed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: embeddingModel, input: texts }),
+        signal: withTimeout(signal),
+      });
+      if (!res.ok) throw await errorFromResponse(ID, LABEL, res);
+      data = (await res.json()) as OllamaEmbedResponse;
+    } catch (err) {
+      throw errorFromException(ID, LABEL, err, signal);
+    }
+    if (data.error) throw new ProviderError(`Ollama error: ${redact(data.error)}`, ID, 502);
+    const result: EmbedResult = {
+      vectors: checkVectors(ID, LABEL, data.embeddings ?? [], texts.length),
+      model: data.model || embeddingModel,
+    };
+    if (typeof data.prompt_eval_count === 'number') result.usage = { inputTokens: data.prompt_eval_count };
+    return result;
   },
 };

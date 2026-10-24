@@ -401,6 +401,8 @@ export function AgentCanvas({
                         {msg.attachments.map(att => (
                           <div key={att.id} className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-teal-300">
                             {att.type.startsWith('image/') ? (
+                              // User-attached image preview (data URL); next/image can't optimize it.
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img src={att.content} alt={att.name} className="w-6 h-6 rounded object-cover border border-slate-700" />
                             ) : (
                               <FileText className="w-3.5 h-3.5 text-teal-400" />
@@ -586,6 +588,8 @@ export function AgentCanvas({
                 {attachments.map(att => (
                   <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-950 border border-teal-500/40 text-xs text-teal-200">
                     {att.type.startsWith('image/') ? (
+                      // User-attached image preview (data URL); next/image can't optimize it.
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={att.content} alt={att.name} className="w-5 h-5 rounded object-cover border border-teal-500/40" />
                     ) : (
                       <FileText className="w-3 h-3 text-teal-400" />

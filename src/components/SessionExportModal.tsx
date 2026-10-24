@@ -9,8 +9,7 @@ import {
   Copy, 
   Check, 
   Share2, 
-  Code,
-  Sparkles
+  Code
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 
@@ -30,7 +29,7 @@ export function SessionExportModal({ isOpen, onClose, session }: Props) {
     md += `*Exported from Nova on ${new Date(session.updatedAt).toLocaleString()}*\n\n`;
     md += `**Mode:** \`${session.mode}\`\n\n---\n\n`;
 
-    session.messages.forEach((msg, idx) => {
+    session.messages.forEach((msg) => {
       const speaker = msg.role === 'assistant' ? '🤖 **Nova**' : '👤 **User**';
       md += `### ${speaker} (${msg.timestamp})\n\n`;
       md += `${msg.content}\n\n`;

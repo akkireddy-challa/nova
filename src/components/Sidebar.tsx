@@ -2,19 +2,14 @@
 
 import React from 'react';
 import { StudioMode, Session } from '@/lib/types';
-import { 
-  Bot, 
-  Brain, 
-  Puzzle, 
-  CheckCircle2, 
-  Plus, 
-  Clock, 
-  Trash2, 
-  ChevronRight, 
-  Sparkles, 
-  FolderGit2, 
+import {
+  Brain,
+  Puzzle,
+  Clock,
+  Trash2,
+  ChevronRight,
+  FolderGit2,
   Settings as SettingsIcon,
-  Compass,
   MessageSquare
 } from 'lucide-react';
 import { sound } from '@/lib/sound';

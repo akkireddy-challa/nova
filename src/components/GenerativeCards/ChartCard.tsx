@@ -21,7 +21,6 @@ import {
   Sparkles, 
   Table, 
   Download, 
-  ArrowUpRight,
   ArrowRight,
   CheckCircle2
 } from 'lucide-react';
@@ -48,7 +47,6 @@ interface Props {
 
 export function ChartCard({ chart }: Props) {
   const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
-  const [showTable, setShowTable] = useState(true);
   const [copied, setCopied] = useState(false);
 
   const stats = calculateStatistics(chart.data?.map(d => d.value) || []);

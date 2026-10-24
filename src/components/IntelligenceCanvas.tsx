@@ -3,17 +3,17 @@
 import React, { useState } from 'react';
 import { Brain, Search, Tag } from 'lucide-react';
 import { KnowledgeMemoryItem } from '@/lib/types';
-import { ChunkWithEmbedding } from '@/lib/embeddings-v2';
+import type { MemorySearchHit, MemorySearchResult } from '@/lib/memory-search';
 import { sound } from '@/lib/sound';
 
 interface Props {
   memoryItems: KnowledgeMemoryItem[];
 }
 
-/** Semantic search over the user's saved memories via POST /api/intelligence. */
+/** Search over the user's saved memories via POST /api/intelligence (embeddings or keyword). */
 export function IntelligenceCanvas({ memoryItems }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<ChunkWithEmbedding[] | null>(null);
+  const [search, setSearch] = useState<MemorySearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,24 +30,29 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'search',
           query: searchQuery.trim(),
           memories: memoryItems,
         }),
       });
 
       const data: unknown = await res.json().catch(() => null);
-      const rec = (data ?? {}) as { results?: unknown; error?: unknown };
-      if (!res.ok) {
+      const rec = (data ?? {}) as Partial<MemorySearchResult> & { error?: unknown };
+      if (!res.ok || (rec.method !== 'embeddings' && rec.method !== 'keyword')) {
         setError(typeof rec.error === 'string' ? rec.error : `Search failed (HTTP ${res.status}).`);
-        setSearchResults(null);
+        setSearch(null);
         return;
       }
-      setSearchResults(Array.isArray(rec.results) ? (rec.results as ChunkWithEmbedding[]) : []);
+      setSearch({
+        query: typeof rec.query === 'string' ? rec.query : searchQuery.trim(),
+        method: rec.method,
+        embeddingModel: typeof rec.embeddingModel === 'string' ? rec.embeddingModel : undefined,
+        fallbackReason: typeof rec.fallbackReason === 'string' ? rec.fallbackReason : undefined,
+        results: Array.isArray(rec.results) ? (rec.results as MemorySearchHit[]) : [],
+      });
       sound.playSuccess();
     } catch {
       setError('Could not reach the Nova server.');
-      setSearchResults(null);
+      setSearch(null);
     } finally {
       setIsSearching(false);
     }
@@ -63,7 +68,7 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
         <div>
           <h2 className="text-xl font-bold text-slate-100">Memory Search</h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Search your {memoryItems.length} saved {memoryItems.length === 1 ? 'memory' : 'memories'}. Uses Gemini embeddings when GEMINI_API_KEY is set, otherwise a local word-hash approximation.
+            Search your {memoryItems.length} saved {memoryItems.length === 1 ? 'memory' : 'memories'}. Uses embeddings when Gemini, OpenAI, or an Ollama embedding model is configured; otherwise keyword search.
           </p>
         </div>
       </div>
@@ -98,44 +103,60 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
 
         {error && <p className="text-xs text-rose-300">{error}</p>}
 
-        {searchResults !== null && !error && (
-          searchResults.length === 0 ? (
-            <p className="text-xs text-slate-400">No matching memories.</p>
-          ) : (
-            <div className="space-y-3 pt-2">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-                Results ({searchResults.length})
-              </span>
+        {search !== null && !error && (
+          <div className="space-y-3 pt-2">
+            <p className="text-[11px] text-slate-400">
+              {search.method === 'embeddings' ? (
+                <>
+                  Ranked by embedding similarity using{' '}
+                  <span className="font-mono text-slate-300">{search.embeddingModel}</span>.
+                </>
+              ) : (
+                <>Ranked by keyword match (BM25). Configure an embeddings provider for meaning-based search.</>
+              )}
+            </p>
+            {search.fallbackReason && (
+              <p className="text-[11px] text-amber-300">
+                Embeddings failed, so keyword search was used: {search.fallbackReason}
+              </p>
+            )}
 
-              <div className="space-y-2.5">
-                {searchResults.map(chunk => (
-                  <div
-                    key={chunk.id}
-                    className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/70 space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Tag className="w-3.5 h-3.5 text-teal-400" />
-                        <span className="text-xs font-semibold text-slate-200">{chunk.sourceTitle}</span>
-                        {chunk.totalChunks > 1 && (
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            part {chunk.chunkIndex} of {chunk.totalChunks}
-                          </span>
-                        )}
-                      </div>
-                      {typeof chunk.similarity === 'number' && (
+            {search.results.length === 0 ? (
+              <p className="text-xs text-slate-400">No matching memories.</p>
+            ) : (
+              <>
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  Results ({search.results.length})
+                </span>
+
+                <div className="space-y-2.5">
+                  {search.results.map(hit => (
+                    <div
+                      key={hit.memoryId}
+                      className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/70 space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Tag className="w-3.5 h-3.5 text-teal-400" />
+                          <span className="text-xs font-semibold text-slate-200">{hit.title}</span>
+                          {hit.totalChunks > 1 && (
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              part {hit.chunkIndex} of {hit.totalChunks}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[11px] text-teal-300 font-mono">
-                          similarity {chunk.similarity.toFixed(2)}
+                          {search.method === 'embeddings' ? 'similarity' : 'score'} {hit.score.toFixed(2)}
                         </span>
-                      )}
-                    </div>
+                      </div>
 
-                    <p className="text-xs text-slate-300 leading-relaxed font-sans">{chunk.text}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
+                      <p className="text-xs text-slate-300 leading-relaxed font-sans">{hit.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>
