@@ -3,7 +3,6 @@
 You ask a question, Nova searches the web, and the LLM you choose (Gemini, Claude, OpenAI-compatible, or local Ollama) writes a cited answer rendered as interactive visual cards.
 
 ![Nova screenshot](docs/screenshot.png)
-<sub>Placeholder: `docs/screenshot.png` has not been added yet.</sub>
 
 ## Why Nova
 
@@ -109,7 +108,7 @@ The app UI itself uses `POST /api/agent`. See [ARCHITECTURE.md](ARCHITECTURE.md)
 - Better source extraction and citation highlighting
 - Saved and shareable research sessions
 - More search providers
-- Real screenshots and a hosted demo
+- A hosted demo
 
 Have an idea? Open an issue.
 
