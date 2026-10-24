@@ -13,9 +13,10 @@ export async function GET() {
       activePlugins: plugins.filter(p => p.enabled).length,
       totalTools: tools.length,
     });
-  } catch (error: any) {
+  } catch (error) {
+    console.error('API v1 Tools list error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to list MCP tools' },
+      { error: 'Failed to list MCP tools' },
       { status: 500 }
     );
   }
@@ -42,9 +43,10 @@ export async function POST(req: NextRequest) {
 
     const result = await mcpRegistry.executeTool(tool, args || {});
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error) {
+    console.error('API v1 Tools execute error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Error executing MCP tool' },
+      { success: false, error: 'Error executing MCP tool' },
       { status: 500 }
     );
   }

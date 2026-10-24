@@ -46,12 +46,12 @@ export async function POST(req: NextRequest) {
         total_tokens: totalTokens,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('API v1 Embeddings error:', error);
     return NextResponse.json(
       {
         error: {
-          message: error.message || 'Internal server error in Nova Embeddings v2 engine.',
+          message: 'Internal server error in Nova Embeddings v2 engine.',
           type: 'api_error',
           param: null,
           code: 500,
