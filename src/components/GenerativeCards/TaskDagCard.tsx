@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { GoalPlan, MilestonePhase } from '@/lib/types';
-import { 
-  CheckCircle2, 
-  Circle, 
-  Clock, 
-  Flame, 
-  ChevronRight, 
-  ChevronDown, 
+import React, { useState } from "react";
+import { GoalPlan, MilestonePhase } from "@/lib/types";
+import {
+  CheckCircle2,
+  Circle,
+  Clock,
+  Flame,
+  ChevronRight,
+  ChevronDown,
   Target,
-  Sparkles
-} from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { sound } from '@/lib/sound';
+  Sparkles,
+} from "lucide-react";
+import confetti from "canvas-confetti";
+import { sound } from "@/lib/sound";
 
 interface Props {
   plan: GoalPlan;
@@ -21,24 +21,31 @@ interface Props {
 
 export function TaskDagCard({ plan }: Props) {
   const [phases, setPhases] = useState<MilestonePhase[]>(plan.phases);
-  const [expandedPhase, setExpandedPhase] = useState<string>(phases[0]?.id || '');
+  const [expandedPhase, setExpandedPhase] = useState<string>(
+    phases[0]?.id || "",
+  );
 
   // Calculate completion percentage
-  const allTasks = phases.flatMap(p => p.tasks);
-  const completedCount = allTasks.filter(t => t.status === 'completed').length;
-  const progressPercent = allTasks.length > 0 ? Math.round((completedCount / allTasks.length) * 100) : 0;
+  const allTasks = phases.flatMap((p) => p.tasks);
+  const completedCount = allTasks.filter(
+    (t) => t.status === "completed",
+  ).length;
+  const progressPercent =
+    allTasks.length > 0
+      ? Math.round((completedCount / allTasks.length) * 100)
+      : 0;
 
   const toggleTask = (phaseId: string, taskId: string) => {
     sound.playCheck();
-    setPhases(prev =>
-      prev.map(phase => {
+    setPhases((prev) =>
+      prev.map((phase) => {
         if (phase.id !== phaseId) return phase;
         return {
           ...phase,
-          tasks: phase.tasks.map(t => {
+          tasks: phase.tasks.map((t) => {
             if (t.id !== taskId) return t;
-            const newStatus = t.status === 'completed' ? 'todo' : 'completed';
-            if (newStatus === 'completed') {
+            const newStatus = t.status === "completed" ? "todo" : "completed";
+            if (newStatus === "completed") {
               // Trigger slight confetti burst
               try {
                 confetti({
@@ -51,7 +58,7 @@ export function TaskDagCard({ plan }: Props) {
             return { ...t, status: newStatus };
           }),
         };
-      })
+      }),
     );
   };
 
@@ -103,24 +110,29 @@ export function TaskDagCard({ plan }: Props) {
 
       {/* Phases Accordion */}
       <div className="divide-y divide-slate-800">
-        {phases.map(phase => {
+        {phases.map((phase) => {
           const isExpanded = expandedPhase === phase.id;
           const phaseTasks = phase.tasks;
-          const phaseDone = phaseTasks.filter(t => t.status === 'completed').length;
-          const isAllDone = phaseTasks.length > 0 && phaseDone === phaseTasks.length;
+          const phaseDone = phaseTasks.filter(
+            (t) => t.status === "completed",
+          ).length;
+          const isAllDone =
+            phaseTasks.length > 0 && phaseDone === phaseTasks.length;
 
           return (
             <div key={phase.id} className="transition">
               <button
-                onClick={() => setExpandedPhase(isExpanded ? '' : phase.id)}
+                onClick={() => setExpandedPhase(isExpanded ? "" : phase.id)}
                 className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-slate-800/40 text-left transition"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold ${
-                    isAllDone 
-                      ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' 
-                      : 'bg-slate-800 text-slate-300 border border-slate-700'
-                  }`}>
+                  <div
+                    className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold ${
+                      isAllDone
+                        ? "bg-teal-500/20 text-teal-400 border border-teal-500/30"
+                        : "bg-slate-800 text-slate-300 border border-slate-700"
+                    }`}
+                  >
                     {phase.phaseNumber}
                   </div>
                   <div>
@@ -132,7 +144,9 @@ export function TaskDagCard({ plan }: Props) {
                         </span>
                       )}
                     </h4>
-                    <p className="text-xs text-slate-400 line-clamp-1">{phase.summary}</p>
+                    <p className="text-xs text-slate-400 line-clamp-1">
+                      {phase.summary}
+                    </p>
                   </div>
                 </div>
 
@@ -150,16 +164,16 @@ export function TaskDagCard({ plan }: Props) {
 
               {isExpanded && (
                 <div className="px-5 pb-4 pt-1 bg-slate-950/30 space-y-2.5">
-                  {phaseTasks.map(task => {
-                    const isDone = task.status === 'completed';
+                  {phaseTasks.map((task) => {
+                    const isDone = task.status === "completed";
                     return (
                       <div
                         key={task.id}
                         onClick={() => toggleTask(phase.id, task.id)}
                         className={`p-3 rounded-lg border transition cursor-pointer flex items-start gap-3 ${
-                          isDone 
-                            ? 'bg-slate-900/40 border-slate-800 text-slate-400' 
-                            : 'bg-slate-900/80 border-slate-800/80 hover:border-indigo-500/40 text-slate-200'
+                          isDone
+                            ? "bg-slate-900/40 border-slate-800 text-slate-400"
+                            : "bg-slate-900/80 border-slate-800/80 hover:border-indigo-500/40 text-slate-200"
                         }`}
                       >
                         <button className="mt-0.5 flex-shrink-0 text-slate-400 hover:text-indigo-400 transition">
@@ -170,7 +184,9 @@ export function TaskDagCard({ plan }: Props) {
                           )}
                         </button>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-xs font-medium leading-snug ${isDone ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                          <p
+                            className={`text-xs font-medium leading-snug ${isDone ? "line-through text-slate-500" : "text-slate-100"}`}
+                          >
                             {task.title}
                           </p>
                           <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
@@ -179,7 +195,9 @@ export function TaskDagCard({ plan }: Props) {
                           {task.actionableOutput && (
                             <div className="mt-2 text-[10px] text-indigo-300/80 bg-indigo-950/40 px-2 py-1 rounded border border-indigo-900/50 flex items-center gap-1.5 font-mono">
                               <Sparkles className="w-3 h-3 text-indigo-400 flex-shrink-0" />
-                              <span className="truncate">{task.actionableOutput}</span>
+                              <span className="truncate">
+                                {task.actionableOutput}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -202,7 +220,10 @@ export function TaskDagCard({ plan }: Props) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {plan.keySuccessMetrics.map((metric, i) => (
-              <div key={i} className="text-[11px] text-slate-300 bg-slate-900/80 p-2 rounded border border-slate-800">
+              <div
+                key={i}
+                className="text-[11px] text-slate-300 bg-slate-900/80 p-2 rounded border border-slate-800"
+              >
                 • {metric}
               </div>
             ))}

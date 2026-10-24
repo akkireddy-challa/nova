@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 import type {
   ChartArtifact,
   CodeArtifact,
@@ -7,7 +7,7 @@ import type {
   GoalPlan,
   ResearchReport,
   SourceCitation,
-} from '../types';
+} from "../types";
 
 /**
  * Zod schemas for the JSON objects the LLM is asked to return, one per studio mode.
@@ -35,7 +35,7 @@ export const researchOutputSchema = z.object({
         z.object({
           point: nonEmpty,
           description: nonEmpty,
-          confidence: z.enum(['high', 'medium', 'low']),
+          confidence: z.enum(["high", "medium", "low"]),
           citations: z.array(citationRef).default([]),
         }),
       )
@@ -47,7 +47,7 @@ export const researchOutputSchema = z.object({
 export type ResearchOutput = z.infer<typeof researchOutputSchema>;
 
 export function citationNumber(ref: number | string): number | null {
-  if (typeof ref === 'number') return Number.isInteger(ref) ? ref : null;
+  if (typeof ref === "number") return Number.isInteger(ref) ? ref : null;
   const match = ref.trim().match(/^\[?(?:src-|source\s*)?(\d+)\]?$/i);
   return match ? Number(match[1]) : null;
 }
@@ -65,10 +65,10 @@ export interface ResearchConversion {
 export function toResearchReport(
   output: ResearchOutput,
   sources: SourceCitation[],
-  metrics: ResearchReport['metrics'],
+  metrics: ResearchReport["metrics"],
 ): ResearchConversion {
   const droppedCitations: string[] = [];
-  const keyFindings = output.research.keyFindings.map(finding => {
+  const keyFindings = output.research.keyFindings.map((finding) => {
     const citationIds: string[] = [];
     for (const ref of finding.citations) {
       const n = citationNumber(ref);
@@ -142,12 +142,12 @@ export function toGoalPlan(output: PlanOutput): GoalPlan {
       phaseNumber: i + 1,
       phaseName: phase.phaseName,
       summary: phase.summary,
-      status: 'pending',
+      status: "pending",
       tasks: phase.tasks.map((task, j) => ({
         id: `phase-${i + 1}-task-${j + 1}`,
         title: task.title,
         description: task.description,
-        status: 'todo',
+        status: "todo",
         actionableOutput: task.actionableOutput,
       })),
     })),
@@ -163,7 +163,13 @@ export const matrixOutputSchema = z.object({
     .object({
       topic: nonEmpty,
       criteria: z
-        .array(z.object({ id: nonEmpty, name: nonEmpty, weight: z.number().min(0).max(10) }))
+        .array(
+          z.object({
+            id: nonEmpty,
+            name: nonEmpty,
+            weight: z.number().min(0).max(10),
+          }),
+        )
         .min(1),
       options: z
         .array(
@@ -178,17 +184,21 @@ export const matrixOutputSchema = z.object({
       verdict: nonEmpty,
     })
     .superRefine((matrix, ctx) => {
-      const ids = new Set(matrix.criteria.map(c => c.id));
+      const ids = new Set(matrix.criteria.map((c) => c.id));
       if (ids.size !== matrix.criteria.length) {
-        ctx.addIssue({ code: 'custom', message: 'criteria ids must be unique', path: ['criteria'] });
+        ctx.addIssue({
+          code: "custom",
+          message: "criteria ids must be unique",
+          path: ["criteria"],
+        });
       }
       matrix.options.forEach((option, i) => {
         for (const id of ids) {
-          if (typeof option.scores[id] !== 'number') {
+          if (typeof option.scores[id] !== "number") {
             ctx.addIssue({
-              code: 'custom',
+              code: "custom",
               message: `option "${option.name}" is missing a score for criterion id "${id}"`,
-              path: ['options', i, 'scores'],
+              path: ["options", i, "scores"],
             });
           }
         }
@@ -203,7 +213,11 @@ export function toDecisionMatrix(output: MatrixOutput): DecisionMatrix {
   const weightSum = criteria.reduce((sum, c) => sum + c.weight, 0);
   return {
     topic: output.matrix.topic,
-    criteria: criteria.map(c => ({ id: c.id, name: c.name, weight: c.weight })),
+    criteria: criteria.map((c) => ({
+      id: c.id,
+      name: c.name,
+      weight: c.weight,
+    })),
     options: output.matrix.options.map((option, i) => {
       const scores: Record<string, number> = {};
       let weighted = 0;
@@ -217,7 +231,8 @@ export function toDecisionMatrix(output: MatrixOutput): DecisionMatrix {
         scores,
         pros: option.pros,
         cons: option.cons,
-        totalWeightedScore: weightSum > 0 ? Math.round((weighted / weightSum) * 10) / 10 : 0,
+        totalWeightedScore:
+          weightSum > 0 ? Math.round((weighted / weightSum) * 10) / 10 : 0,
       };
     }),
     verdict: output.matrix.verdict,
@@ -244,10 +259,13 @@ export function toCodeArtifact(output: CodeOutput): CodeArtifact {
 
 // --- Debate ---------------------------------------------------------------
 
-const STANCE_COLORS: Record<DebateArtifact['perspectives'][number]['stance'], string> = {
-  Advocate: 'teal',
-  Critic: 'rose',
-  'Neutral Arbiter': 'indigo',
+const STANCE_COLORS: Record<
+  DebateArtifact["perspectives"][number]["stance"],
+  string
+> = {
+  Advocate: "teal",
+  Critic: "rose",
+  "Neutral Arbiter": "indigo",
 };
 
 export const debateOutputSchema = z.object({
@@ -259,7 +277,7 @@ export const debateOutputSchema = z.object({
       .array(
         z.object({
           agentName: nonEmpty,
-          stance: z.enum(['Advocate', 'Critic', 'Neutral Arbiter']),
+          stance: z.enum(["Advocate", "Critic", "Neutral Arbiter"]),
           arguments: stringList.min(1),
           caveats: z.array(z.string()),
         }),
@@ -274,7 +292,7 @@ export function toDebateArtifact(output: DebateOutput): DebateArtifact {
   return {
     topic: output.debate.topic,
     consensusSummary: output.debate.consensusSummary,
-    perspectives: output.debate.perspectives.map(p => ({
+    perspectives: output.debate.perspectives.map((p) => ({
       agentName: p.agentName,
       stance: p.stance,
       avatarColor: STANCE_COLORS[p.stance],
@@ -293,7 +311,7 @@ export const chartOutputSchema = z.object({
   chart: z
     .object({
       title: nonEmpty,
-      type: z.enum(['bar', 'line', 'area']),
+      type: z.enum(["bar", "line", "area"]),
       data: z
         .array(
           z.object({
@@ -313,12 +331,14 @@ export const chartOutputSchema = z.object({
 });
 export type ChartOutput = z.infer<typeof chartOutputSchema>;
 
-export function toChartArtifact(chart: NonNullable<ChartOutput['chart']>): ChartArtifact {
+export function toChartArtifact(
+  chart: NonNullable<ChartOutput["chart"]>,
+): ChartArtifact {
   return {
     title: chart.title,
     type: chart.type,
-    xAxisKey: 'label',
-    data: chart.data.map(d => ({ ...d })),
+    xAxisKey: "label",
+    data: chart.data.map((d) => ({ ...d })),
     insight: chart.insight,
     takeaways: chart.takeaways,
     followUpQuestions: chart.followUpQuestions,
@@ -332,22 +352,29 @@ export function extractJson(text: string): unknown {
   let clean = text.trim();
   const fenced = clean.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenced) clean = fenced[1].trim();
-  const start = clean.indexOf('{');
-  const end = clean.lastIndexOf('}');
+  const start = clean.indexOf("{");
+  const end = clean.lastIndexOf("}");
   if (start === -1 || end <= start) {
-    throw new SyntaxError('Response did not contain a JSON object.');
+    throw new SyntaxError("Response did not contain a JSON object.");
   }
   return JSON.parse(clean.slice(start, end + 1));
 }
 
-export type ValidationResult<T> = { ok: true; data: T } | { ok: false; error: string };
+export type ValidationResult<T> =
+  { ok: true; data: T } | { ok: false; error: string };
 
-export function validateOutput<T>(schema: z.ZodType<T>, text: string): ValidationResult<T> {
+export function validateOutput<T>(
+  schema: z.ZodType<T>,
+  text: string,
+): ValidationResult<T> {
   let raw: unknown;
   try {
     raw = extractJson(text);
   } catch (err) {
-    return { ok: false, error: `Invalid JSON: ${err instanceof Error ? err.message : String(err)}` };
+    return {
+      ok: false,
+      error: `Invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
   const parsed = schema.safeParse(raw);
   if (parsed.success) return { ok: true, data: parsed.data };

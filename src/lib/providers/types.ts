@@ -1,7 +1,7 @@
-export type ProviderId = 'gemini' | 'anthropic' | 'openai' | 'ollama';
+export type ProviderId = "gemini" | "anthropic" | "openai" | "ollama";
 
 export interface LLMMessage {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -91,22 +91,22 @@ export class ProviderError extends Error {
     public readonly status?: number,
   ) {
     super(message);
-    this.name = 'ProviderError';
+    this.name = "ProviderError";
   }
 }
 
 export class NoProviderConfiguredError extends Error {
   constructor() {
-    super('No LLM provider is configured. Set an API key or start Ollama.');
-    this.name = 'NoProviderConfiguredError';
+    super("No LLM provider is configured. Set an API key or start Ollama.");
+    this.name = "NoProviderConfiguredError";
   }
 }
 
 export class NoEmbeddingProviderError extends Error {
   constructor() {
     super(
-      'No embeddings provider is configured. Set GEMINI_API_KEY or OPENAI_API_KEY, or install an Ollama embedding model.',
+      "No embeddings provider is configured. Set GEMINI_API_KEY or OPENAI_API_KEY, or install an Ollama embedding model.",
     );
-    this.name = 'NoEmbeddingProviderError';
+    this.name = "NoEmbeddingProviderError";
   }
 }

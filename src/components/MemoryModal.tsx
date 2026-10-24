@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { KnowledgeMemoryItem } from '@/lib/types';
-import { Brain, X, Plus, Trash2, HardDrive } from 'lucide-react';
-import { generateId } from '@/lib/utils';
+import React, { useState } from "react";
+import { KnowledgeMemoryItem } from "@/lib/types";
+import { Brain, X, Plus, Trash2, HardDrive } from "lucide-react";
+import { generateId } from "@/lib/utils";
 
 interface Props {
   isOpen: boolean;
@@ -13,10 +13,17 @@ interface Props {
   onDeleteItem: (id: string) => void;
 }
 
-export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDeleteItem }: Props) {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState<KnowledgeMemoryItem['category']>('project_context');
+export function MemoryModal({
+  isOpen,
+  onClose,
+  memoryItems,
+  onSaveItem,
+  onDeleteItem,
+}: Props) {
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [category, setCategory] =
+    useState<KnowledgeMemoryItem["category"]>("project_context");
 
   if (!isOpen) return null;
 
@@ -32,8 +39,8 @@ export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDelete
       createdAt: new Date().toISOString(),
     });
 
-    setTitle('');
-    setContent('');
+    setTitle("");
+    setContent("");
   };
 
   return (
@@ -50,7 +57,8 @@ export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDelete
                 Saved Memories
               </h3>
               <p className="text-xs text-slate-400">
-                Saved in this browser and sent as context with each question to the model you choose
+                Saved in this browser and sent as context with each question to
+                the model you choose
               </p>
             </div>
           </div>
@@ -65,7 +73,10 @@ export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDelete
         {/* Content body */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
           {/* Add form */}
-          <form onSubmit={handleAdd} className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3">
+          <form
+            onSubmit={handleAdd}
+            className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3"
+          >
             <div className="flex items-center gap-2 text-xs font-semibold text-teal-400 uppercase tracking-wider">
               <Plus className="w-3.5 h-3.5" />
               Add Context Memory
@@ -76,12 +87,14 @@ export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDelete
                 type="text"
                 placeholder="Title (e.g. My Tech Stack)"
                 value={title}
-                onChange={e => setTitle(e.target.value)}
+                onChange={(e) => setTitle(e.target.value)}
                 className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
               />
               <select
                 value={category}
-                onChange={e => setCategory(e.target.value as KnowledgeMemoryItem['category'])}
+                onChange={(e) =>
+                  setCategory(e.target.value as KnowledgeMemoryItem["category"])
+                }
                 className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-300 focus:outline-none focus:border-teal-500"
               >
                 <option value="project_context">Project Context</option>
@@ -94,7 +107,7 @@ export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDelete
             <textarea
               placeholder="Context content (e.g., I build open-source tools with Next.js, FastAPI, and local Ollama...)"
               value={content}
-              onChange={e => setContent(e.target.value)}
+              onChange={(e) => setContent(e.target.value)}
               rows={2}
               className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-teal-500"
             />
@@ -122,7 +135,7 @@ export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDelete
               </div>
             ) : (
               <div className="space-y-2.5">
-                {memoryItems.map(item => (
+                {memoryItems.map((item) => (
                   <div
                     key={item.id}
                     className="p-3 rounded-lg border border-slate-800 bg-slate-950/60 flex items-start justify-between gap-3 group"

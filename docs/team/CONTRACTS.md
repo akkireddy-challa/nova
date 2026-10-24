@@ -12,7 +12,7 @@ export interface LLMUsage {
   outputTokens: number;
 }
 
-export type ProviderId = 'gemini' | 'anthropic' | 'openai' | 'ollama';
+export type ProviderId = "gemini" | "anthropic" | "openai" | "ollama";
 
 export interface LLMResult {
   text: string;
@@ -28,13 +28,13 @@ export interface LLMProvider {
   listModels(): Promise<string[]>;
   generate(input: {
     system?: string;
-    messages: { role: 'user' | 'assistant'; content: string }[];
+    messages: { role: "user" | "assistant"; content: string }[];
     json?: boolean;
     signal?: AbortSignal;
   }): Promise<LLMResult>;
   stream?(input: {
     system?: string;
-    messages: { role: 'user' | 'assistant'; content: string }[];
+    messages: { role: "user" | "assistant"; content: string }[];
     json?: boolean;
     signal?: AbortSignal;
   }): AsyncIterable<string>;
@@ -66,7 +66,7 @@ export interface SearchProvider {
 Validated with Zod:
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 export const CitationSchema = z.object({
   id: z.string(),
@@ -117,7 +117,7 @@ export const ChartSeriesSchema = z.object({
 
 export const ChartSchema = z.object({
   title: z.string(),
-  type: z.enum(['bar', 'line', 'pie']),
+  type: z.enum(["bar", "line", "pie"]),
   series: z.array(ChartSeriesSchema),
   sourceCitationIds: z.array(z.string()),
 });
@@ -130,7 +130,7 @@ export const ChartSchema = z.object({
 ```typescript
 export interface TraceStep {
   at: string;
-  kind: 'search' | 'fetch' | 'llm' | 'parse' | 'error';
+  kind: "search" | "fetch" | "llm" | "parse" | "error";
   detail: string;
   ms: number;
 }

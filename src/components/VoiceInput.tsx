@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff } from 'lucide-react';
+import React, { useState, useEffect, useRef } from "react";
+import { Mic, MicOff } from "lucide-react";
 
 interface Props {
   onTranscription: (text: string) => void;
@@ -33,13 +33,14 @@ export function VoiceInput({ onTranscription }: Props) {
 
   useEffect(() => {
     const speechWindow = window as unknown as SpeechWindow;
-    const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+    const SpeechRecognition =
+      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
 
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = 'en-US';
+      recognition.lang = "en-US";
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
@@ -50,9 +51,9 @@ export function VoiceInput({ onTranscription }: Props) {
       };
 
       recognition.onerror = (event) => {
-        console.warn('Speech recognition error:', event.error);
+        console.warn("Speech recognition error:", event.error);
         setIsListening(false);
-        setErrorMsg('Voice input paused');
+        setErrorMsg("Voice input paused");
         setTimeout(() => setErrorMsg(null), 3000);
       };
 
@@ -66,7 +67,7 @@ export function VoiceInput({ onTranscription }: Props) {
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      setErrorMsg('Speech recognition unavailable in this browser');
+      setErrorMsg("Speech recognition unavailable in this browser");
       setTimeout(() => setErrorMsg(null), 3000);
       return;
     }
@@ -80,7 +81,7 @@ export function VoiceInput({ onTranscription }: Props) {
         recognitionRef.current.start();
         setIsListening(true);
       } catch (err) {
-        console.warn('Speech recognition start failed:', err);
+        console.warn("Speech recognition start failed:", err);
         setIsListening(false);
       }
     }
@@ -91,11 +92,11 @@ export function VoiceInput({ onTranscription }: Props) {
       <button
         type="button"
         onClick={toggleListening}
-        title={isListening ? 'Listening... click to stop' : 'Voice input'}
+        title={isListening ? "Listening... click to stop" : "Voice input"}
         className={`p-2 rounded-xl transition flex items-center justify-center ${
           isListening
-            ? 'bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/30'
-            : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700'
+            ? "bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/30"
+            : "bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700"
         }`}
       >
         {isListening ? (

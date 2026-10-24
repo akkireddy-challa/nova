@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertOctagon, RotateCcw } from 'lucide-react';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import { AlertOctagon, RotateCcw } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -23,12 +23,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error in Nova Studio:', error, errorInfo);
+    console.error("Uncaught error in Nova Studio:", error, errorInfo);
   }
 
   public handleReset = () => {
     this.setState({ hasError: false, error: null });
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       window.location.reload();
     }
   };
@@ -46,7 +46,8 @@ export class ErrorBoundary extends Component<Props, State> {
                 Workspace Render Interruption
               </h3>
               <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                Nova caught an unexpected render issue. Your on-device data and memory remain safe.
+                Nova caught an unexpected render issue. Your on-device data and
+                memory remain safe.
               </p>
             </div>
 

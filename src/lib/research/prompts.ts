@@ -1,4 +1,9 @@
-import type { ConversationTurn, SourceCitation, StudioMode, ThinkingBudget } from '../types';
+import type {
+  ConversationTurn,
+  SourceCitation,
+  StudioMode,
+  ThinkingBudget,
+} from "../types";
 
 export interface PromptSource {
   citation: SourceCitation;
@@ -90,9 +95,9 @@ const JSON_SHAPES: Partial<Record<StudioMode, string>> = {
 };
 
 const DEPTH: Record<ThinkingBudget, string> = {
-  quick: 'Be concise: short answers, only the essential points.',
-  analytical: 'Be thorough but focused.',
-  deep: 'Be comprehensive: examine edge cases, disagreements between sources, and limitations.',
+  quick: "Be concise: short answers, only the essential points.",
+  analytical: "Be thorough but focused.",
+  deep: "Be comprehensive: examine edge cases, disagreements between sources, and limitations.",
 };
 
 export function buildSystemPrompt(
@@ -110,7 +115,7 @@ export function buildSystemPrompt(
   if (hasHistory) {
     lines.push(
       'Earlier turns of this conversation come before the current request. Use them to understand follow-ups such as "tell me more about point 2".',
-      'Citation numbers in earlier turns referred to earlier source lists; cite only the sources given with the current request.',
+      "Citation numbers in earlier turns referred to earlier source lists; cite only the sources given with the current request.",
     );
   }
 
@@ -118,28 +123,36 @@ export function buildSystemPrompt(
     if (sourceCount > 0) {
       lines.push(
         `You are given ${sourceCount} numbered web sources. Base every factual claim ONLY on these sources and the user's attachments or context.`,
-        'Cite sources by their number. Never cite a number that is not in the list, and never invent sources, URLs, quotes, or statistics.',
-        'If the sources do not answer the question, say so plainly instead of guessing.',
+        "Cite sources by their number. Never cite a number that is not in the list, and never invent sources, URLs, quotes, or statistics.",
+        "If the sources do not answer the question, say so plainly instead of guessing.",
       );
     } else {
       lines.push(
-        'Web search returned no usable sources for this request. Say clearly that no sources were found, answer cautiously from general knowledge, and do not cite anything.',
+        "Web search returned no usable sources for this request. Say clearly that no sources were found, answer cautiously from general knowledge, and do not cite anything.",
       );
     }
   } else {
-    lines.push('Work from the user request, attachments, and context. Do not invent facts, statistics, or references.');
+    lines.push(
+      "Work from the user request, attachments, and context. Do not invent facts, statistics, or references.",
+    );
   }
-  if (mode === 'canvas') {
-    lines.push('Chart only numbers that appear in the sources or attachments. If there are none, set "chart" to null and explain why in "content".');
+  if (mode === "canvas") {
+    lines.push(
+      'Chart only numbers that appear in the sources or attachments. If there are none, set "chart" to null and explain why in "content".',
+    );
   }
 
   const shape = JSON_SHAPES[mode];
   if (shape) {
-    lines.push('', 'Respond with a single JSON object and nothing else (no code fences, no prose around it), matching this shape:', shape);
+    lines.push(
+      "",
+      "Respond with a single JSON object and nothing else (no code fences, no prose around it), matching this shape:",
+      shape,
+    );
   } else {
-    lines.push('Respond in Markdown.');
+    lines.push("Respond in Markdown.");
   }
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 export function buildUserPrompt(input: {
@@ -152,22 +165,28 @@ export function buildUserPrompt(input: {
   const parts: string[] = [`Request: ${input.prompt}`];
 
   if (input.context?.trim()) {
-    parts.push(`User context (saved notes):\n${input.context.trim().slice(0, 4000)}`);
+    parts.push(
+      `User context (saved notes):\n${input.context.trim().slice(0, 4000)}`,
+    );
   }
   for (const att of input.attachments) {
     parts.push(`Attached file "${att.name}":\n${att.content}`);
   }
   if (input.usesSources && input.sources.length > 0) {
     const blocks = input.sources.map((s, i) => {
-      const lines = [`[${i + 1}] ${s.citation.title}`, `URL: ${s.citation.url}`];
-      if (s.citation.publishedDate) lines.push(`Published: ${s.citation.publishedDate}`);
+      const lines = [
+        `[${i + 1}] ${s.citation.title}`,
+        `URL: ${s.citation.url}`,
+      ];
+      if (s.citation.publishedDate)
+        lines.push(`Published: ${s.citation.publishedDate}`);
       if (s.citation.snippet) lines.push(`Snippet: ${s.citation.snippet}`);
       if (s.pageText) lines.push(`Page text:\n${s.pageText}`);
-      return lines.join('\n');
+      return lines.join("\n");
     });
-    parts.push(`Sources:\n\n${blocks.join('\n\n')}`);
+    parts.push(`Sources:\n\n${blocks.join("\n\n")}`);
   }
-  return parts.join('\n\n');
+  return parts.join("\n\n");
 }
 
 export function buildRetryPrompt(validationError: string): string {
@@ -175,16 +194,22 @@ export function buildRetryPrompt(validationError: string): string {
 }
 
 export const QUERY_REWRITE_SYSTEM_PROMPT =
-  'You turn a follow-up question into a standalone web search query. ' +
+  "You turn a follow-up question into a standalone web search query. " +
   'Use the conversation only to resolve references such as "it", "that", or "point 2". ' +
-  'Return only the search query on a single line, with no quotes, labels, or commentary.';
+  "Return only the search query on a single line, with no quotes, labels, or commentary.";
 
 const REWRITE_TURN_CHARS = 1200;
 
 /** The user message for the query-rewrite call: a short transcript plus the follow-up. */
-export function buildQueryRewritePrompt(history: ConversationTurn[], followUp: string): string {
+export function buildQueryRewritePrompt(
+  history: ConversationTurn[],
+  followUp: string,
+): string {
   const transcript = history
-    .map(turn => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${turn.content.slice(0, REWRITE_TURN_CHARS)}`)
-    .join('\n\n');
+    .map(
+      (turn) =>
+        `${turn.role === "user" ? "User" : "Assistant"}: ${turn.content.slice(0, REWRITE_TURN_CHARS)}`,
+    )
+    .join("\n\n");
   return `Conversation so far:\n${transcript}\n\nFollow-up question: ${followUp}\n\nStandalone web search query:`;
 }

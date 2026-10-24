@@ -34,13 +34,13 @@ Errors use `{ error, code }`: `NO_PROVIDER` (503), `PROVIDER_ERROR` (502), `INVA
 
 ## Folder map
 
-| Path | Contents |
-|---|---|
-| `src/app/api` | Route handlers: `agent` (main research endpoint), `v1/models`, `v1/chat/completions` |
+| Path                | Contents                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/app/api`       | Route handlers: `agent` (main research endpoint), `v1/models`, `v1/chat/completions`                                                       |
 | `src/lib/providers` | LLM provider layer: `types.ts` (the `LLMProvider` interface), one file per provider, and `index.ts` (registry, `resolveModel`, `generate`) |
-| `src/lib/research` | Web search providers, page fetching and text extraction |
-| `src/lib/schemas` | zod schemas for each card type and the validation/retry logic |
-| `src/components` | React UI, including the card renderers in `GenerativeCards/` |
+| `src/lib/research`  | Web search providers, page fetching and text extraction                                                                                    |
+| `src/lib/schemas`   | zod schemas for each card type and the validation/retry logic                                                                              |
+| `src/components`    | React UI, including the card renderers in `GenerativeCards/`                                                                               |
 
 ## Principle: no fake data
 

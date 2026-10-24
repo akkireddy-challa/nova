@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Nova — open-source research assistant",
-  description: "Ask a question; Nova searches the web and your chosen LLM (Gemini, Claude, OpenAI-compatible, or local Ollama) writes a cited answer.",
+  description:
+    "Ask a question; Nova searches the web and your chosen LLM (Gemini, Claude, OpenAI-compatible, or local Ollama) writes a cited answer.",
   icons: {
     icon: "/favicon.ico",
   },

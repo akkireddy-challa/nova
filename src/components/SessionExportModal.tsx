@@ -1,17 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Session } from '@/lib/types';
-import { 
-  X, 
-  Download, 
-  FileText, 
-  Copy, 
-  Check, 
-  Share2, 
-  Code
-} from 'lucide-react';
-import { sound } from '@/lib/sound';
+import React, { useState } from "react";
+import { Session } from "@/lib/types";
+import { X, Download, FileText, Copy, Check, Share2, Code } from "lucide-react";
+import { sound } from "@/lib/sound";
 
 interface Props {
   isOpen: boolean;
@@ -20,7 +12,7 @@ interface Props {
 }
 
 export function SessionExportModal({ isOpen, onClose, session }: Props) {
-  const [copiedFormat, setCopiedFormat] = useState<'md' | 'json' | null>(null);
+  const [copiedFormat, setCopiedFormat] = useState<"md" | "json" | null>(null);
 
   if (!isOpen || !session) return null;
 
@@ -30,38 +22,38 @@ export function SessionExportModal({ isOpen, onClose, session }: Props) {
     md += `**Mode:** \`${session.mode}\`\n\n---\n\n`;
 
     session.messages.forEach((msg) => {
-      const speaker = msg.role === 'assistant' ? '🤖 **Nova**' : '👤 **User**';
+      const speaker = msg.role === "assistant" ? "🤖 **Nova**" : "👤 **User**";
       md += `### ${speaker} (${msg.timestamp})\n\n`;
       md += `${msg.content}\n\n`;
 
       if (msg.artifact) {
         md += `#### 📦 Generated Artifact: \`${msg.artifact.type.toUpperCase()}\`\n\n`;
-        if (msg.artifact.type === 'code') {
+        if (msg.artifact.type === "code") {
           md += `\`\`\`${msg.artifact.data.language}\n// ${msg.artifact.data.filename}\n${msg.artifact.data.code}\n\`\`\`\n\n`;
           md += `*Explanation:* ${msg.artifact.data.explanation}\n\n`;
-        } else if (msg.artifact.type === 'research') {
+        } else if (msg.artifact.type === "research") {
           md += `**${msg.artifact.data.title}**\n\n`;
           md += `> ${msg.artifact.data.executiveSummary}\n\n`;
           md += `**Key Findings:**\n`;
-          msg.artifact.data.keyFindings.forEach(f => {
+          msg.artifact.data.keyFindings.forEach((f) => {
             md += `- **${f.point}**: ${f.description} *(Confidence: ${f.confidence})*\n`;
           });
           md += `\n**Recommendation:** ${msg.artifact.data.recommendation}\n\n`;
-        } else if (msg.artifact.type === 'matrix') {
+        } else if (msg.artifact.type === "matrix") {
           md += `**Topic:** ${msg.artifact.data.topic}\n\n`;
           md += `| Option | Score / 10 | Pros | Cons |\n| --- | --- | --- | --- |\n`;
-          msg.artifact.data.options.forEach(opt => {
-            md += `| ${opt.name} | ${opt.totalWeightedScore} | ${opt.pros.join(', ')} | ${opt.cons.join(', ')} |\n`;
+          msg.artifact.data.options.forEach((opt) => {
+            md += `| ${opt.name} | ${opt.totalWeightedScore} | ${opt.pros.join(", ")} | ${opt.cons.join(", ")} |\n`;
           });
           md += `\n*Verdict:* ${msg.artifact.data.verdict}\n\n`;
-        } else if (msg.artifact.type === 'plan') {
+        } else if (msg.artifact.type === "plan") {
           md += `**Goal:** ${msg.artifact.data.goal} *(Horizon: ${msg.artifact.data.timeframe})*\n\n`;
-          msg.artifact.data.phases.forEach(p => {
+          msg.artifact.data.phases.forEach((p) => {
             md += `##### ${p.phaseName}\n`;
-            p.tasks.forEach(t => {
+            p.tasks.forEach((t) => {
               md += `- [x] **${t.title}**: ${t.description}\n`;
             });
-            md += '\n';
+            md += "\n";
           });
         }
       }
@@ -76,21 +68,21 @@ export function SessionExportModal({ isOpen, onClose, session }: Props) {
     return JSON.stringify(session, null, 2);
   };
 
-  const handleCopy = (format: 'md' | 'json') => {
-    const text = format === 'md' ? generateMarkdown() : generateJson();
+  const handleCopy = (format: "md" | "json") => {
+    const text = format === "md" ? generateMarkdown() : generateJson();
     navigator.clipboard.writeText(text);
     setCopiedFormat(format);
     sound.playCheck();
     setTimeout(() => setCopiedFormat(null), 2000);
   };
 
-  const handleDownload = (format: 'md' | 'json') => {
-    const content = format === 'md' ? generateMarkdown() : generateJson();
-    const filename = `${session.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${format}`;
-    const mime = format === 'md' ? 'text/markdown' : 'application/json';
+  const handleDownload = (format: "md" | "json") => {
+    const content = format === "md" ? generateMarkdown() : generateJson();
+    const filename = `${session.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.${format}`;
+    const mime = format === "md" ? "text/markdown" : "application/json";
     const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     a.click();
@@ -105,7 +97,9 @@ export function SessionExportModal({ isOpen, onClose, session }: Props) {
         <div className="h-14 px-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
           <div className="flex items-center gap-2">
             <Share2 className="w-4 h-4 text-teal-400" />
-            <h3 className="text-sm font-semibold text-slate-100">Export & Share Workspace</h3>
+            <h3 className="text-sm font-semibold text-slate-100">
+              Export & Share Workspace
+            </h3>
           </div>
           <button
             onClick={onClose}
@@ -118,10 +112,16 @@ export function SessionExportModal({ isOpen, onClose, session }: Props) {
         {/* Content */}
         <div className="p-5 space-y-4">
           <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-            <span className="text-[10.5px] font-mono text-slate-500 uppercase">Active Workspace:</span>
-            <p className="text-xs font-semibold text-slate-200 mt-0.5">{session.title}</p>
+            <span className="text-[10.5px] font-mono text-slate-500 uppercase">
+              Active Workspace:
+            </span>
+            <p className="text-xs font-semibold text-slate-200 mt-0.5">
+              {session.title}
+            </p>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              {session.messages.length} messages • {session.messages.filter(m => m.artifact).length} generative artifacts
+              {session.messages.length} messages •{" "}
+              {session.messages.filter((m) => m.artifact).length} generative
+              artifacts
             </p>
           </div>
 
@@ -133,12 +133,13 @@ export function SessionExportModal({ isOpen, onClose, session }: Props) {
                 <span>Markdown (.md)</span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Formatted documentation report with executive summaries, code blocks, and source citations.
+                Formatted documentation report with executive summaries, code
+                blocks, and source citations.
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => handleDownload('md')}
+                  onClick={() => handleDownload("md")}
                   className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-teal-500 text-slate-950 text-xs font-semibold hover:bg-teal-400 transition cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -146,11 +147,15 @@ export function SessionExportModal({ isOpen, onClose, session }: Props) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleCopy('md')}
+                  onClick={() => handleCopy("md")}
                   className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer"
                   title="Copy Markdown"
                 >
-                  {copiedFormat === 'md' ? <Check className="w-3.5 h-3.5 text-teal-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedFormat === "md" ? (
+                    <Check className="w-3.5 h-3.5 text-teal-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -162,12 +167,13 @@ export function SessionExportModal({ isOpen, onClose, session }: Props) {
                 <span>JSON Snapshot</span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Raw structured session object with full message history, steps, telemetry, and artifacts.
+                Raw structured session object with full message history, steps,
+                telemetry, and artifacts.
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => handleDownload('json')}
+                  onClick={() => handleDownload("json")}
                   className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-cyan-500 text-slate-950 text-xs font-semibold hover:bg-cyan-400 transition cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -175,11 +181,15 @@ export function SessionExportModal({ isOpen, onClose, session }: Props) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleCopy('json')}
+                  onClick={() => handleCopy("json")}
                   className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer"
                   title="Copy JSON"
                 >
-                  {copiedFormat === 'json' ? <Check className="w-3.5 h-3.5 text-teal-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedFormat === "json" ? (
+                    <Check className="w-3.5 h-3.5 text-teal-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
                 </button>
               </div>
             </div>

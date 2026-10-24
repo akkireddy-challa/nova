@@ -7,7 +7,7 @@ import {
   type LLMRequest,
   type LLMResult,
   type ProviderId,
-} from './types';
+} from "./types";
 
 // ---------------------------------------------------------------------------
 // Shared helpers used by every provider module in this directory.
@@ -16,7 +16,10 @@ import {
 export const REQUEST_TIMEOUT_MS = 60_000;
 
 /** Combine the caller's signal (if any) with a hard timeout. */
-export function withTimeout(signal?: AbortSignal, ms: number = REQUEST_TIMEOUT_MS): AbortSignal {
+export function withTimeout(
+  signal?: AbortSignal,
+  ms: number = REQUEST_TIMEOUT_MS,
+): AbortSignal {
   const timeout = AbortSignal.timeout(ms);
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
@@ -33,31 +36,35 @@ const SECRET_PATTERNS: RegExp[] = [
  * Make a provider-supplied message safe to show: strips known secrets, anything
  * that looks like a key, bearer tokens and URLs, then truncates.
  */
-export function redact(text: string, secrets: Array<string | undefined> = []): string {
+export function redact(
+  text: string,
+  secrets: Array<string | undefined> = [],
+): string {
   let out = text;
   for (const secret of secrets) {
-    if (secret && secret.length >= 4) out = out.split(secret).join('[redacted]');
+    if (secret && secret.length >= 4)
+      out = out.split(secret).join("[redacted]");
   }
   for (const pattern of SECRET_PATTERNS) {
-    out = out.replace(pattern, '[redacted]');
+    out = out.replace(pattern, "[redacted]");
   }
-  out = out.replace(/\s+/g, ' ').trim();
+  out = out.replace(/\s+/g, " ").trim();
   return out.length > 200 ? `${out.slice(0, 197)}...` : out;
 }
 
 function extractErrorDetail(body: string): string {
-  if (!body) return '';
+  if (!body) return "";
   try {
     const parsed: unknown = JSON.parse(body);
-    if (parsed && typeof parsed === 'object') {
+    if (parsed && typeof parsed === "object") {
       const record = parsed as Record<string, unknown>;
       const err = record.error;
-      if (typeof err === 'string') return err;
-      if (err && typeof err === 'object') {
+      if (typeof err === "string") return err;
+      if (err && typeof err === "object") {
         const message = (err as Record<string, unknown>).message;
-        if (typeof message === 'string') return message;
+        if (typeof message === "string") return message;
       }
-      if (typeof record.message === 'string') return record.message;
+      if (typeof record.message === "string") return record.message;
     }
   } catch {
     // Not JSON; fall through to the raw text.
@@ -72,15 +79,15 @@ export async function errorFromResponse(
   res: Response,
   secrets: Array<string | undefined> = [],
 ): Promise<ProviderError> {
-  let detail = '';
+  let detail = "";
   try {
     detail = extractErrorDetail(await res.text());
   } catch {
     // Body unreadable; report the status only.
   }
-  const safe = detail ? redact(detail, secrets) : '';
+  const safe = detail ? redact(detail, secrets) : "";
   return new ProviderError(
-    `${label} request failed (${res.status})${safe ? `: ${safe}` : ''}`,
+    `${label} request failed (${res.status})${safe ? `: ${safe}` : ""}`,
     provider,
     res.status,
   );
@@ -94,35 +101,41 @@ export function errorFromException(
   callerSignal?: AbortSignal,
 ): ProviderError {
   if (err instanceof ProviderError) return err;
-  const name = err instanceof Error ? err.name : '';
+  const name = err instanceof Error ? err.name : "";
   if (callerSignal?.aborted) {
     return new ProviderError(`${label} request was aborted`, provider, 499);
   }
-  if (name === 'TimeoutError' || name === 'AbortError') {
+  if (name === "TimeoutError" || name === "AbortError") {
     return new ProviderError(`${label} request timed out`, provider, 504);
   }
   if (err instanceof SyntaxError) {
-    return new ProviderError(`${label} returned an invalid response`, provider, 502);
+    return new ProviderError(
+      `${label} returned an invalid response`,
+      provider,
+      502,
+    );
   }
   return new ProviderError(`Could not reach ${label}`, provider, 502);
 }
 
 /** Read a fetch body line by line (for SSE and NDJSON streams). */
-export async function* readLines(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+export async function* readLines(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<string> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
-  let buffer = '';
+  let buffer = "";
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-      let newline = buffer.indexOf('\n');
+      let newline = buffer.indexOf("\n");
       while (newline !== -1) {
-        const line = buffer.slice(0, newline).replace(/\r$/, '');
+        const line = buffer.slice(0, newline).replace(/\r$/, "");
         buffer = buffer.slice(newline + 1);
         yield line;
-        newline = buffer.indexOf('\n');
+        newline = buffer.indexOf("\n");
       }
     }
     buffer += decoder.decode();
@@ -133,7 +146,7 @@ export async function* readLines(body: ReadableStream<Uint8Array>): AsyncGenerat
 }
 
 export const JSON_INSTRUCTION =
-  'Respond with only a single valid JSON object. Do not include prose, explanations, or markdown code fences.';
+  "Respond with only a single valid JSON object. Do not include prose, explanations, or markdown code fences.";
 
 export function elapsedSince(start: number): number {
   return Math.round(performance.now() - start);
@@ -143,7 +156,7 @@ function isVector(value: unknown): value is number[] {
   return (
     Array.isArray(value) &&
     value.length > 0 &&
-    value.every(item => typeof item === 'number' && Number.isFinite(item))
+    value.every((item) => typeof item === "number" && Number.isFinite(item))
   );
 }
 
@@ -155,11 +168,19 @@ export function checkVectors(
   count: number,
 ): number[][] {
   if (vectors.length !== count || !vectors.every(isVector)) {
-    throw new ProviderError(`${label} returned an invalid embeddings response`, provider, 502);
+    throw new ProviderError(
+      `${label} returned an invalid embeddings response`,
+      provider,
+      502,
+    );
   }
   const dims = vectors[0]?.length;
-  if (vectors.some(vector => vector.length !== dims)) {
-    throw new ProviderError(`${label} returned embeddings of mixed dimensions`, provider, 502);
+  if (vectors.some((vector) => vector.length !== dims)) {
+    throw new ProviderError(
+      `${label} returned embeddings of mixed dimensions`,
+      provider,
+      502,
+    );
   }
   return vectors;
 }
@@ -167,7 +188,8 @@ export function checkVectors(
 /** Split `items` into consecutive batches of at most `size`. */
 export function batches<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  for (let i = 0; i < items.length; i += size)
+    out.push(items.slice(i, i + size));
   return out;
 }
 
@@ -175,39 +197,47 @@ export function batches<T>(items: T[], size: number): T[][] {
 // OpenAI-compatible provider
 // ---------------------------------------------------------------------------
 
-const ID: ProviderId = 'openai';
-const LABEL = 'OpenAI';
-const FALLBACK_MODEL = 'gpt-4o-mini';
-const FALLBACK_EMBEDDING_MODEL = 'text-embedding-3-small';
+const ID: ProviderId = "openai";
+const LABEL = "OpenAI";
+const FALLBACK_MODEL = "gpt-4o-mini";
+const FALLBACK_EMBEDDING_MODEL = "text-embedding-3-small";
 const EMBED_BATCH = 256;
 
 /** Model ids that exist on /models but cannot be used with /chat/completions. */
-const NON_CHAT_MODEL = /(embed|whisper|tts|dall-e|moderation|davinci|babbage|transcribe|realtime|audio|image|sora|computer-use)/i;
+const NON_CHAT_MODEL =
+  /(embed|whisper|tts|dall-e|moderation|davinci|babbage|transcribe|realtime|audio|image|sora|computer-use)/i;
 
 function apiKey(): string | undefined {
   return process.env.OPENAI_API_KEY?.trim() || undefined;
 }
 
 function baseUrl(): string {
-  return (process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  return (
+    process.env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1"
+  ).replace(/\/+$/, "");
 }
 
 function headers(key: string): Record<string, string> {
-  return { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  return { Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
 }
 
 function requireKey(): string {
   const key = apiKey();
-  if (!key) throw new ProviderError('OpenAI is not configured (OPENAI_API_KEY missing)', ID, 503);
+  if (!key)
+    throw new ProviderError(
+      "OpenAI is not configured (OPENAI_API_KEY missing)",
+      ID,
+      503,
+    );
   return key;
 }
 
 type OpenAIContentPart =
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string } };
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
 
 interface OpenAIChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: "system" | "user" | "assistant";
   content: string | OpenAIContentPart[];
 }
 
@@ -229,28 +259,30 @@ interface OpenAIStreamChunk {
 
 function lastUserIndex(messages: LLMMessage[]): number {
   for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'user') return i;
+    if (messages[i].role === "user") return i;
   }
   return -1;
 }
 
 function buildMessages(request: LLMRequest): OpenAIChatMessage[] {
   const out: OpenAIChatMessage[] = [];
-  let system = request.system ?? '';
+  let system = request.system ?? "";
   if (request.json && !/json/i.test(system)) {
     system = system ? `${system}\n\n${JSON_INSTRUCTION}` : JSON_INSTRUCTION;
   }
-  if (system) out.push({ role: 'system', content: system });
+  if (system) out.push({ role: "system", content: system });
 
-  const imageTarget = request.images?.length ? lastUserIndex(request.messages) : -1;
+  const imageTarget = request.images?.length
+    ? lastUserIndex(request.messages)
+    : -1;
   request.messages.forEach((message, index) => {
     if (index === imageTarget && request.images) {
       out.push({
-        role: 'user',
+        role: "user",
         content: [
-          { type: 'text', text: message.content },
+          { type: "text", text: message.content },
           ...request.images.map((image: LLMImage): OpenAIContentPart => ({
-            type: 'image_url',
+            type: "image_url",
             image_url: { url: `data:${image.mimeType};base64,${image.data}` },
           })),
         ],
@@ -262,7 +294,10 @@ function buildMessages(request: LLMRequest): OpenAIChatMessage[] {
   return out;
 }
 
-function buildBody(request: LLMRequest, stream: boolean): Record<string, unknown> {
+function buildBody(
+  request: LLMRequest,
+  stream: boolean,
+): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: request.model,
     messages: buildMessages(request),
@@ -270,7 +305,7 @@ function buildBody(request: LLMRequest, stream: boolean): Record<string, unknown
   if (stream) body.stream = true;
   if (request.maxTokens !== undefined) body.max_tokens = request.maxTokens;
   if (request.temperature !== undefined) body.temperature = request.temperature;
-  if (request.json) body.response_format = { type: 'json_object' };
+  if (request.json) body.response_format = { type: "json_object" };
   return body;
 }
 
@@ -279,7 +314,7 @@ async function post(request: LLMRequest, stream: boolean): Promise<Response> {
   let res: Response;
   try {
     res = await fetch(`${baseUrl()}/chat/completions`, {
-      method: 'POST',
+      method: "POST",
       headers: headers(key),
       body: JSON.stringify(buildBody(request, stream)),
       signal: withTimeout(request.signal),
@@ -314,8 +349,11 @@ export const openaiProvider: LLMProvider = {
     try {
       const data = (await res.json()) as { data?: Array<{ id?: unknown }> };
       return (data.data ?? [])
-        .map(model => model.id)
-        .filter((id): id is string => typeof id === 'string' && !NON_CHAT_MODEL.test(id));
+        .map((model) => model.id)
+        .filter(
+          (id): id is string =>
+            typeof id === "string" && !NON_CHAT_MODEL.test(id),
+        );
     } catch (err) {
       throw errorFromException(ID, LABEL, err);
     }
@@ -344,8 +382,8 @@ export const openaiProvider: LLMProvider = {
       throw errorFromException(ID, LABEL, err, request.signal);
     }
     const text = data.choices?.[0]?.message?.content;
-    if (typeof text !== 'string') {
-      throw new ProviderError('OpenAI returned no message content', ID, 502);
+    if (typeof text !== "string") {
+      throw new ProviderError("OpenAI returned no message content", ID, 502);
     }
     const result: LLMResult = {
       text,
@@ -354,21 +392,29 @@ export const openaiProvider: LLMProvider = {
       provider: ID,
     };
     const usage = data.usage;
-    if (usage && typeof usage.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number') {
-      result.usage = { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens };
+    if (
+      usage &&
+      typeof usage.prompt_tokens === "number" &&
+      typeof usage.completion_tokens === "number"
+    ) {
+      result.usage = {
+        inputTokens: usage.prompt_tokens,
+        outputTokens: usage.completion_tokens,
+      };
     }
     return result;
   },
 
   async *stream(request) {
     const res = await post(request, true);
-    if (!res.body) throw new ProviderError('OpenAI returned an empty stream', ID, 502);
+    if (!res.body)
+      throw new ProviderError("OpenAI returned an empty stream", ID, 502);
     try {
       for await (const line of readLines(res.body)) {
-        if (!line.startsWith('data:')) continue;
+        if (!line.startsWith("data:")) continue;
         const payload = line.slice(5).trim();
         if (!payload) continue;
-        if (payload === '[DONE]') return;
+        if (payload === "[DONE]") return;
         let chunk: OpenAIStreamChunk;
         try {
           chunk = JSON.parse(payload) as OpenAIStreamChunk;
@@ -385,12 +431,17 @@ export const openaiProvider: LLMProvider = {
 
   async defaultEmbeddingModel() {
     if (!apiKey()) return null;
-    return process.env.OPENAI_EMBEDDING_MODEL?.trim() || FALLBACK_EMBEDDING_MODEL;
+    return (
+      process.env.OPENAI_EMBEDDING_MODEL?.trim() || FALLBACK_EMBEDDING_MODEL
+    );
   },
 
   async embed({ model, texts, signal }): Promise<EmbedResult> {
     const key = requireKey();
-    const embeddingModel = model?.trim() || process.env.OPENAI_EMBEDDING_MODEL?.trim() || FALLBACK_EMBEDDING_MODEL;
+    const embeddingModel =
+      model?.trim() ||
+      process.env.OPENAI_EMBEDDING_MODEL?.trim() ||
+      FALLBACK_EMBEDDING_MODEL;
     const vectors: number[][] = [];
     let inputTokens: number | undefined = 0;
     let reportedModel = embeddingModel;
@@ -398,7 +449,7 @@ export const openaiProvider: LLMProvider = {
       let data: OpenAIEmbeddingResponse;
       try {
         const res = await fetch(`${baseUrl()}/embeddings`, {
-          method: 'POST',
+          method: "POST",
           headers: headers(key),
           body: JSON.stringify({ model: embeddingModel, input: batch }),
           signal: withTimeout(signal),
@@ -408,14 +459,27 @@ export const openaiProvider: LLMProvider = {
       } catch (err) {
         throw errorFromException(ID, LABEL, err, signal);
       }
-      const items = [...(data.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
-      vectors.push(...checkVectors(ID, LABEL, items.map(item => item.embedding), batch.length));
+      const items = [...(data.data ?? [])].sort(
+        (a, b) => (a.index ?? 0) - (b.index ?? 0),
+      );
+      vectors.push(
+        ...checkVectors(
+          ID,
+          LABEL,
+          items.map((item) => item.embedding),
+          batch.length,
+        ),
+      );
       if (data.model) reportedModel = data.model;
       const tokens = data.usage?.prompt_tokens;
-      inputTokens = typeof tokens === 'number' && inputTokens !== undefined ? inputTokens + tokens : undefined;
+      inputTokens =
+        typeof tokens === "number" && inputTokens !== undefined
+          ? inputTokens + tokens
+          : undefined;
     }
     const result: EmbedResult = { vectors, model: reportedModel };
-    if (inputTokens !== undefined && texts.length > 0) result.usage = { inputTokens };
+    if (inputTokens !== undefined && texts.length > 0)
+      result.usage = { inputTokens };
     return result;
   },
 };

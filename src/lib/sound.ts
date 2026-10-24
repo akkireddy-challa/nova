@@ -6,14 +6,17 @@ class SoundEngine {
   private isMuted: boolean = false;
 
   private getContext(): AudioContext | null {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === "undefined") return null;
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
+    if (this.ctx && this.ctx.state === "suspended") {
       this.ctx.resume().catch(() => {});
     }
     return this.ctx;
@@ -37,7 +40,7 @@ class SoundEngine {
     try {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = 'sine';
+      osc.type = "sine";
       osc.frequency.setValueAtTime(520, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
 
@@ -65,7 +68,7 @@ class SoundEngine {
         const gain = ctx.createGain();
         const startTime = ctx.currentTime + idx * 0.06;
 
-        osc.type = 'triangle';
+        osc.type = "triangle";
         osc.frequency.setValueAtTime(freq, startTime);
 
         gain.gain.setValueAtTime(0.03, startTime);
@@ -89,7 +92,7 @@ class SoundEngine {
     try {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = 'sine';
+      osc.type = "sine";
       osc.frequency.setValueAtTime(900, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.05);
 
