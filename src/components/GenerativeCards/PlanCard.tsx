@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sound } from '@/lib/sound';
-import { VoiceBriefingPlayer } from '../VoiceBriefingPlayer';
 
 interface Props {
   plan: GoalPlan;
@@ -25,36 +24,11 @@ interface Props {
 export function PlanCard({ plan, className = '' }: Props) {
   const [phases, setPhases] = useState<MilestonePhase[]>(plan.phases);
   const [expandedPhase, setExpandedPhase] = useState<string>(phases[0]?.id || '');
-  const [showVoicePlayer, setShowVoicePlayer] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
 
   // Calculate completion percentage
   const allTasks = phases.flatMap(p => p.tasks);
   const completedCount = allTasks.filter(t => t.status === 'completed').length;
   const progressPercent = allTasks.length > 0 ? Math.round((completedCount / allTasks.length) * 100) : 0;
-
-  const planBriefing = useMemo(() => {
-    const parts: string[] = [];
-    parts.push(`Milestone Execution Plan for ${plan.goal}.`);
-    parts.push(`Target timeframe: ${plan.timeframe}.`);
-    if (plan.overview) {
-      parts.push(`Executive overview: ${plan.overview}`);
-    }
-    plan.phases.forEach(p => {
-      parts.push(`Phase ${p.phaseNumber}, ${p.phaseName}: ${p.summary}. Key tasks include: ${p.tasks.map(t => t.title).join(', ')}.`);
-    });
-    if (plan.keySuccessMetrics && plan.keySuccessMetrics.length > 0) {
-      parts.push(`Key success metrics: ${plan.keySuccessMetrics.join('. ')}.`);
-    }
-    return parts.join(' ');
-  }, [plan]);
 
   const toggleTask = (phaseId: string, taskId: string) => {
     sound.playCheck();
@@ -108,24 +82,6 @@ export function PlanCard({ plan, className = '' }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Voice Briefing Button */}
-          <button
-            type="button"
-            onClick={() => {
-              sound.playTap();
-              setShowVoicePlayer(prev => !prev);
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer ${
-              showVoicePlayer
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-            }`}
-            title="Listen to Executive Milestone Audio Briefing"
-          >
-            <Volume2 className="w-3.5 h-3.5 text-amber-400" />
-            <span>{showVoicePlayer ? 'Hide Audio' : '🔊 Listen to Audio Briefing'}</span>
-          </button>
-
           {/* Progress pill */}
           <div className="flex items-center gap-3 bg-slate-900 px-3.5 py-1.5 rounded-full border border-slate-800">
             <div className="w-20 bg-slate-800 h-2 rounded-full overflow-hidden">
@@ -140,19 +96,6 @@ export function PlanCard({ plan, className = '' }: Props) {
           </div>
         </div>
       </div>
-
-      {/* Voice Briefing Sub-Deck */}
-      {showVoicePlayer && (
-        <div className="p-4 border-b border-slate-800 bg-slate-950/40 animate-in fade-in">
-          <VoiceBriefingPlayer
-            title="Executive Milestone Briefing"
-            subtitle={plan.goal}
-            text={planBriefing}
-            defaultProfile="ember"
-            onClose={() => setShowVoicePlayer(false)}
-          />
-        </div>
-      )}
 
       {/* Overview text */}
       <div className="px-5 py-3.5 bg-slate-900/30 border-b border-slate-800/80 text-xs text-slate-300 leading-relaxed">

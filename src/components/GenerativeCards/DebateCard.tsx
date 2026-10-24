@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React from 'react';
 import { DebateArtifact } from '@/lib/types';
-import { Users, CheckCircle, AlertTriangle, ShieldCheck, Sparkles, Scale, Volume2 } from 'lucide-react';
-import { VoiceBriefingPlayer } from '../VoiceBriefingPlayer';
+import { Users, CheckCircle, AlertTriangle, ShieldCheck, Sparkles, Scale } from 'lucide-react';
 import { sound } from '@/lib/sound';
 
 interface Props {
@@ -11,33 +10,6 @@ interface Props {
 }
 
 export function DebateCard({ debate }: Props) {
-  const [showVoicePlayer, setShowVoicePlayer] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
-
-  const debateBriefing = useMemo(() => {
-    const parts: string[] = [];
-    parts.push(`Dual-Agent Deliberation on ${debate.topic}.`);
-    if (debate.consensusSummary) {
-      parts.push(`Consensus summary: ${debate.consensusSummary}`);
-    }
-    debate.perspectives.forEach(p => {
-      parts.push(`${p.stance} perspective presented by ${p.agentName}: ${p.arguments.join('. ')}.`);
-      if (p.caveats && p.caveats.length > 0) {
-        parts.push(`Caveats and blind spots: ${p.caveats.join('. ')}.`);
-      }
-    });
-    if (debate.synthesisVerdict) {
-      parts.push(`Synthesized equilibrium verdict: ${debate.synthesisVerdict}`);
-    }
-    return parts.join(' ');
-  }, [debate]);
 
   return (
     <div className="w-full my-4 rounded-xl border border-slate-700/80 bg-slate-900/90 backdrop-blur-md overflow-hidden shadow-2xl transition-all">
@@ -58,42 +30,11 @@ export function DebateCard({ debate }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Voice Briefing Button */}
-          <button
-            type="button"
-            onClick={() => {
-              sound.playTap();
-              setShowVoicePlayer(prev => !prev);
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer ${
-              showVoicePlayer
-                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-sm'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-            }`}
-            title="Listen to Deliberation Audio Briefing"
-          >
-            <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{showVoicePlayer ? 'Hide Audio' : '🔊 Listen to Audio Briefing'}</span>
-          </button>
-
           <span className="text-[10px] font-mono uppercase bg-indigo-950/60 text-indigo-300 border border-indigo-800 px-2.5 py-1 rounded-full">
             Multi-Perspective
           </span>
         </div>
       </div>
-
-      {/* Voice Briefing Sub-Deck */}
-      {showVoicePlayer && (
-        <div className="p-4 border-b border-slate-800 bg-slate-950/40 animate-in fade-in">
-          <VoiceBriefingPlayer
-            title="Deliberation Audio Synthesis"
-            subtitle={debate.topic}
-            text={debateBriefing}
-            defaultProfile="pulse"
-            onClose={() => setShowVoicePlayer(false)}
-          />
-        </div>
-      )}
 
       {/* Consensus Summary */}
       <div className="p-4 bg-slate-900/40 border-b border-slate-800 text-xs text-slate-300 leading-relaxed">

@@ -25,6 +25,8 @@ import {
 import { sound } from '@/lib/sound';
 import { McpPluginDefinition, McpToolDefinition, McpToolExecutionResult } from '@/lib/types';
 
+type ApiEndpoint = '/api/v1/chat/completions' | '/api/v1/embeddings' | '/api/v1/models' | '/api/v1/tools';
+
 export function PluginsAndApiHub() {
   const [activeTab, setActiveTab] = useState<'plugins' | 'api' | 'contribute'>('plugins');
   const [plugins, setPlugins] = useState<McpPluginDefinition[]>([]);
@@ -34,7 +36,6 @@ export function PluginsAndApiHub() {
   const [executingTool, setExecutingTool] = useState<string | null>(null);
   const [toolInputs, setToolInputs] = useState<Record<string, Record<string, string>>>({
     web_search: { query: 'Model Context Protocol 2026 adoption' },
-    execute_code: { code: 'const nums = [1, 2, 3, 4, 5];\nconsole.log("Sum:", nums.reduce((a, b) => a + b, 0));\nreturn nums.map(n => n * 2);' },
     vector_semantic_search: { query: 'autonomous multi-agent swarm division of labor' },
     query_associative_graph: { concept: 'mcp' },
     inspect_github_repo: { repo: 'facebook/react' }
@@ -48,7 +49,7 @@ export function PluginsAndApiHub() {
   const [customToolName, setCustomToolName] = useState('custom_tool');
 
   // API Playground state
-  const [apiEndpoint, setApiEndpoint] = useState<'/api/v1/chat/completions' | '/api/v1/embeddings' | '/api/v1/models' | '/api/v1/tools' | '/api/v1/mlops'>('/api/v1/chat/completions');
+  const [apiEndpoint, setApiEndpoint] = useState<ApiEndpoint>('/api/v1/chat/completions');
   const [apiModel, setApiModel] = useState('gemini-3-flash-preview');
   const [apiPrompt, setApiPrompt] = useState('What makes Model Context Protocol (MCP) and Embeddings v2 better than legacy proprietary plugins?');
   const [apiIsSending, setApiIsSending] = useState(false);
@@ -115,13 +116,13 @@ export function PluginsAndApiHub() {
       const data = await res.json();
       setExecutionResults(prev => ({ ...prev, [tool.name]: data }));
       sound.success();
-    } catch (err: any) {
+    } catch (err) {
       setExecutionResults(prev => ({
         ...prev,
         [tool.name]: {
           success: false,
           output: null,
-          error: err.message || 'Execution failed',
+          error: err instanceof Error ? err.message : 'Execution failed',
           executionTimeMs: 0,
           timestamp: new Date().toISOString()
         }
@@ -139,7 +140,7 @@ export function PluginsAndApiHub() {
     const start = performance.now();
 
     try {
-      let body: any = null;
+      let body: string | null = null;
       let method = 'POST';
 
       if (apiEndpoint === '/api/v1/chat/completions') {
@@ -157,8 +158,6 @@ export function PluginsAndApiHub() {
         method = 'GET';
       } else if (apiEndpoint === '/api/v1/tools') {
         method = 'GET';
-      } else if (apiEndpoint === '/api/v1/mlops') {
-        method = 'GET';
       }
 
       const res = await fetch(apiEndpoint, {
@@ -174,8 +173,8 @@ export function PluginsAndApiHub() {
       const json = await res.json();
       setApiResponse(JSON.stringify(json, null, 2));
       sound.success();
-    } catch (err: any) {
-      setApiResponse(JSON.stringify({ error: err.message }, null, 2));
+    } catch (err) {
+      setApiResponse(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }, null, 2));
       setApiStatusCode(500);
     } finally {
       setApiIsSending(false);
@@ -626,14 +625,13 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                   <label className="text-xs font-medium text-slate-300 block mb-1">Target Endpoint</label>
                   <select
                     value={apiEndpoint}
-                    onChange={(e) => setApiEndpoint(e.target.value as any)}
+                    onChange={(e) => setApiEndpoint(e.target.value as ApiEndpoint)}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-mono text-teal-300 focus:outline-none focus:border-teal-500"
                   >
                     <option value="/api/v1/chat/completions">POST /api/v1/chat/completions (Multi-Model Chat)</option>
                     <option value="/api/v1/embeddings">POST /api/v1/embeddings (Embeddings v2 3072-dim)</option>
                     <option value="/api/v1/models">GET /api/v1/models (List Active Frontier Models)</option>
                     <option value="/api/v1/tools">GET /api/v1/tools (List Registered MCP Tools)</option>
-                    <option value="/api/v1/mlops">GET /api/v1/mlops (MLOps Platform Telemetry & Circuit Breaker)</option>
                   </select>
                 </div>
 

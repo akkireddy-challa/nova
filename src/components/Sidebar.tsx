@@ -67,13 +67,6 @@ export function Sidebar({
       isActive: currentMode === 'mcp',
       badge: 'MCP'
     },
-    { 
-      id: 'evals' as StudioMode, 
-      label: 'Evals & Benchmarks', 
-      icon: <CheckCircle2 className="w-4 h-4" />,
-      isActive: currentMode === 'evals',
-      badge: '100%'
-    },
   ];
 
   const presets = [

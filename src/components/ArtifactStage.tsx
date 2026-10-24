@@ -30,9 +30,6 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
-import { CriticProctorScorecard } from './CriticProctorScorecard';
-import { evaluateArtifact } from '@/lib/proctor-engine';
-import { DataScienceWorkbenchCard } from './GenerativeCards/DataScienceWorkbenchCard';
 
 interface Props {
   artifact: GenerativeArtifact;
@@ -41,12 +38,11 @@ interface Props {
 }
 
 export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
-  const [activeTab, setActiveTab] = useState<'preview' | 'raw' | 'metrics'>('preview');
+  const [activeTab, setActiveTab] = useState<'preview' | 'raw'>('preview');
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [sandboxExecuted, setSandboxExecuted] = useState(false);
 
-  const proctorAudit = evaluateArtifact(artifact);
   const [matrixWeights, setMatrixWeights] = useState<Record<string, number>>(() => {
     if (artifact.type === 'matrix') {
       const initial: Record<string, number> = {};
@@ -109,10 +105,6 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
         return artifact.data.topic || 'Multi-Criteria Decision Matrix';
       case 'debate':
         return artifact.data.topic || 'Dual-Agent Deliberation';
-      case 'data_science':
-        return artifact.data.title || 'Data Science & Analytics Workbench';
-      case 'proctor_scorecard':
-        return artifact.data.title || 'Continuous Proctor Scorecard';
     }
   };
 
@@ -131,20 +123,6 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
               <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-800 text-teal-300 border border-slate-700">
                 {artifact.type}
               </span>
-              <button
-                type="button"
-                onClick={() => { sound.playCheck(); setActiveTab('metrics'); }}
-                className={`text-[9.5px] font-mono uppercase px-1.5 py-0.5 rounded border transition cursor-pointer ${
-                  proctorAudit.verdict === 'PASS' 
-                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
-                    : proctorAudit.verdict === 'WARN'
-                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                    : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
-                }`}
-                title="Click to view Chief Critic Quality Scorecard"
-              >
-                PROCTOR {proctorAudit.verdict} ({proctorAudit.overallScore}%)
-              </button>
               <h3 className="text-xs font-semibold text-slate-200 truncate">
                 {getTitle()}
               </h3>
@@ -199,18 +177,6 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
           </button>
           <button
             type="button"
-            onClick={() => { sound.playCheck(); setActiveTab('metrics'); }}
-            className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'metrics'
-                ? 'bg-teal-500/15 text-teal-300 border border-teal-500/30 font-semibold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-            <span>Proctor Scorecard</span>
-          </button>
-          <button
-            type="button"
             onClick={() => { sound.playCheck(); setActiveTab('raw'); }}
             className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
               activeTab === 'raw'
@@ -239,12 +205,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {activeTab === 'metrics' ? (
-          <CriticProctorScorecard 
-            artifact={artifact} 
-            onApplyImprovement={onRefinePrompt} 
-          />
-        ) : activeTab === 'raw' ? (
+        {activeTab === 'raw' ? (
           <div className="relative">
             <button
               type="button"
@@ -549,11 +510,6 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                   ))}
                 </div>
               </div>
-            )}
-
-            {/* DATA SCIENCE WORKBENCH ARTIFACT */}
-            {artifact.type === 'data_science' && (
-              <DataScienceWorkbenchCard data={artifact.data} />
             )}
           </div>
         )}

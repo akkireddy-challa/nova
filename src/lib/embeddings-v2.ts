@@ -1,6 +1,6 @@
 // Nova: Embeddings v2 Engine with Sliding Chunk Overlap & Dense Vector Cosine Similarity
-// Powered by Gemini Embedding v2 (3072-dimensional dense vectors) with resilient mathematical fallback
-import { vectorCache, mlopsCollector } from './mlops-pipeline';
+// Supports Gemini Embedding v2 (768/3072-dimensional) with local semantic fallback
+const vectorCache = new Map<string, number[]>();
 
 export interface ChunkWithEmbedding {
   id: string;
@@ -93,53 +93,19 @@ export async function generateEmbeddingV2(text: string): Promise<number[]> {
         const liveVector = data?.embedding?.values;
         if (liveVector && Array.isArray(liveVector) && liveVector.length > 0) {
           vector = liveVector;
-          mlopsCollector.recordRequest({
-            model: 'gemini-embedding-2',
-            latencyMs: Date.now() - startTime,
-            promptTokens,
-            completionTokens: 0,
-            success: true,
-            statusCode: 200,
-          });
         }
-      } else {
-        mlopsCollector.recordRequest({
-          model: 'gemini-embedding-2',
-          latencyMs: Date.now() - startTime,
-          promptTokens,
-          completionTokens: 0,
-          success: false,
-          statusCode: response.status,
-        });
       }
     } catch (err) {
       console.warn('[Embeddings v2] Gemini Embedding 2 live call failed, using client fallback:', err);
-      mlopsCollector.recordRequest({
-        model: 'gemini-embedding-2',
-        latencyMs: Date.now() - startTime,
-        promptTokens,
-        completionTokens: 0,
-        success: false,
-        statusCode: 500,
-        error: err as Error,
-      });
     }
   }
 
   // Resilient 128-dimensional deterministic semantic projection fallback (100% offline)
   if (!vector) {
     vector = generateDeterministicSemanticVector(text, 128);
-    mlopsCollector.recordRequest({
-      model: 'deterministic-128',
-      latencyMs: Date.now() - startTime,
-      promptTokens,
-      completionTokens: 0,
-      success: true,
-      statusCode: 200,
-    });
   }
 
-  // Cache normalized vector in LRU cache
+  // Cache normalized vector
   vectorCache.set(text, vector);
   return vector;
 }

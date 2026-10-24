@@ -19,7 +19,6 @@ import {
   Globe
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
-import { VoiceBriefingPlayer } from '../VoiceBriefingPlayer';
 
 interface Props {
   report: ResearchReport;
@@ -28,9 +27,6 @@ interface Props {
 export function ResearchReportCard({ report }: Props) {
   const [activeTab, setActiveTab] = useState<'findings' | 'sources' | 'risks'>('findings');
   const [copied, setCopied] = useState(false);
-  const [showVoicePlayer, setShowVoicePlayer] = useState(false);
-
-  const briefingText = `${report.title}. Executive summary: ${report.executiveSummary}. Key findings: ${report.keyFindings.map(f => f.point).join('. ')}. Recommendation: ${report.recommendation}`;
 
   const handleDownload = () => {
     sound.playCheck();
@@ -72,23 +68,6 @@ export function ResearchReportCard({ report }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Voice Briefing Player Trigger */}
-          <button
-            onClick={() => {
-              sound.playTap();
-              setShowVoicePlayer(prev => !prev);
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer ${
-              showVoicePlayer
-                ? 'bg-teal-500/20 text-teal-300 border-teal-500/40 shadow-sm'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-            }`}
-            title="Listen to Executive Audio Briefing"
-          >
-            <Volume2 className="w-3.5 h-3.5 text-teal-400" />
-            <span>{showVoicePlayer ? 'Hide Audio' : '🔊 Listen to Audio Briefing'}</span>
-          </button>
-
           {/* Export Report */}
           <button
             onClick={handleDownload}
@@ -99,18 +78,6 @@ export function ResearchReportCard({ report }: Props) {
           </button>
         </div>
       </div>
-
-      {/* Voice Briefing Sub-Deck */}
-      {showVoicePlayer && (
-        <div className="p-4 border-b border-slate-800 bg-slate-950/40 animate-in fade-in">
-          <VoiceBriefingPlayer 
-            text={briefingText}
-            title={`${report.title} • Verbal Briefing`}
-            defaultProfile="breeze"
-            onClose={() => setShowVoicePlayer(false)}
-          />
-        </div>
-      )}
 
       {/* Executive Summary */}
       <div className="p-5 border-b border-slate-800/80 bg-slate-900/40">
