@@ -1,16 +1,32 @@
 services:
   nova:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: nova-studio
-    restart: unless-stopped
+    build: .
+    image: nova:local
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    env_file: .env
+    # When using `docker compose --profile local up`, set OLLAMA_BASE_URL=http://ollama:11434 in .env
+    # so Nova reaches the bundled Ollama service instead of localhost.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/v1/models').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    profiles: ["local"]
+    ports:
+      - "11434:11434"
     volumes:
-      - ./data:/app/data
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama-models:

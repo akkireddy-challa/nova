@@ -55,14 +55,13 @@ export function ResearchReportCard({ report }: Props) {
               {report.title}
             </h3>
             <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-                Verified Synthesis
-              </span>
-              <span>•</span>
-              <span>{report.metrics?.sourcesCrawled ?? 24} Sources Crawled</span>
-              <span>•</span>
-              <span>Depth Level {report.metrics?.depthLevel ?? 3}</span>
+              <span>{report.sources?.length ?? 0} sources</span>
+              {report.metrics && report.metrics.synthesisTimeMs > 0 && (
+                <>
+                  <span>•</span>
+                  <span>{(report.metrics.synthesisTimeMs / 1000).toFixed(1)}s</span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -96,9 +95,8 @@ export function ResearchReportCard({ report }: Props) {
           <div className="flex items-center justify-between mb-2.5">
             <span className="text-[11px] font-mono uppercase tracking-wider text-teal-300 font-semibold flex items-center gap-1.5">
               <Globe className="w-3.5 h-3.5 text-teal-400" />
-              Information Fetched From ({report.sources.length} Verified Sources)
+              Sources ({report.sources.length})
             </span>
-            <span className="text-[10px] text-slate-500 font-mono">Live Grounding</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
             {report.sources.map((src) => (
@@ -120,7 +118,9 @@ export function ResearchReportCard({ report }: Props) {
                 </p>
                 <div className="flex items-center justify-between text-[9.5px] font-mono text-slate-500">
                   <span className="text-teal-400/90 font-semibold">{src.domain}</span>
-                  <span className="px-1.5 py-0.2 rounded bg-slate-800 text-teal-300 border border-slate-700">{src.relevanceScore}% Match</span>
+                  {src.relevanceScore !== undefined && (
+                    <span className="px-1.5 py-0.2 rounded bg-slate-800 text-teal-300 border border-slate-700">{src.relevanceScore}% Match</span>
+                  )}
                 </div>
               </a>
             ))}
@@ -211,9 +211,11 @@ export function ResearchReportCard({ report }: Props) {
                     {src.title}
                     <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100 flex-shrink-0" />
                   </span>
-                  <span className="text-[10px] text-teal-400 bg-teal-950/50 px-1.5 py-0.5 rounded border border-teal-800">
-                    {src.relevanceScore}% rel
-                  </span>
+                  {src.relevanceScore !== undefined && (
+                    <span className="text-[10px] text-teal-400 bg-teal-950/50 px-1.5 py-0.5 rounded border border-teal-800">
+                      {src.relevanceScore}% rel
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-slate-400 line-clamp-2 mb-2 leading-relaxed">
                   {src.snippet}

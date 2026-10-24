@@ -74,7 +74,7 @@ export function PlanCard({ plan, className = '' }: Props) {
                 {plan.timeframe}
               </span>
               <span>•</span>
-              <span>{phases.length} Execution Phases</span>
+              <span>{phases.length} phases</span>
               <span>•</span>
               <span>{allTasks.length} Milestones</span>
             </div>

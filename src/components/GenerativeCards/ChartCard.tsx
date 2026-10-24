@@ -85,7 +85,7 @@ export function ChartCard({ chart }: Props) {
               {chart.title}
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Interactive Telemetry & Data Model
+              {chart.data.length} data points
             </p>
           </div>
         </div>
@@ -174,7 +174,7 @@ export function ChartCard({ chart }: Props) {
       <div className="p-3.5 bg-slate-950/70 border-t border-slate-800 flex items-start gap-2.5">
         <Sparkles className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-slate-300 leading-relaxed">
-          <span className="font-semibold text-emerald-400">Analytical Projection: </span>
+          <span className="font-semibold text-emerald-400">Insight: </span>
           {chart.insight}
         </p>
       </div>
@@ -225,26 +225,28 @@ export function ChartCard({ chart }: Props) {
         </div>
       </div>
 
-      {/* Strategic Takeaways & Recommended Next Actions */}
-      <div className="p-4 bg-slate-950/80 border-t border-slate-800 space-y-2">
-        <span className="text-[11px] uppercase font-semibold text-slate-400 tracking-wider block">
-          Strategic Action Items & Next Inquiries
-        </span>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          <div className="p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 flex items-start gap-2">
-            <ArrowRight className="w-3.5 h-3.5 text-teal-400 flex-shrink-0 mt-0.5" />
-            <p className="text-slate-300 text-[11px]">
-              Reallocate compute infrastructure toward top-performing segments to capitalize on high-velocity adoption.
-            </p>
-          </div>
-          <div className="p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 flex items-start gap-2">
-            <ArrowRight className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
-            <p className="text-slate-300 text-[11px]">
-              Run sensitivity analysis across legacy baseline to model cost containment thresholds.
-            </p>
+      {/* Takeaways and follow-ups, only when the model provided them */}
+      {((chart.takeaways?.length ?? 0) > 0 || (chart.followUpQuestions?.length ?? 0) > 0) && (
+        <div className="p-4 bg-slate-950/80 border-t border-slate-800 space-y-2">
+          <span className="text-[11px] uppercase font-semibold text-slate-400 tracking-wider block">
+            Takeaways & follow-ups
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            {(chart.takeaways ?? []).map((t, i) => (
+              <div key={`t-${i}`} className="p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 flex items-start gap-2">
+                <ArrowRight className="w-3.5 h-3.5 text-teal-400 flex-shrink-0 mt-0.5" />
+                <p className="text-slate-300 text-[11px]">{t}</p>
+              </div>
+            ))}
+            {(chart.followUpQuestions ?? []).map((q, i) => (
+              <div key={`q-${i}`} className="p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 flex items-start gap-2">
+                <ArrowRight className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
+                <p className="text-slate-300 text-[11px]">{q}</p>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

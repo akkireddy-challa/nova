@@ -1,13 +1,7 @@
 export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'debate' | 'intelligence' | 'mcp';
 
-export type ModelProvider = 
-  | 'gemini-3-flash'
-  | 'gemini-2.5-flash'
-  | 'claude-3-7-sonnet' 
-  | 'deepseek-r1'
-  | 'o3-mini'
-  | 'llama-3-3-local'
-  | 'custom-byom';
+// Serialized model selection: "provider:model", e.g. "anthropic:claude-sonnet-5-5". See src/lib/providers/types.ts.
+export type ModelProvider = string;
 
 export type ThinkingBudget = 'quick' | 'analytical' | 'deep';
 
@@ -17,7 +11,8 @@ export interface SourceCitation {
   url: string;
   domain: string;
   snippet: string;
-  relevanceScore: number;
+  /** 0-100, only when the search provider reports a relevance score. */
+  relevanceScore?: number;
   publishedDate?: string;
   contradictionFlag?: boolean;
 }

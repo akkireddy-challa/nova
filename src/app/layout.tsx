@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nova — The Open-Source Autonomous Intelligence Studio",
-  description: "A universal, local-first autonomous agent studio for deep research, goal planning, and generative visual workflows.",
+  title: "Nova — open-source research assistant",
+  description: "Ask a question; Nova searches the web and your chosen LLM (Gemini, Claude, OpenAI-compatible, or local Ollama) writes a cited answer.",
   icons: {
     icon: "/favicon.ico",
   },

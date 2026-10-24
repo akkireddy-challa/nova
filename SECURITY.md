@@ -1,30 +1,20 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Nova is actively maintained. Security patches are prioritized and released promptly.
+Nova is pre-1.0. Only the latest commit on `main` receives fixes.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.x     | :white_check_mark: |
-| < 1.0   | :x:                |
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+Please do **not** open a public issue. Instead, report it privately through [GitHub Security Advisories](https://github.com/akkireddy-challa/nova/security/advisories/new) and include:
 
-If you discover a security vulnerability in Nova, please do **NOT** open a public issue. Instead, follow these steps:
+- a description of the issue and its impact
+- steps to reproduce or a proof of concept
 
-1. **Email Vulnerability Report**: Send details to `security@nova-agents.org` or open a Private Security Advisory on GitHub.
-2. **Include Details**:
-   - Description of the vulnerability.
-   - Steps to reproduce or proof-of-concept payload.
-   - Potential impact on local memory or model context.
-3. **Response Timeline**:
-   - We will acknowledge receipt of your report within 48 hours.
-   - We will provide an assessment and timeline for remediation within 5 business days.
+This is a small volunteer project, so responses are best-effort. We'll acknowledge your report as soon as we can.
 
-## Local-First Security Guarantees
+## Deployment notes
 
-Nova is designed with local-first security principles:
-- **Zero Involuntary Telemetry**: User prompts, memory items, and attachments never leave the user's device unless dispatched to configured model providers.
-- **Client-Side Sanitization**: All inputs undergo HTML/script stripping to prevent DOM XSS.
-- **Bounded Tool Access**: Model Context Protocol (MCP) tool execution requires user authorization before modifying local files.
+- Nova has no built-in authentication. Don't expose an instance publicly without your own auth layer or reverse proxy.
+- API keys are read from server-side environment variables and never sent to the browser.
+- Your prompts go to the search provider and the LLM provider you configure. If you use a local Ollama model, the LLM step stays on your machine, but web search still goes out to the internet.

@@ -42,53 +42,46 @@ export function Sidebar({
   onOpenDevHub,
   onOpenSettings,
 }: Props) {
-  // 4 Primary Workspaces - Radically simplified, zero duplication
-  const isStudioMode = ['research', 'debate', 'planner', 'canvas', 'matrix', 'coder', 'data_science'].includes(currentMode);
+  const isStudioMode = ['research', 'debate', 'planner', 'canvas', 'matrix', 'coder'].includes(currentMode);
 
   const workspaces = [
     { 
       id: 'research' as StudioMode, 
-      label: 'Studio Workspace', 
+      label: 'Chat', 
       icon: <MessageSquare className="w-4 h-4" />,
       isActive: isStudioMode,
-      description: 'Research, Debate, Planner & Visuals'
+      description: 'Research, Plan, Compare, Chart, Code, Debate'
     },
     { 
       id: 'intelligence' as StudioMode, 
-      label: 'Embeddings v2', 
+      label: 'Memory Search', 
       icon: <Brain className="w-4 h-4" />,
       isActive: currentMode === 'intelligence',
-      badge: '3072d'
     },
     { 
       id: 'mcp' as StudioMode, 
-      label: 'Plugins & APIs', 
+      label: 'Tools & API', 
       icon: <Puzzle className="w-4 h-4" />,
       isActive: currentMode === 'mcp',
       badge: 'MCP'
     },
   ];
 
-  const presets = [
+  const presets: { label: string; mode: StudioMode; prompt: string }[] = [
     {
-      label: 'Is the Agent Harness Dead?',
-      mode: 'research' as StudioMode,
-      prompt: 'Is the Agent Harness Dead? Analyze lightweight code loops, MCP, and evaluation-driven design.',
+      label: 'What is new in the latest Node.js LTS?',
+      mode: 'research',
+      prompt: 'What are the notable changes in the latest Node.js LTS release?',
     },
     {
-      label: 'Build an Open-Source MCP Server in 14 Days',
-      mode: 'planner' as StudioMode,
-      prompt: 'Decompose a milestone execution plan to create, test, and release a high-impact Model Context Protocol server.',
+      label: 'Plan a small open-source launch',
+      mode: 'planner',
+      prompt: 'Plan a two-week schedule to prepare and launch a small open-source library.',
     },
     {
-      label: 'Token & Vector Calibration Workbench',
-      mode: 'data_science' as StudioMode,
-      prompt: 'Analyze token entropy, 3072d semantic vector clusters, and Proctor confidence calibration curve.',
-    },
-    {
-      label: 'Evaluate Local LLMs vs Closed Frontier APIs',
-      mode: 'matrix' as StudioMode,
-      prompt: 'Compare self-hosted open-weight models against cloud APIs for privacy, latency, and cost.',
+      label: 'Compare local vs hosted LLMs',
+      mode: 'matrix',
+      prompt: 'Compare running an open-weight model locally with Ollama against a hosted LLM API for privacy, latency, and cost.',
     },
   ];
 
@@ -145,7 +138,7 @@ export function Sidebar({
 
         {sessions.length === 0 ? (
           <div className="p-4 text-center text-xs text-slate-500">
-            No previous sessions yet. Start prompting in the studio!
+            No sessions yet. Ask a question to start one.
           </div>
         ) : (
           sessions.map(s => {
@@ -167,7 +160,7 @@ export function Sidebar({
                 {onDeleteSession && (
                   <button
                     onClick={(e) => handleDelete(e, s.id)}
-                    title="Delete workspace session"
+                    title="Delete session"
                     className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-red-400 transition"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -181,7 +174,7 @@ export function Sidebar({
         {/* Quick Starter Presets */}
         <div className="pt-4">
           <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-2 py-1 mb-1">
-            Featured Inquiries
+            Examples
           </p>
           <div className="space-y-1">
             {presets.map((p, idx) => (
@@ -207,7 +200,7 @@ export function Sidebar({
           className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition cursor-pointer"
         >
           <SettingsIcon className="w-4 h-4 text-slate-400" />
-          <span>Settings & BYOM Keys</span>
+          <span>Settings</span>
         </button>
 
         <button
@@ -215,7 +208,7 @@ export function Sidebar({
           className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition cursor-pointer"
         >
           <FolderGit2 className="w-4 h-4 text-teal-400" />
-          <span>Architecture Dev Hub</span>
+          <span>Developer Hub</span>
         </button>
       </div>
     </aside>
