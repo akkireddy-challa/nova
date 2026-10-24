@@ -1,4 +1,4 @@
-export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'debate' | 'intelligence' | 'mcp';
+export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'debate' | 'intelligence' | 'mcp' | 'evals';
 
 export type ModelProvider = 
   | 'gemini-3-flash'
@@ -271,4 +271,38 @@ export interface McpToolExecutionResult {
   error?: string;
   executionTimeMs: number;
   timestamp: string;
+}
+
+export interface EvalScenario {
+  id: string;
+  title: string;
+  category: 'tool_composition' | 'conflict_resolution' | 'recursive_harness' | 'safety_guardrail';
+  complexity: 'K1' | 'K2' | 'K3' | 'K4';
+  description: string;
+  prompt: string;
+  expectedBehavior: string;
+  evalMetric: string;
+}
+
+export interface EvalScenarioResult {
+  scenarioId: string;
+  title: string;
+  passed: boolean;
+  score: number;
+  latencyMs: number;
+  outputPreview: string;
+  feedback: string;
+}
+
+export interface EvalSuiteRun {
+  id: string;
+  model: string;
+  timestamp: string;
+  totalScenarios: number;
+  passedScenarios: number;
+  passRate: number;
+  avgLatencyMs: number;
+  toolPrecision: number;
+  conflictResolutionScore: number;
+  results: EvalScenarioResult[];
 }

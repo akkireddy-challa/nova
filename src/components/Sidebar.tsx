@@ -17,6 +17,7 @@ import {
   Trash2,
   Brain,
   Puzzle,
+  CheckCircle2,
   Settings as SettingsIcon
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
@@ -52,6 +53,7 @@ export function Sidebar({
     { id: 'matrix', label: 'Decision Matrix', icon: <Scale className="w-4 h-4" /> },
     { id: 'intelligence', label: 'Embeddings v2', icon: <Brain className="w-4 h-4" /> },
     { id: 'mcp', label: 'Plugins & APIs', icon: <Puzzle className="w-4 h-4" /> },
+    { id: 'evals', label: 'Evals & Benchmarks', icon: <CheckCircle2 className="w-4 h-4" /> },
     { id: 'coder', label: 'Synthesizer', icon: <Code2 className="w-4 h-4" /> },
   ];
 

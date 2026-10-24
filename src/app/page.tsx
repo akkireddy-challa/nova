@@ -11,6 +11,7 @@ import { DevHubModal } from '@/components/DevHubModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { IntelligenceCanvas } from '@/components/IntelligenceCanvas';
 import { PluginsAndApiHub } from '@/components/PluginsAndApiHub';
+import { EvalRunner } from '@/components/EvalRunner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { 
   StudioMode, 
@@ -335,6 +336,8 @@ export default function Home() {
             <IntelligenceCanvas memoryItems={memoryItems} />
           ) : currentMode === 'mcp' ? (
             <PluginsAndApiHub />
+          ) : currentMode === 'evals' ? (
+            <EvalRunner />
           ) : (
             <AgentCanvas
               messages={currentMessages}

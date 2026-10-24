@@ -18,7 +18,8 @@ import {
   Command,
   ChevronDown,
   Users,
-  Puzzle
+  Puzzle,
+  CheckCircle2
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 
@@ -56,6 +57,7 @@ export function Navbar({
     { id: 'matrix', label: 'Decision Matrix', icon: <Scale className="w-3.5 h-3.5" />, desc: 'Multi-criteria dynamic scoring' },
     { id: 'intelligence', label: 'Embeddings v2', icon: <Brain className="w-3.5 h-3.5" />, desc: '3072-dim layered memory' },
     { id: 'mcp', label: 'Plugins & APIs', icon: <Puzzle className="w-3.5 h-3.5" />, desc: 'MCP tools & OpenAI Gateway' },
+    { id: 'evals', label: 'Evals & Benchmarks', icon: <CheckCircle2 className="w-3.5 h-3.5" />, desc: 'Verifiable regression suites' },
     { id: 'coder', label: 'Synthesizer', icon: <Code2 className="w-3.5 h-3.5" />, desc: 'Modular architecture & preview' },
   ];
 
