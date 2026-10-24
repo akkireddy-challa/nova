@@ -53,6 +53,7 @@ export function Navbar({
     { id: 'planner', label: 'Goal Planner', icon: <ListTodo className="w-3.5 h-3.5" />, desc: 'Interactive DAG & execution' },
     { id: 'canvas', label: 'Visuals', icon: <BarChart2 className="w-3.5 h-3.5" />, desc: 'Interactive charts & telemetry' },
     { id: 'matrix', label: 'Decision Matrix', icon: <Scale className="w-3.5 h-3.5" />, desc: 'Multi-criteria dynamic scoring' },
+    { id: 'intelligence', label: 'Embeddings v2', icon: <Brain className="w-3.5 h-3.5" />, desc: '3072-dim layered memory' },
     { id: 'coder', label: 'Synthesizer', icon: <Code2 className="w-3.5 h-3.5" />, desc: 'Modular architecture & preview' },
   ];
 

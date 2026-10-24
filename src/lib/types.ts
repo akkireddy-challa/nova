@@ -1,4 +1,4 @@
-export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'debate' | 'mcp';
+export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'debate' | 'intelligence' | 'mcp';
 
 export type ModelProvider = 
   | 'gemini-3-flash'

@@ -9,6 +9,7 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { McpInspector } from '@/components/McpInspector';
 import { DevHubModal } from '@/components/DevHubModal';
 import { SettingsModal } from '@/components/SettingsModal';
+import { IntelligenceCanvas } from '@/components/IntelligenceCanvas';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { 
   StudioMode, 
@@ -329,13 +330,17 @@ export default function Home() {
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
 
-          <AgentCanvas
-            messages={currentMessages}
-            currentMode={currentMode}
-            isLoading={isLoading}
-            onSubmitPrompt={handlePromptSubmit}
-            onSelectMode={setCurrentMode}
-          />
+          {currentMode === 'intelligence' ? (
+            <IntelligenceCanvas memoryItems={memoryItems} />
+          ) : (
+            <AgentCanvas
+              messages={currentMessages}
+              currentMode={currentMode}
+              isLoading={isLoading}
+              onSubmitPrompt={handlePromptSubmit}
+              onSelectMode={setCurrentMode}
+            />
+          )}
         </div>
 
         {/* Modern Command Palette (⌘K) */}
