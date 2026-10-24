@@ -82,6 +82,7 @@ Providers are tried in this order; the first configured one that succeeds wins, 
 | Provider              | Setup                                                                                                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Tavily                | `TAVILY_API_KEY`                                                                                                                                                         |
+| Exa                   | `EXA_API_KEY`                                                                                                                                                            |
 | Brave Search          | `BRAVE_API_KEY`                                                                                                                                                          |
 | SearXNG (self-hosted) | `SEARXNG_URL`. Recommended keyless option; see [Docker](#docker) for the bundled service. The instance must have `json` in `search.formats` (otherwise it answers `403`) |
 | DuckDuckGo (HTML)     | No setup. Last-resort fallback; often blocks automated requests with a bot check, so configure one of the above for reliable search                                      |
@@ -111,13 +112,13 @@ The app UI itself uses `POST /api/agent`. See [ARCHITECTURE.md](ARCHITECTURE.md)
 
 - No authentication. Don't expose an instance to the internet without putting it behind your own auth or proxy.
 - Answer quality depends on the model you pick and on what the search provider returns. Small local models often fail schema validation more than hosted ones do.
-- DuckDuckGo HTML search is unofficial and can be rate-limited or change without notice. Use SearXNG, Tavily, or Brave if you need it to be reliable.
+- DuckDuckGo HTML search is unofficial and can be rate-limited or change without notice. Use SearXNG, Tavily, Exa, or Brave if you need it to be reliable.
 - Some pages block fetching or need JavaScript, so their content can't be used as a source.
 - Sessions and saved memories are stored only in your browser's localStorage. There's no server-side storage. Memories are sent with each question as context, and to the embeddings provider when you use Memory Search.
 
 ## Roadmap
 
-- Streaming answers in the UI
+- [x] Streaming answers in the UI
 - Better source extraction and citation highlighting
 - Saved and shareable research sessions
 - More search providers
