@@ -143,12 +143,23 @@ export function AgentCanvas({
         return 'Describe a component, architecture, or script to synthesize...';
       case 'mcp':
         return 'Enter query to dispatch across registered Model Context Protocol tools...';
+      default:
+        return 'Ask anything, explore research, compare models, or synthesize code...';
     }
   };
 
+  const studioEngines = [
+    { id: 'research' as StudioMode, label: 'Deep Research', icon: <Compass className="w-3.5 h-3.5" /> },
+    { id: 'debate' as StudioMode, label: 'Dual Debate', icon: <Users className="w-3.5 h-3.5" /> },
+    { id: 'planner' as StudioMode, label: 'Goal Planner', icon: <ListTodo className="w-3.5 h-3.5" /> },
+    { id: 'canvas' as StudioMode, label: 'Visuals & Charts', icon: <BarChart2 className="w-3.5 h-3.5" /> },
+    { id: 'matrix' as StudioMode, label: 'Decision Matrix', icon: <Scale className="w-3.5 h-3.5" /> },
+    { id: 'coder' as StudioMode, label: 'Synthesizer', icon: <Code2 className="w-3.5 h-3.5" /> },
+  ];
+
   return (
     <div 
-      className="flex-1 flex flex-col h-[calc(100vh-4rem)] bg-slate-950 overflow-hidden relative"
+      className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] bg-slate-950 overflow-hidden relative"
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={(e) => {
@@ -364,7 +375,29 @@ export function AgentCanvas({
 
       {/* Input Dock */}
       <div className="p-4 bg-slate-950/80 border-t border-slate-800 backdrop-blur-md">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-2">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-2.5">
+          {/* Studio Engine Selector Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            {studioEngines.map(e => {
+              const isSelected = currentMode === e.id;
+              return (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => { sound.playCheck(); onSelectMode(e.id); }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 ${
+                    isSelected
+                      ? 'bg-teal-500/15 text-teal-300 border border-teal-500/40 shadow-sm font-semibold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
+                  }`}
+                >
+                  <span className={isSelected ? 'text-teal-400' : 'text-slate-500'}>{e.icon}</span>
+                  <span>{e.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Controls bar: Thinking Depth & Prompt Enhancer */}
           <div className="flex items-center justify-between text-xs px-1">
             {/* Thinking Depth Selector */}
