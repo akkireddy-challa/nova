@@ -345,6 +345,7 @@ export default function Home() {
               isLoading={isLoading}
               onSubmitPrompt={handlePromptSubmit}
               onSelectMode={setCurrentMode}
+              sessionTitle={activeSession?.title}
             />
           )}
         </div>
