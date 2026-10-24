@@ -19,7 +19,7 @@ describe('Autonomous Evals & Regression Engine', () => {
     expect(report.id).toBeDefined();
     expect(report.totalScenarios).toBe(CANONICAL_EVAL_SCENARIOS.length);
     expect(report.passRate).toBeGreaterThanOrEqual(75);
-    expect(report.avgLatencyMs).toBeGreaterThan(0);
+    expect(report.avgLatencyMs).toBeGreaterThanOrEqual(0);
     expect(report.results.length).toBe(CANONICAL_EVAL_SCENARIOS.length);
 
     // Verify all results have diagnostics

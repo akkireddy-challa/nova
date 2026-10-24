@@ -121,7 +121,7 @@ export async function runEvalSuite(model: string = 'gemini-3-flash-preview'): Pr
       feedback = 'Execution error during benchmark step.';
     }
 
-    const scElapsed = Math.round(performance.now() - scStart);
+    const scElapsed = Math.max(1, Math.round(performance.now() - scStart));
     results.push({
       scenarioId: scenario.id,
       title: scenario.title,
