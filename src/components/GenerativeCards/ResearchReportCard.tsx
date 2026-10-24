@@ -246,7 +246,7 @@ export function ResearchReportCard({ report }: Props) {
         {report.recommendation && (
           <div className="mt-5 p-3.5 rounded-lg border border-teal-500/30 bg-teal-500/5">
             <span className="text-[11px] uppercase tracking-wider font-semibold text-teal-400 block mb-1">
-              Deterministic Recommendation
+              Recommendation
             </span>
             <p className="text-xs text-teal-200 leading-relaxed">
               {report.recommendation}

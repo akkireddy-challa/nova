@@ -30,7 +30,7 @@ export interface ResearchReport {
   keyFindings: {
     point: string;
     description: string;
-    confidence: 'high' | 'medium' | 'emerging';
+    confidence: 'high' | 'medium' | 'low';
     citationIds: string[];
   }[];
   sources: SourceCitation[];

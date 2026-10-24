@@ -72,9 +72,9 @@ const SEARCH_MODES: ReadonlySet<StudioMode> = new Set<StudioMode>(['research', '
 const PLAIN_MODES: ReadonlySet<StudioMode> = new Set<StudioMode>(['intelligence', 'mcp']);
 
 const BUDGETS: Record<ThinkingBudget, { results: number; pages: number; maxTokens: number }> = {
-  quick: { results: 4, pages: 2, maxTokens: 2048 },
-  analytical: { results: 6, pages: 4, maxTokens: 4096 },
-  deep: { results: 8, pages: 5, maxTokens: 8192 },
+  quick: { results: 4, pages: 2, maxTokens: 4096 },
+  analytical: { results: 6, pages: 4, maxTokens: 8192 },
+  deep: { results: 8, pages: 5, maxTokens: 16384 },
 };
 
 const MAX_TEXT_ATTACHMENT_CHARS = 20000;

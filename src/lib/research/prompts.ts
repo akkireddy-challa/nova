@@ -19,7 +19,7 @@ const JSON_SHAPES: Partial<Record<StudioMode, string>> = {
     "executiveSummary": string,
     "keyFindings": [            // 3-6 items
       { "point": string, "description": string,
-        "confidence": "high" | "medium" | "emerging",
+        "confidence": "high" | "medium" | "low",
         "citations": number[]   // numbers of the sources that support this finding; [] if none
       }
     ],
