@@ -1,0 +1,50 @@
+name: Autonomous Repository Self-Improvement
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Run daily autonomous doc-gardening and hypergraph memory maintenance at midnight UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  self-evolve:
+    if: "!contains(github.event.head_commit.message, '[skip self-improve]')"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Regression Eval Suite
+        run: bun test
+
+      - name: Run Autonomous Self-Evolution Engine
+        run: bun run self-improve
+
+      - name: Commit & Push Self-Improvement Evolution
+        run: |
+          git config user.name "Nova Autonomous Agent [bot]"
+          git config user.email "nova-agent@users.noreply.github.com"
+          if [ -n "$(git status --porcelain data/ EVOLUTION.md)" ]; then
+            git add data/ EVOLUTION.md
+            git commit -m "chore(autonomous): self-improve repository docs & hypergraph memory [skip self-improve]"
+            git push origin main
+          else
+            echo "Repository is already 100% synchronized and optimal."
+          fi
