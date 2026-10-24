@@ -4,9 +4,13 @@ import { cognitiveStack } from './intelligence-layers';
 import { sanitizeInput } from './sanitizer';
 import { fetchLiveWebSources } from './web-grounding';
 
+// Each built-in tool declares its own argument shape, so the registry stores handlers loosely.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ToolHandler = (args: any) => Promise<unknown>;
+
 class McpRegistry {
   private plugins: Map<string, McpPluginDefinition> = new Map();
-  private toolMap: Map<string, { pluginId: string; tool: McpToolDefinition; handler: (args: any) => Promise<any> }> = new Map();
+  private toolMap: Map<string, { pluginId: string; tool: McpToolDefinition; handler: ToolHandler }> = new Map();
 
   constructor() {
     this.registerBuiltInPlugins();
@@ -35,33 +39,6 @@ class McpRegistry {
               maxResults: { type: 'number', description: 'Maximum number of source results (1-10)' }
             },
             required: ['query']
-          }
-        }
-      ]
-    };
-
-    // 2. Code Execution Sandbox
-    const codeSandboxPlugin: McpPluginDefinition = {
-      id: 'code-sandbox',
-      name: 'TypeScript & Node Sandbox',
-      description: 'Isolated client-side code runner with execution time limits, stdout capture, and error stack parsing.',
-      category: 'code',
-      version: '2.0.1',
-      author: 'Nova Open Community',
-      icon: 'Terminal',
-      enabled: true,
-      stats: { totalCalls: 18, avgLatencyMs: 45, lastExecuted: new Date().toISOString() },
-      tools: [
-        {
-          name: 'execute_code',
-          description: 'Safely evaluate JavaScript or TypeScript code and capture stdout and return output.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              code: { type: 'string', description: 'JavaScript or TypeScript code block to execute' },
-              timeoutMs: { type: 'number', description: 'Maximum execution time in milliseconds (default 2000)' }
-            },
-            required: ['code']
           }
         }
       ]
@@ -186,51 +163,6 @@ class McpRegistry {
       }
     });
 
-    this.registerPlugin(codeSandboxPlugin, {
-      execute_code: async (args: { code: string; timeoutMs?: number }) => {
-        const timeout = Math.min(args.timeoutMs || 2000, 5000);
-        const logs: string[] = [];
-        
-        try {
-          // Controlled safe function execution
-          const sanitizedCode = args.code.replace(/process\.exit|require\(|import\(/g, '// disabled');
-          const fn = new Function('console', `
-            let output = undefined;
-            try {
-              output = (function() {
-                ${sanitizedCode}
-              })();
-            } catch (err) {
-              output = "Execution error: " + err.message;
-            }
-            return output;
-          `);
-          
-          const mockConsole = {
-            log: (...msgs: any[]) => logs.push(msgs.map(m => typeof m === 'object' ? JSON.stringify(m) : String(m)).join(' ')),
-            warn: (...msgs: any[]) => logs.push('[WARN] ' + msgs.join(' ')),
-            error: (...msgs: any[]) => logs.push('[ERROR] ' + msgs.join(' ')),
-          };
-
-          const executionPromise = Promise.resolve(fn(mockConsole));
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Sandbox execution timeout exceeded')), timeout));
-
-          const result = await Promise.race([executionPromise, timeoutPromise]);
-          return {
-            stdout: logs.join('\n'),
-            returnedValue: result !== undefined ? result : '(undefined)',
-            status: 'completed',
-          };
-        } catch (err: any) {
-          return {
-            stdout: logs.join('\n'),
-            error: err.message || 'Execution error in sandbox',
-            status: 'failed',
-          };
-        }
-      }
-    });
-
     this.registerPlugin(vectorPlugin, {
       vector_semantic_search: async (args: { query: string; topK?: number }) => {
         const query = args.query || '';
@@ -309,7 +241,7 @@ class McpRegistry {
     });
   }
 
-  public registerPlugin(plugin: McpPluginDefinition, handlers?: Record<string, (args: any) => Promise<any>>) {
+  public registerPlugin(plugin: McpPluginDefinition, handlers?: Record<string, ToolHandler>) {
     this.plugins.set(plugin.id, plugin);
     if (handlers) {
       for (const tool of plugin.tools) {
@@ -350,7 +282,7 @@ class McpRegistry {
       this.toolMap.set(tool.name, {
         pluginId: plugin.id,
         tool,
-        handler: async (args: any) => {
+        handler: async (args: Record<string, unknown>) => {
           if (plugin.endpoint) {
             try {
               const resp = await fetch(plugin.endpoint, {
@@ -362,8 +294,8 @@ class McpRegistry {
               if (resp.ok) {
                 return await resp.json();
               }
-            } catch (err: any) {
-              return { error: `Failed to connect to custom MCP endpoint: ${err.message}` };
+            } catch (err) {
+              return { error: `Failed to connect to custom MCP endpoint: ${err instanceof Error ? err.message : String(err)}` };
             }
           }
           return { status: 'mock_custom_executed', tool: tool.name, args };
@@ -384,7 +316,7 @@ class McpRegistry {
     return tools;
   }
 
-  public async executeTool(name: string, args: Record<string, any>): Promise<McpToolExecutionResult> {
+  public async executeTool(name: string, args: Record<string, unknown>): Promise<McpToolExecutionResult> {
     const startTime = performance.now();
     const entry = this.toolMap.get(name);
 
@@ -426,12 +358,12 @@ class McpRegistry {
         executionTimeMs,
         timestamp: new Date().toISOString(),
       };
-    } catch (err: any) {
+    } catch (err) {
       const executionTimeMs = Math.round(performance.now() - startTime);
       return {
         success: false,
         output: null,
-        error: err.message || `Error executing MCP tool "${name}"`,
+        error: (err instanceof Error && err.message) || `Error executing MCP tool "${name}"`,
         executionTimeMs,
         timestamp: new Date().toISOString(),
       };

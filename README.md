@@ -41,7 +41,6 @@ flowchart TD
 - Standard, vendor-neutral tool calling based on Anthropic & open community specifications.
 - **Built-in First-Party Plugins**:
   - `web_search`: Live search with verified academic & documentation citations.
-  - `execute_code`: Isolated client-side JavaScript/TypeScript code runner with stdout capture.
   - `vector_semantic_search`: Real-time cosine similarity search over 3072-dim Embeddings v2.
   - `query_associative_graph`: Concept relationship discovery across Layer 3 memory nodes.
   - `inspect_github_repo`: Live open-source repository inspector (stars, issues, releases).

@@ -67,7 +67,6 @@ export function Navbar({
       case 'coder': return { label: 'Synthesizer', icon: <Code2 className="w-3.5 h-3.5 text-rose-400" /> };
       case 'intelligence': return { label: 'Embeddings v2', icon: <Brain className="w-3.5 h-3.5 text-purple-400" /> };
       case 'mcp': return { label: 'Plugins & APIs', icon: <Puzzle className="w-3.5 h-3.5 text-teal-400" /> };
-      case 'evals': return { label: 'Evals & Benchmarks', icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> };
       default: return { label: 'Autonomous Studio', icon: <Sparkles className="w-3.5 h-3.5 text-teal-400" /> };
     }
   };

@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "bun test",
-    "self-improve": "bun run scripts/self-improve.ts"
+    "test": "bun test"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

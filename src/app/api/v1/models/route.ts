@@ -1,102 +1,66 @@
 import { NextResponse } from 'next/server';
-import { circuitBreaker } from '@/lib/mlops-pipeline';
 
 export async function GET() {
-  const baseModels = [
-    {
-      id: 'gemini-3-flash-preview',
-      object: 'model',
-      created: 1740000000,
-      owned_by: 'google',
-      permission: [],
-      root: 'gemini-3-flash-preview',
-      parent: null,
-      description: 'Frontier 2026 reasoning model with ultra-low latency (~3.2s) and adaptive thinking depth.',
-      context_window: 1048576,
-    },
-    {
+  const models: Array<{
+    id: string;
+    object: string;
+    created: number;
+    owned_by: string;
+    description: string;
+    configured: boolean;
+  }> = [];
+
+  const hasGemini = Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+  const hasClaude = Boolean(process.env.ANTHROPIC_API_KEY);
+  const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+  const hasOllama = Boolean(process.env.OLLAMA_BASE_URL);
+
+  if (hasGemini) {
+    models.push({
       id: 'gemini-2.5-flash',
       object: 'model',
-      created: 1739000000,
-      owned_by: 'google',
-      permission: [],
-      root: 'gemini-2.5-flash',
-      parent: null,
-      description: 'Production-grade fast multi-turn conversational model.',
-      context_window: 1048576,
-    },
-    {
-      id: 'gemini-embedding-2',
-      object: 'model',
       created: 1740000000,
       owned_by: 'google',
-      permission: [],
-      root: 'gemini-embedding-2',
-      parent: null,
-      description: 'Dense 3072-dimensional vector embedding model for Embeddings v2.',
-      context_window: 8192,
-    },
-    {
-      id: 'claude-3-7-sonnet',
+      description: 'Google Gemini 2.5 Flash for high-speed grounded research',
+      configured: true,
+    });
+  }
+
+  if (hasClaude) {
+    models.push({
+      id: 'claude-3-5-sonnet',
       object: 'model',
       created: 1740000000,
       owned_by: 'anthropic',
-      permission: [],
-      root: 'claude-3-7-sonnet',
-      parent: null,
-      description: 'Hybrid reasoning and instant-response frontier model.',
-      context_window: 200000,
-    },
-    {
-      id: 'deepseek-r1',
+      description: 'Anthropic Claude 3.5 Sonnet for deep analytical research and planning',
+      configured: true,
+    });
+  }
+
+  if (hasOpenAI) {
+    models.push({
+      id: 'gpt-4o',
       object: 'model',
-      created: 1738000000,
-      owned_by: 'deepseek',
-      permission: [],
-      root: 'deepseek-r1',
-      parent: null,
-      description: 'Open-weights reasoning model with explicit verification traces.',
-      context_window: 128000,
-    },
-    {
-      id: 'llama-3.3-70b-instruct',
-      object: 'model',
-      created: 1735000000,
-      owned_by: 'meta',
-      permission: [],
-      root: 'llama-3.3-70b-instruct',
-      parent: null,
-      description: 'State-of-the-art open model with native function calling.',
-      context_window: 128000,
-    },
-    {
+      created: 1740000000,
+      owned_by: 'openai',
+      description: 'OpenAI GPT-4o frontier model',
+      configured: true,
+    });
+  }
+
+  if (hasOllama || !hasGemini && !hasClaude && !hasOpenAI) {
+    models.push({
       id: 'ollama-local',
       object: 'model',
-      created: 1730000000,
-      owned_by: 'local',
-      permission: [],
-      root: 'ollama-local',
-      parent: null,
-      description: 'Zero-cost offline local model running via Ollama / Apple MLX.',
-      context_window: 32768,
-    },
-  ];
-
-  const modelsWithHealth = baseModels.map(m => {
-    const circuit = circuitBreaker.getCircuitInfo(m.id);
-    return {
-      ...m,
-      circuit_breaker: {
-        state: circuit.state,
-        consecutive_failures: circuit.consecutiveFailures,
-        active_standby: circuit.activeStandby || null,
-        standby_chain: circuit.standbyChain,
-      },
-    };
-  });
+      created: 1740000000,
+      owned_by: 'ollama',
+      description: 'Local open-weight model running on Ollama',
+      configured: hasOllama,
+    });
+  }
 
   return NextResponse.json({
     object: 'list',
-    data: modelsWithHealth,
+    data: models,
   });
 }

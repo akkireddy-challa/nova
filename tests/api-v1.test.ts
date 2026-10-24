@@ -13,15 +13,13 @@ describe('Open API Gateway & MCP Plugin Registry', () => {
     expect(searchPlugin?.tools[0].name).toBe('web_search');
   });
 
-  it('should execute code in safe sandbox MCP tool', async () => {
+  it('should not expose server-side code execution', async () => {
     const result = await mcpRegistry.executeTool('execute_code', {
-      code: 'const a = 10; const b = 20; console.log("Sum:", a + b); return a * b;',
+      code: 'return globalThis.process.env',
     });
 
-    expect(result.success).toBe(true);
-    expect(result.output.stdout).toContain('Sum: 30');
-    expect(result.output.returnedValue).toBe(200);
-    expect(result.executionTimeMs).toBeGreaterThanOrEqual(0);
+    expect(result.success).toBe(false);
+    expect(result.output).toBeNull();
   });
 
   it('should execute web search tool and return verified sources', async () => {
@@ -31,8 +29,9 @@ describe('Open API Gateway & MCP Plugin Registry', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.output.query).toBe('Model Context Protocol specification');
-    expect(result.output.sources.length).toBeGreaterThan(0);
+    const output = result.output as { query: string; sources: unknown[] };
+    expect(output.query).toBe('Model Context Protocol specification');
+    expect(output.sources.length).toBeGreaterThan(0);
   });
 
   it('should execute vector semantic search tool via Embeddings v2', async () => {
@@ -42,7 +41,7 @@ describe('Open API Gateway & MCP Plugin Registry', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.output.vectorModel).toContain('3072-dim');
+    expect((result.output as { vectorModel: string }).vectorModel).toContain('3072-dim');
   });
 
   it('should generate 3072-dimensional dense embeddings for OpenAI-compatible route', async () => {

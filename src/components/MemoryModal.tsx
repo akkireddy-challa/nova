@@ -81,7 +81,7 @@ export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDelete
               />
               <select
                 value={category}
-                onChange={e => setCategory(e.target.value as any)}
+                onChange={e => setCategory(e.target.value as KnowledgeMemoryItem['category'])}
                 className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-300 focus:outline-none focus:border-teal-500"
               >
                 <option value="project_context">Project Context</option>

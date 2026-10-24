@@ -26,7 +26,21 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
-import { calculateVarianceDelta, calculateStatistics } from '@/lib/data-science';
+
+function calculateStatistics(values: number[]) {
+  const sum = values.reduce((a, b) => a + b, 0);
+  const mean = values.length > 0 ? sum / values.length : 0;
+  return { sum, mean };
+}
+
+function calculateVarianceDelta(val: number, secondary?: number) {
+  if (secondary === undefined || secondary === null) return { formatted: '—', trend: 'neutral' as const };
+  const delta = val - secondary;
+  const pct = secondary !== 0 ? (delta / secondary) * 100 : 0;
+  const formatted = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
+  const trend = pct > 0 ? ('up' as const) : pct < 0 ? ('down' as const) : ('neutral' as const);
+  return { formatted, trend };
+}
 
 interface Props {
   chart: ChartArtifact;

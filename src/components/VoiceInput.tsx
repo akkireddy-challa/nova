@@ -7,14 +7,33 @@ interface Props {
   onTranscription: (text: string) => void;
 }
 
+// Web Speech API is not in TypeScript's DOM lib yet; declare the subset we use.
+interface SpeechRecognitionLike {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: { results: SpeechRecognitionResultList }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
+interface SpeechWindow {
+  SpeechRecognition?: SpeechRecognitionCtor;
+  webkitSpeechRecognition?: SpeechRecognitionCtor;
+}
+
 export function VoiceInput({ onTranscription }: Props) {
   const [isListening, setIsListening] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const speechWindow = window as unknown as SpeechWindow;
+    const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
 
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
@@ -22,7 +41,7 @@ export function VoiceInput({ onTranscription }: Props) {
       recognition.interimResults = false;
       recognition.lang = 'en-US';
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         if (transcript) {
           onTranscription(transcript);
@@ -30,7 +49,7 @@ export function VoiceInput({ onTranscription }: Props) {
         setIsListening(false);
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = (event) => {
         console.warn('Speech recognition error:', event.error);
         setIsListening(false);
         setErrorMsg('Voice input paused');
