@@ -85,14 +85,6 @@ export function AgentCanvas({
     scrollToBottom();
   }, [messages, isLoading]);
 
-  // Automatically update selected artifact if a new artifact is generated
-  useEffect(() => {
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg?.artifact && lastMsg.role === 'assistant') {
-      setSelectedArtifact(lastMsg.artifact);
-    }
-  }, [messages]);
-
   const handleFileUpload = (files: FileList | null) => {
     if (!files) return;
     Array.from(files).forEach(file => {
@@ -230,7 +222,7 @@ export function AgentCanvas({
 
   return (
     <div 
-      className="flex-1 flex overflow-hidden relative bg-slate-950"
+      className="flex-1 min-h-0 flex overflow-hidden relative bg-slate-950"
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={(e) => {
@@ -240,9 +232,9 @@ export function AgentCanvas({
       }}
     >
       {/* Left Chat Stream Pane */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+      <div className="flex-1 min-h-0 flex flex-col min-w-0 overflow-hidden relative">
         {/* Real-time Multi-Agent Swarm Pipeline Status & Export Action */}
-        <div className="relative">
+        <div className="relative flex-shrink-0">
           <SwarmHUD isExecuting={isLoading} activeMode={currentMode} />
           {messages.length > 0 && (
             <div className="absolute right-3 top-2.5 z-10 hidden sm:block">
@@ -271,7 +263,7 @@ export function AgentCanvas({
         )}
 
         {/* Scrollable messages and artifacts area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 max-w-4xl mx-auto w-full">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 max-w-4xl mx-auto w-full">
           {messages.length === 0 ? (
             /* Simplified, Inspiring Empty State with Community Accelerators */
             <div className="py-10 md:py-14 text-center space-y-7 max-w-3xl mx-auto animate-in fade-in duration-300">
@@ -476,11 +468,11 @@ export function AgentCanvas({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Simplified, Modern Floating Command Dock */}
-        <div className="p-4 max-w-4xl mx-auto w-full">
+        {/* Simplified, Modern Floating Command Dock - Guaranteed pinned at bottom */}
+        <div className="flex-shrink-0 p-3 md:p-4 max-w-4xl mx-auto w-full z-10">
           <div 
             onPaste={handlePaste}
-            className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md p-3 space-y-2.5 transition focus-within:border-teal-500/50 focus-within:shadow-teal-500/5"
+            className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md p-3 space-y-2.5 transition focus-within:border-teal-500/50 focus-within:shadow-teal-500/10"
           >
             {/* Top Row: Engine Selector & Thinking Depth */}
             <div className="flex items-center justify-between text-xs border-b border-slate-800/60 pb-2">
@@ -555,7 +547,7 @@ export function AgentCanvas({
                 onKeyDown={handleKeyDown}
                 placeholder={getPlaceholder(currentMode)}
                 disabled={isLoading}
-                className="w-full bg-transparent px-2 py-1.5 text-xs md:text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+                className="w-full bg-slate-950/70 border border-slate-800 focus:border-teal-500/50 rounded-xl px-3 py-2 text-xs md:text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition"
               />
             </div>
 

@@ -304,7 +304,7 @@ export default function Home() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-teal-500/30 selection:text-teal-200">
+      <div className="h-screen max-h-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-teal-500/30 selection:text-teal-200">
         {/* Top Navigation */}
         <Navbar
           currentMode={currentMode}
@@ -319,7 +319,7 @@ export default function Home() {
         />
 
         {/* Main Workspace Layout */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 min-h-0 flex overflow-hidden">
           <Sidebar
             currentMode={currentMode}
             onSelectMode={setCurrentMode}
