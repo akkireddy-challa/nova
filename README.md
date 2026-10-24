@@ -3,7 +3,6 @@
 You ask a question, Nova searches the web, and the LLM you choose (Gemini, Claude, OpenAI-compatible, or local Ollama) writes a cited answer rendered as interactive visual cards.
 
 ![Nova screenshot](docs/screenshot.png)
-<sub>Placeholder: `docs/screenshot.png` has not been added yet.</sub>
 
 ## Why Nova
 
@@ -42,7 +41,7 @@ docker compose exec ollama ollama pull llama3.2   # any model you like
 
 ## LLM providers
 
-Configure one or more in `.env`. Only configured providers show up in the model picker and in `/api/v1/models`. Model ids use the form `provider:model`, for example `anthropic:claude-sonnet-5-5`.
+Configure one or more in `.env` (or `.env.local`, which takes precedence). Only configured providers show up in the model picker and in `/api/v1/models`. Model ids use the form `provider:model`, for example `anthropic:claude-sonnet-5-5`.
 
 | Provider | Required | Optional |
 |---|---|---|
@@ -109,7 +108,7 @@ The app UI itself uses `POST /api/agent`. See [ARCHITECTURE.md](ARCHITECTURE.md)
 - Better source extraction and citation highlighting
 - Saved and shareable research sessions
 - More search providers
-- Real screenshots and a hosted demo
+- A hosted demo
 
 Have an idea? Open an issue.
 

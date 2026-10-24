@@ -4,13 +4,18 @@ services:
     image: nova:local
     ports:
       - "3000:3000"
-    env_file: .env
+    # Keys can live in .env or .env.local (both optional; .env.local wins).
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.local
+        required: false
     # When using `docker compose --profile local up`, set OLLAMA_BASE_URL=http://ollama:11434 in .env
     # so Nova reaches the bundled Ollama service instead of localhost.
     healthcheck:
       test:
         - CMD
-        - node
+        - /nodejs/bin/node
         - -e
         - "fetch('http://127.0.0.1:3000/api/v1/models').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 30s

@@ -23,6 +23,9 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
+      - name: Audit Dependencies
+        run: bun audit
+
       - name: Lint
         run: bun run lint
 
@@ -31,3 +34,20 @@ jobs:
 
       - name: Build Next.js Production Bundle
         run: bun run build
+
+  image-scan:
+    name: Docker Image Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build Image
+        run: docker build --pull -t nova:ci .
+
+      # Fails on CRITICAL/HIGH vulnerabilities that have a fix available.
+      - name: Scan Image with Trivy
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest \
+            image --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 nova:ci
