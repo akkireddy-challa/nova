@@ -1,21 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ResearchReport } from '@/lib/types';
 import { 
-  FileText, 
   ExternalLink, 
-  ShieldCheck, 
   AlertTriangle, 
   Download, 
   Sparkles, 
   CheckCircle2,
   BookOpen,
-  Volume2,
-  VolumeX,
-  Play,
-  Square,
-  Compass,
   Globe
 } from 'lucide-react';
 import { sound } from '@/lib/sound';

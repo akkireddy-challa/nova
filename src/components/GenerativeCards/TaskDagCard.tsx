@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { GoalPlan, MilestonePhase, TaskSubItem } from '@/lib/types';
+import React, { useState } from 'react';
+import { GoalPlan, MilestonePhase } from '@/lib/types';
 import { 
   CheckCircle2, 
   Circle, 
@@ -10,8 +10,7 @@ import {
   ChevronRight, 
   ChevronDown, 
   Target,
-  Sparkles,
-  Volume2
+  Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sound } from '@/lib/sound';

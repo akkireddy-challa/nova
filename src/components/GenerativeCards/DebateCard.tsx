@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { DebateArtifact } from '@/lib/types';
-import { Users, CheckCircle, AlertTriangle, ShieldCheck, Sparkles, Scale } from 'lucide-react';
-import { sound } from '@/lib/sound';
+import { Users, AlertTriangle, Scale } from 'lucide-react';
 
 interface Props {
   debate: DebateArtifact;

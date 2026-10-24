@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { DecisionMatrix } from '@/lib/types';
-import { Scale, Trophy, Check, X, RefreshCw } from 'lucide-react';
+import { Scale, Trophy, Check, X } from 'lucide-react';
 
 interface Props {
   matrix: DecisionMatrix;

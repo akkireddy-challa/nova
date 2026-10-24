@@ -2,18 +2,13 @@
 
 import React, { useState } from 'react';
 import { 
-  GitBranch, 
   Code2, 
   Layers, 
-  ShieldCheck, 
   Terminal, 
   X,
   BookOpen,
-  Sparkles,
-  Play,
-  Check
+  Play
 } from 'lucide-react';
-import { sound } from '@/lib/sound';
 
 interface Props {
   isOpen: boolean;
