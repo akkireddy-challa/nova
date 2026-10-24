@@ -1,11 +1,30 @@
 import { McpPluginDefinition, McpToolDefinition, McpToolExecutionResult } from './types';
-import { embeddingsV2Store } from './embeddings-v2';
+import { searchMemories, type MemoryInput } from './memory-search';
 import { sanitizeInput } from './sanitizer';
 import { searchWeb, SEARCH_PROVIDER_LABELS } from './research/search';
 
 // Each built-in tool declares its own argument shape, so the registry stores handlers loosely.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ToolHandler = (args: any) => Promise<unknown>;
+
+const MAX_TOOL_MEMORIES = 500;
+
+/** Accept {id?, title, content} objects; anything else is ignored. */
+function parseMemories(value: unknown): MemoryInput[] {
+  if (!Array.isArray(value)) return [];
+  const memories: MemoryInput[] = [];
+  value.slice(0, MAX_TOOL_MEMORIES).forEach((item: unknown, index) => {
+    if (typeof item !== 'object' || item === null) return;
+    const record = item as Record<string, unknown>;
+    if (typeof record.content !== 'string' || !record.content.trim()) return;
+    memories.push({
+      id: typeof record.id === 'string' && record.id ? record.id : `memory-${index + 1}`,
+      title: typeof record.title === 'string' ? record.title : `Memory ${index + 1}`,
+      content: record.content,
+    });
+  });
+  return memories;
+}
 
 class McpRegistry {
   private plugins: Map<string, McpPluginDefinition> = new Map();
@@ -19,8 +38,8 @@ class McpRegistry {
     // 1. Web Search Plugin
     const webSearchPlugin: McpPluginDefinition = {
       id: 'web-search',
-      name: 'Verified Web Crawler & Search',
-      description: 'Ground-truth search across live web sources, technical documentation, and academic repositories.',
+      name: 'Web Search',
+      description: 'Searches the web with Tavily, Brave, or DuckDuckGo (whichever is configured) and returns titles, URLs, and snippets.',
       category: 'search',
       version: '1.2.0',
       author: 'Nova Open Community',
@@ -30,7 +49,7 @@ class McpRegistry {
       tools: [
         {
           name: 'web_search',
-          description: 'Search the live web for verified citations, current benchmarks, and technical documentation.',
+          description: 'Search the web and return result titles, URLs, and snippets.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -43,26 +62,32 @@ class McpRegistry {
       ]
     };
 
-    // 3. Embeddings v2 Vector Store
-    const vectorPlugin: McpPluginDefinition = {
-      id: 'embeddings-v2-vector',
-      name: 'Embeddings v2 Dense Memory',
-      description: '3072-dimensional vector search powered by gemini-embedding-2 with sliding chunk boundary overlap.',
+    // 2. Memory search over the caller's saved memories
+    const memoryPlugin: McpPluginDefinition = {
+      id: 'memory-search',
+      name: 'Memory Search',
+      description:
+        'Search saved memories passed in the request. Uses embeddings when an embeddings provider is configured, otherwise keyword (BM25) scoring.',
       category: 'memory',
-      version: '2.4.0',
-      author: 'Nova Cognitive Lab',
+      version: '3.0.0',
+      author: 'Nova Open Community',
       icon: 'Database',
       enabled: true,
       stats: { totalCalls: 0, avgLatencyMs: 0 },
       tools: [
         {
           name: 'vector_semantic_search',
-          description: 'Query indexed knowledge memories and document chunks by geometric cosine similarity.',
+          description:
+            'Rank the given memories against a query. The result reports the method used ("embeddings" or "keyword") and the embedding model.',
           inputSchema: {
             type: 'object',
             properties: {
-              query: { type: 'string', description: 'Semantic search query string' },
-              topK: { type: 'number', description: 'Number of top similar chunks to return (default 3)' }
+              query: { type: 'string', description: 'Search query' },
+              memories: {
+                type: 'array',
+                description: 'Memories to search: objects with id, title and content. Nova keeps memories in the browser, so callers must send them.',
+              },
+              topK: { type: 'number', description: 'Number of results to return (default 3, max 10)' }
             },
             required: ['query']
           }
@@ -70,33 +95,7 @@ class McpRegistry {
       ]
     };
 
-    // 4. Associative Concept Graph
-    const graphPlugin: McpPluginDefinition = {
-      id: 'concept-graph',
-      name: 'Layer 3 Associative Graph',
-      description: 'Connects entity nodes, project guidelines, and recurring cross-workspace conceptual clusters.',
-      category: 'memory',
-      version: '1.0.0',
-      author: 'Nova Cognitive Lab',
-      icon: 'Network',
-      enabled: true,
-      stats: { totalCalls: 0, avgLatencyMs: 0 },
-      tools: [
-        {
-          name: 'query_associative_graph',
-          description: 'Discover connected topic clusters and cross-references for a specific concept node.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              concept: { type: 'string', description: 'Concept label or entity name to trace in the graph' }
-            },
-            required: ['concept']
-          }
-        }
-      ]
-    };
-
-    // 5. GitHub Repository Inspector
+    // 3. GitHub Repository Inspector
     const githubPlugin: McpPluginDefinition = {
       id: 'github-inspector',
       name: 'GitHub Repository Inspector',
@@ -143,40 +142,17 @@ class McpRegistry {
       }
     });
 
-    this.registerPlugin(vectorPlugin, {
-      vector_semantic_search: async (args: { query: string; topK?: number }) => {
-        const query = args.query || '';
-        const topK = Math.min(args.topK || 3, 10);
-        const results = await embeddingsV2Store.search(query, topK);
+    this.registerPlugin(memoryPlugin, {
+      vector_semantic_search: async (args: { query?: unknown; topK?: unknown; memories?: unknown }) => {
+        const query = typeof args.query === 'string' ? args.query.trim() : '';
+        if (!query) throw new Error('query is required.');
+        const topK = Math.max(1, Math.min(typeof args.topK === 'number' ? args.topK : 3, 10));
+        const memories = parseMemories(args.memories);
+        const result = await searchMemories(query, memories, { topK });
         return {
-          query,
-          matchCount: results.length,
-          topMatches: results.map(r => ({
-            title: r.sourceTitle,
-            text: r.text.slice(0, 160) + (r.text.length > 160 ? '...' : ''),
-            cosineSimilarity: Math.round((r.similarity ?? 0) * 100) / 100,
-            chunkIndex: r.chunkIndex,
-          })),
-          vectorModel: 'gemini-embedding-2 (3072-dim)',
-        };
-      }
-    });
-
-    this.registerPlugin(graphPlugin, {
-      query_associative_graph: async (args: { concept: string }) => {
-        const concept = (args.concept || '').toLowerCase();
-        const nodes = [
-          { id: 'mcp', label: 'Model Context Protocol', category: 'Standard', connections: ['Agent Swarms', 'Tool Registry', 'Open APIs'] },
-          { id: 'embeddings-v2', label: '3072-dim Vector Index', category: 'Memory', connections: ['Sliding Overlap', 'Cosine Ranking', 'Working Buffer'] },
-          { id: 'multi-agent', label: 'Autonomous Swarm Deliberation', category: 'Architecture', connections: ['Lead Strategist', 'Cross-Verifier', 'Executive Synthesizer'] },
-          { id: 'byom', label: 'Bring Your Own Model', category: 'Infrastructure', connections: ['Gemini 3.0', 'Claude 3.7', 'Ollama Local', 'DeepSeek R1'] },
-        ];
-        
-        const matched = nodes.filter(n => n.id.includes(concept) || n.label.toLowerCase().includes(concept) || n.connections.some(c => c.toLowerCase().includes(concept)));
-        return {
-          searchedConcept: args.concept,
-          totalNodesInGraph: nodes.length,
-          matchingClusters: matched,
+          ...result,
+          searchedMemories: memories.length,
+          ...(memories.length === 0 ? { note: 'No memories were provided; pass them in the "memories" argument.' } : {}),
         };
       }
     });

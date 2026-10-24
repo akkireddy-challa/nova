@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { KnowledgeMemoryItem } from '@/lib/types';
-import { Brain, X, Plus, Trash2, Check, Sparkles } from 'lucide-react';
+import { Brain, X, Plus, Trash2, HardDrive } from 'lucide-react';
 import { generateId } from '@/lib/utils';
 
 interface Props {
@@ -47,10 +47,10 @@ export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDelete
             </div>
             <div>
               <h3 className="font-semibold text-slate-100 text-sm">
-                Personal Knowledge & Context Memory
+                Saved Memories
               </h3>
               <p className="text-xs text-slate-400">
-                Local-first contextual knowledge automatically injected into agent reasoning
+                Saved in this browser and sent as context with each question to the model you choose
               </p>
             </div>
           </div>
@@ -113,7 +113,7 @@ export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDelete
           {/* List of saved memory */}
           <div>
             <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">
-              Active Knowledge Memory ({memoryItems.length})
+              Saved Memories ({memoryItems.length})
             </h4>
 
             {memoryItems.length === 0 ? (
@@ -157,9 +157,9 @@ export function MemoryModal({ isOpen, onClose, memoryItems, onSaveItem, onDelete
 
         {/* Footer */}
         <div className="px-6 py-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between text-xs text-slate-400">
-          <span className="flex items-center gap-1.5 text-teal-400">
-            <Sparkles className="w-3.5 h-3.5" />
-            100% On-Device & Private
+          <span className="flex items-center gap-1.5 text-slate-400">
+            <HardDrive className="w-3.5 h-3.5" />
+            Stored in this browser (localStorage)
           </span>
           <button
             onClick={onClose}

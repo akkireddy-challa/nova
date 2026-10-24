@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import {
   ModelSelectionError,
+  NoEmbeddingProviderError,
   NoProviderConfiguredError,
   ProviderError,
   getConfiguredProviders,
@@ -9,6 +10,8 @@ import {
   parseModelId,
   resetProviderCaches,
   resolveModel,
+  embedTexts,
+  listEmbeddingProviders,
 } from '../src/lib/providers';
 import { pickFlashModel } from '../src/lib/providers/gemini';
 
@@ -31,6 +34,9 @@ const ENV_KEYS = [
   'OPENAI_MODEL',
   'OLLAMA_BASE_URL',
   'OLLAMA_MODEL',
+  'GEMINI_EMBEDDING_MODEL',
+  'OPENAI_EMBEDDING_MODEL',
+  'OLLAMA_EMBEDDING_MODEL',
 ] as const;
 
 const OLLAMA_URL = 'http://ollama.test:11434';
@@ -213,6 +219,9 @@ describe('Gemini provider', () => {
           { name: 'models/gemini-2.5-pro', supportedGenerationMethods: ['generateContent'] },
           { name: 'models/gemini-2.5-flash-lite', supportedGenerationMethods: ['generateContent'] },
           { name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent', 'countTokens'] },
+          { name: 'models/gemini-2.5-flash-preview-tts', supportedGenerationMethods: ['generateContent'] },
+          { name: 'models/gemini-3.1-flash-image', supportedGenerationMethods: ['generateContent'] },
+          { name: 'models/lyria-3.5', supportedGenerationMethods: ['generateContent'] },
         ],
       }),
     );
@@ -681,5 +690,133 @@ describe('POST /api/v1/chat/completions', () => {
     process.env.OPENAI_API_KEY = OPENAI_KEY;
     const res = await post({ model: 'anthropic:claude-sonnet-5-5', messages: [{ role: 'user', content: 'hi' }] });
     expect(res.status).toBe(400);
+  });
+});
+
+describe('embeddings', () => {
+  it('Gemini embeds one text with embedContent, key in header only, no invented usage', async () => {
+    process.env.GEMINI_API_KEY = GEMINI_KEY;
+    mockFetch(() => json({ embedding: { values: [0.1, 0.2, 0.3] } }));
+    const result = await getProvider('gemini').embed!({ texts: ['hello'] });
+    expect(result).toEqual({ vectors: [[0.1, 0.2, 0.3]], model: 'gemini-embedding-001' });
+    expect(calls[0].url).toBe('https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent');
+    expect(calls[0].url).not.toContain(GEMINI_KEY);
+    expect(calls[0].url).not.toContain('key=');
+    expect(calls[0].headers.get('x-goog-api-key')).toBe(GEMINI_KEY);
+    expect(bodyOf(calls[0])).toEqual({ content: { parts: [{ text: 'hello' }] } });
+  });
+
+  it('Gemini batches many texts with batchEmbedContents and honours GEMINI_EMBEDDING_MODEL', async () => {
+    process.env.GEMINI_API_KEY = GEMINI_KEY;
+    process.env.GEMINI_EMBEDDING_MODEL = 'models/text-embedding-004';
+    mockFetch(() => json({ embeddings: [{ values: [1, 0] }, { values: [0, 1] }] }));
+    const result = await getProvider('gemini').embed!({ texts: ['a', 'b'] });
+    expect(result.vectors).toEqual([[1, 0], [0, 1]]);
+    expect(calls[0].url).toEndWith('/models/text-embedding-004:batchEmbedContents');
+    expect(calls[0].url).not.toContain(GEMINI_KEY);
+    expect(bodyOf(calls[0])).toEqual({
+      requests: [
+        { model: 'models/text-embedding-004', content: { parts: [{ text: 'a' }] } },
+        { model: 'models/text-embedding-004', content: { parts: [{ text: 'b' }] } },
+      ],
+    });
+  });
+
+  it('rejects malformed embedding responses instead of inventing vectors', async () => {
+    process.env.GEMINI_API_KEY = GEMINI_KEY;
+    mockFetch(() => json({ embeddings: [{ values: [1, 0] }] }));
+    const err = await expectProviderError(getProvider('gemini').embed!({ texts: ['a', 'b'] }));
+    expect(err.status).toBe(502);
+  });
+
+  it('OpenAI posts to /embeddings with a bearer token, orders by index and reports real usage', async () => {
+    process.env.OPENAI_API_KEY = OPENAI_KEY;
+    process.env.OPENAI_BASE_URL = 'https://openrouter.test/api/v1/';
+    mockFetch(() =>
+      json({
+        model: 'text-embedding-3-small',
+        data: [
+          { object: 'embedding', index: 1, embedding: [0, 1] },
+          { object: 'embedding', index: 0, embedding: [1, 0] },
+        ],
+        usage: { prompt_tokens: 7, total_tokens: 7 },
+      }),
+    );
+    const result = await getProvider('openai').embed!({ texts: ['a', 'b'] });
+    expect(result).toEqual({ vectors: [[1, 0], [0, 1]], model: 'text-embedding-3-small', usage: { inputTokens: 7 } });
+    expect(calls[0].url).toBe('https://openrouter.test/api/v1/embeddings');
+    expect(calls[0].url).not.toContain(OPENAI_KEY);
+    expect(calls[0].headers.get('authorization')).toBe(`Bearer ${OPENAI_KEY}`);
+    expect(bodyOf(calls[0])).toEqual({ model: 'text-embedding-3-small', input: ['a', 'b'] });
+  });
+
+  it('OpenAI omits usage when it is not reported and redacts errors', async () => {
+    process.env.OPENAI_API_KEY = OPENAI_KEY;
+    process.env.OPENAI_EMBEDDING_MODEL = 'text-embedding-3-large';
+    mockFetch(() => json({ data: [{ index: 0, embedding: [0.5] }] }));
+    const result = await getProvider('openai').embed!({ texts: ['a'] });
+    expect(result.usage).toBeUndefined();
+    expect(bodyOf(calls[0]).model).toBe('text-embedding-3-large');
+
+    mockFetch(() => json({ error: { message: `Incorrect API key provided: ${OPENAI_KEY}` } }, 401));
+    const err = await expectProviderError(getProvider('openai').embed!({ texts: ['a'] }));
+    expect(err.message).not.toContain(OPENAI_KEY);
+    expect(err.status).toBe(401);
+  });
+
+  it('Ollama posts to /api/embed using an installed embedding model', async () => {
+    mockFetch(call => {
+      if (call.url === `${OLLAMA_URL}/api/tags`) {
+        return json({ models: [{ name: 'llama3.2:3b' }, { name: 'nomic-embed-text:latest' }] });
+      }
+      return json({ model: 'nomic-embed-text:latest', embeddings: [[0.1, 0.2]], prompt_eval_count: 3 });
+    });
+    const ollama = getProvider('ollama');
+    expect(await ollama.defaultEmbeddingModel!()).toBe('nomic-embed-text:latest');
+    const result = await ollama.embed!({ texts: ['hi'] });
+    expect(result).toEqual({ vectors: [[0.1, 0.2]], model: 'nomic-embed-text:latest', usage: { inputTokens: 3 } });
+    const call = calls.find(c => c.url === `${OLLAMA_URL}/api/embed`);
+    expect(call).toBeDefined();
+    expect(bodyOf(call!)).toEqual({ model: 'nomic-embed-text:latest', input: ['hi'] });
+  });
+
+  it('Ollama has no embedding model unless one is installed or configured', async () => {
+    mockFetch(call => (call.url === `${OLLAMA_URL}/api/tags` ? json({ models: [{ name: 'llama3.2:3b' }] }) : unreachable()));
+    expect(await getProvider('ollama').defaultEmbeddingModel!()).toBeNull();
+    expect(await listEmbeddingProviders()).toEqual([]);
+    process.env.OLLAMA_EMBEDDING_MODEL = 'mxbai-embed-large';
+    resetProviderCaches();
+    expect((await listEmbeddingProviders()).map(info => info.id)).toEqual(['ollama:mxbai-embed-large']);
+  });
+
+  it('Anthropic has no embeddings API', () => {
+    expect(getProvider('anthropic').embed).toBeUndefined();
+  });
+
+  it('lists embedding providers in order and skips Anthropic', async () => {
+    process.env.ANTHROPIC_API_KEY = ANTHROPIC_KEY;
+    process.env.GEMINI_API_KEY = GEMINI_KEY;
+    process.env.OPENAI_API_KEY = OPENAI_KEY;
+    expect((await listEmbeddingProviders()).map(info => info.id)).toEqual([
+      'openai:text-embedding-3-small',
+      'gemini:gemini-embedding-001',
+    ]);
+  });
+
+  it('embedTexts throws NoEmbeddingProviderError when only Anthropic is configured', async () => {
+    process.env.ANTHROPIC_API_KEY = ANTHROPIC_KEY;
+    await expect(embedTexts(['x'])).rejects.toBeInstanceOf(NoEmbeddingProviderError);
+    await expect(embedTexts(['x'], 'anthropic:claude-sonnet-5-5')).rejects.toBeInstanceOf(ModelSelectionError);
+  });
+
+  it('embedTexts routes provider:model ids and returns the provider:model id used', async () => {
+    process.env.GEMINI_API_KEY = GEMINI_KEY;
+    process.env.OPENAI_API_KEY = OPENAI_KEY;
+    mockFetch(() => json({ embedding: { values: [1, 2] } }));
+    const result = await embedTexts(['x'], 'gemini:text-embedding-004');
+    expect(result.id).toBe('gemini:text-embedding-004');
+    expect(result.provider).toBe('gemini');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toContain('/models/text-embedding-004:embedContent');
   });
 });

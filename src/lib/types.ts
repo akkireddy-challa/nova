@@ -224,21 +224,6 @@ export interface UserSettings {
   defaultThinkingBudget: ThinkingBudget;
 }
 
-export interface SwarmAgentState {
-  id: string;
-  name: string;
-  role: string;
-  color: string;
-  status: 'idle' | 'thinking' | 'active' | 'done';
-  currentAction?: string;
-  toolInvocations?: {
-    tool: string;
-    params: unknown;
-    result?: string;
-    latencyMs?: number;
-  }[];
-}
-
 export interface McpToolDefinition {
   name: string;
   description: string;

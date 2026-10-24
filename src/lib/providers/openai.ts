@@ -1,5 +1,6 @@
 import {
   ProviderError,
+  type EmbedResult,
   type LLMImage,
   type LLMMessage,
   type LLMProvider,
@@ -138,6 +139,38 @@ export function elapsedSince(start: number): number {
   return Math.round(performance.now() - start);
 }
 
+function isVector(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(item => typeof item === 'number' && Number.isFinite(item))
+  );
+}
+
+/** Check that an embeddings response holds exactly `count` numeric vectors of one dimension. */
+export function checkVectors(
+  provider: ProviderId,
+  label: string,
+  vectors: unknown[],
+  count: number,
+): number[][] {
+  if (vectors.length !== count || !vectors.every(isVector)) {
+    throw new ProviderError(`${label} returned an invalid embeddings response`, provider, 502);
+  }
+  const dims = vectors[0]?.length;
+  if (vectors.some(vector => vector.length !== dims)) {
+    throw new ProviderError(`${label} returned embeddings of mixed dimensions`, provider, 502);
+  }
+  return vectors;
+}
+
+/** Split `items` into consecutive batches of at most `size`. */
+export function batches<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // OpenAI-compatible provider
 // ---------------------------------------------------------------------------
@@ -145,6 +178,8 @@ export function elapsedSince(start: number): number {
 const ID: ProviderId = 'openai';
 const LABEL = 'OpenAI';
 const FALLBACK_MODEL = 'gpt-4o-mini';
+const FALLBACK_EMBEDDING_MODEL = 'text-embedding-3-small';
+const EMBED_BATCH = 256;
 
 /** Model ids that exist on /models but cannot be used with /chat/completions. */
 const NON_CHAT_MODEL = /(embed|whisper|tts|dall-e|moderation|davinci|babbage|transcribe|realtime|audio|image|sora|computer-use)/i;
@@ -180,6 +215,12 @@ interface OpenAIChatResponse {
   model?: string;
   choices?: Array<{ message?: { content?: string | null } }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
+}
+
+interface OpenAIEmbeddingResponse {
+  model?: string;
+  data?: Array<{ embedding?: unknown; index?: number }>;
+  usage?: { prompt_tokens?: number };
 }
 
 interface OpenAIStreamChunk {
@@ -340,5 +381,41 @@ export const openaiProvider: LLMProvider = {
     } catch (err) {
       throw errorFromException(ID, LABEL, err, request.signal);
     }
+  },
+
+  async defaultEmbeddingModel() {
+    if (!apiKey()) return null;
+    return process.env.OPENAI_EMBEDDING_MODEL?.trim() || FALLBACK_EMBEDDING_MODEL;
+  },
+
+  async embed({ model, texts, signal }): Promise<EmbedResult> {
+    const key = requireKey();
+    const embeddingModel = model?.trim() || process.env.OPENAI_EMBEDDING_MODEL?.trim() || FALLBACK_EMBEDDING_MODEL;
+    const vectors: number[][] = [];
+    let inputTokens: number | undefined = 0;
+    let reportedModel = embeddingModel;
+    for (const batch of batches(texts, EMBED_BATCH)) {
+      let data: OpenAIEmbeddingResponse;
+      try {
+        const res = await fetch(`${baseUrl()}/embeddings`, {
+          method: 'POST',
+          headers: headers(key),
+          body: JSON.stringify({ model: embeddingModel, input: batch }),
+          signal: withTimeout(signal),
+        });
+        if (!res.ok) throw await errorFromResponse(ID, LABEL, res, [key]);
+        data = (await res.json()) as OpenAIEmbeddingResponse;
+      } catch (err) {
+        throw errorFromException(ID, LABEL, err, signal);
+      }
+      const items = [...(data.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+      vectors.push(...checkVectors(ID, LABEL, items.map(item => item.embedding), batch.length));
+      if (data.model) reportedModel = data.model;
+      const tokens = data.usage?.prompt_tokens;
+      inputTokens = typeof tokens === 'number' && inputTokens !== undefined ? inputTokens + tokens : undefined;
+    }
+    const result: EmbedResult = { vectors, model: reportedModel };
+    if (inputTokens !== undefined && texts.length > 0) result.usage = { inputTokens };
+    return result;
   },
 };

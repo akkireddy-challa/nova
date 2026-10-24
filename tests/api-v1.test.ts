@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import { mcpRegistry } from '../src/lib/mcp-registry';
-import { generateEmbeddingV2 } from '../src/lib/embeddings-v2';
 
 describe('Open API Gateway & MCP Plugin Registry', () => {
   it('should list registered MCP plugins with valid schemas', () => {
     const plugins = mcpRegistry.getAllPlugins();
-    expect(plugins.length).toBeGreaterThanOrEqual(4);
+    expect(plugins.length).toBeGreaterThanOrEqual(3);
 
     const searchPlugin = plugins.find(p => p.id === 'web-search');
     expect(searchPlugin).toBeDefined();
@@ -120,28 +119,57 @@ describe('Open API Gateway & MCP Plugin Registry', () => {
     for (const plugin of mcpRegistry.getAllPlugins().filter(p => !p.isCustom)) {
       expect(plugin.stats?.totalCalls ?? 0).toBeGreaterThanOrEqual(0);
     }
-    expect(mcpRegistry.getPlugin('concept-graph')?.stats?.totalCalls).toBe(0);
+    expect(mcpRegistry.getPlugin('memory-search')?.stats?.totalCalls).toBe(0);
   });
 
-  it('should execute vector semantic search tool via Embeddings v2', async () => {
-    const result = await mcpRegistry.executeTool('vector_semantic_search', {
-      query: 'autonomous swarms',
-      topK: 2,
+  it('does not register the removed hardcoded concept graph', () => {
+    expect(mcpRegistry.getPlugin('concept-graph')).toBeUndefined();
+    expect(mcpRegistry.getAvailableTools().map(t => t.name)).not.toContain('query_associative_graph');
+    for (const plugin of mcpRegistry.getAllPlugins()) {
+      expect(`${plugin.description} ${plugin.author}`).not.toMatch(/3072|Cognitive Lab/);
+    }
+  });
+
+  it('should search the memories it is given and report the method used', async () => {
+    const saved = { openai: process.env.OPENAI_API_KEY, gemini: process.env.GEMINI_API_KEY, google: process.env.GOOGLE_API_KEY, ollama: process.env.OLLAMA_BASE_URL };
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GOOGLE_API_KEY;
+    process.env.OLLAMA_BASE_URL = 'http://ollama.invalid:11434';
+    mockFetch(() => {
+      throw new TypeError('fetch failed');
     });
+    try {
+      const result = await mcpRegistry.executeTool('vector_semantic_search', {
+        query: 'deployment checklist',
+        topK: 2,
+        memories: [
+          { id: 'a', title: 'Deployment', content: 'Run the checklist before every deployment.' },
+          { id: 'b', title: 'Lunch', content: 'Sandwiches on Fridays.' },
+          'not a memory',
+        ],
+      });
+      expect(result.success).toBe(true);
+      const output = result.output as { method: string; searchedMemories: number; results: Array<{ memoryId: string }> };
+      expect(output.method).toBe('keyword');
+      expect(output.searchedMemories).toBe(2);
+      expect(output.results.map(r => r.memoryId)).toEqual(['a']);
 
-    expect(result.success).toBe(true);
-    expect((result.output as { vectorModel: string }).vectorModel).toContain('3072-dim');
-  });
-
-  it('should generate 3072-dimensional dense embeddings for OpenAI-compatible route', async () => {
-    const vector = await generateEmbeddingV2('Open developer API testing');
-    expect(Array.isArray(vector)).toBe(true);
-    expect(vector.length).toBeGreaterThanOrEqual(128); // 3072 live or 128 fallback
-    
-    // Check vector is normalized
-    let norm = 0;
-    for (const v of vector) norm += v * v;
-    expect(Math.sqrt(norm)).toBeGreaterThan(0);
+      const empty = await mcpRegistry.executeTool('vector_semantic_search', { query: 'anything' });
+      expect(empty.success).toBe(true);
+      expect((empty.output as { results: unknown[]; note?: string }).results).toEqual([]);
+      expect((empty.output as { note?: string }).note).toContain('memories');
+    } finally {
+      for (const [key, value] of [
+        ['OPENAI_API_KEY', saved.openai],
+        ['GEMINI_API_KEY', saved.gemini],
+        ['GOOGLE_API_KEY', saved.google],
+        ['OLLAMA_BASE_URL', saved.ollama],
+      ] as const) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
   });
 
   it('should support enabling and disabling plugins gracefully', () => {

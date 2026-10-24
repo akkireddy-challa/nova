@@ -3,8 +3,10 @@ import { geminiProvider, resetGeminiCache } from './gemini';
 import { ollamaProvider, resetOllamaCache } from './ollama';
 import { openaiProvider } from './openai';
 import {
+  NoEmbeddingProviderError,
   NoProviderConfiguredError,
   type AvailableModel,
+  type EmbedResult,
   type LLMProvider,
   type LLMRequest,
   type LLMResult,
@@ -154,6 +156,79 @@ export async function* streamText(
   }
   const result = await provider.generate(full);
   if (result.text) yield result.text;
+}
+
+// ---------------------------------------------------------------------------
+// Embeddings
+// ---------------------------------------------------------------------------
+
+/** A configured provider that can embed text, with the embedding model it uses by default. */
+export interface EmbeddingProviderInfo extends ModelSelection {
+  /** "provider:model", e.g. "openai:text-embedding-3-small". */
+  id: string;
+  providerLabel: string;
+}
+
+export interface EmbedTextsResult extends EmbedResult {
+  provider: ProviderId;
+  /** "provider:model" of the model that produced the vectors. */
+  id: string;
+}
+
+/** Configured providers with an embeddings API and a usable default embedding model, in provider order. */
+export async function listEmbeddingProviders(): Promise<EmbeddingProviderInfo[]> {
+  const providers = (await getConfiguredProviders()).filter(provider => provider.embed);
+  const models = await Promise.all(
+    providers.map(provider => provider.defaultEmbeddingModel?.().catch(() => null) ?? Promise.resolve(null)),
+  );
+  const result: EmbeddingProviderInfo[] = [];
+  providers.forEach((provider, index) => {
+    const model = models[index];
+    if (!model) return;
+    result.push({ id: toModelId({ provider: provider.id, model }), provider: provider.id, model, providerLabel: provider.label });
+  });
+  return result;
+}
+
+/**
+ * Pick the embedding model for a request. Accepts "provider:model", a bare model name (sent to the
+ * provider whose default it is, else the first embedding provider), or nothing (first default).
+ */
+export async function resolveEmbeddingModel(id?: string): Promise<ModelSelection> {
+  const requested = id?.trim();
+  if (requested) {
+    const parsed = parseModelId(requested);
+    if (parsed) {
+      const provider = getProvider(parsed.provider);
+      if (!provider.embed) {
+        throw new ModelSelectionError(`${provider.label} does not offer an embeddings API`);
+      }
+      if (!(await provider.isConfigured().catch(() => false))) {
+        throw new ModelSelectionError(`Provider "${parsed.provider}" is not configured`);
+      }
+      return parsed;
+    }
+    const available = await listEmbeddingProviders();
+    if (available.length === 0) throw new NoEmbeddingProviderError();
+    const match = available.find(info => info.model === requested) ?? available[0];
+    return { provider: match.provider, model: requested };
+  }
+  const available = await listEmbeddingProviders();
+  if (available.length === 0) throw new NoEmbeddingProviderError();
+  return { provider: available[0].provider, model: available[0].model };
+}
+
+/** Embed texts with the chosen (or default) embedding model. Throws NoEmbeddingProviderError when none exists. */
+export async function embedTexts(
+  texts: string[],
+  modelId?: string,
+  signal?: AbortSignal,
+): Promise<EmbedTextsResult> {
+  const selection = await resolveEmbeddingModel(modelId);
+  const provider = getProvider(selection.provider);
+  if (!provider.embed) throw new NoEmbeddingProviderError();
+  const result = await provider.embed({ model: selection.model, texts, signal });
+  return { ...result, provider: provider.id, id: toModelId({ provider: provider.id, model: result.model }) };
 }
 
 /** Clear cached model lists / reachability probes (used by tests). */

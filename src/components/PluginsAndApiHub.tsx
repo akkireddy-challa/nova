@@ -14,17 +14,22 @@ import {
   Code2, 
   Cpu, 
   Plus, 
-  ExternalLink,
   Sparkles,
-  Zap,
-  Activity,
-  ShieldCheck,
-  Server,
-  Layers
+  Zap
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
-import { McpPluginDefinition, McpToolDefinition, McpToolExecutionResult } from '@/lib/types';
+import { KnowledgeMemoryItem, McpPluginDefinition, McpToolDefinition, McpToolExecutionResult } from '@/lib/types';
 import { useModels } from '@/lib/client/models';
+
+/** Saved memories live in this browser (see src/app/page.tsx); tools that search them need them sent along. */
+function readSavedMemories(): KnowledgeMemoryItem[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem('nova_memory') || '[]');
+    return Array.isArray(parsed) ? (parsed as KnowledgeMemoryItem[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 type ApiEndpoint = '/api/v1/chat/completions' | '/api/v1/embeddings' | '/api/v1/models' | '/api/v1/tools';
 
@@ -38,7 +43,6 @@ export function PluginsAndApiHub() {
   const [toolInputs, setToolInputs] = useState<Record<string, Record<string, string>>>({
     web_search: { query: 'Model Context Protocol 2026 adoption' },
     vector_semantic_search: { query: 'project preferences' },
-    query_associative_graph: { concept: 'mcp' },
     inspect_github_repo: { repo: 'facebook/react' }
   });
   const [executionResults, setExecutionResults] = useState<Record<string, McpToolExecutionResult | null>>({});
@@ -109,7 +113,17 @@ export function PluginsAndApiHub() {
   const handleExecuteTool = async (tool: McpToolDefinition) => {
     sound.tap();
     setExecutingTool(tool.name);
-    const args = toolInputs[tool.name] || {};
+    const inputs = toolInputs[tool.name] || {};
+    const args: Record<string, unknown> = {};
+    for (const [param, schema] of Object.entries(tool.inputSchema.properties)) {
+      const value = inputs[param];
+      if (param === 'memories' && schema.type === 'array') {
+        args.memories = readSavedMemories();
+      } else if (value !== undefined && value !== '') {
+        const num = Number(value);
+        args[param] = schema.type === 'number' && Number.isFinite(num) ? num : value;
+      }
+    }
 
     try {
       const res = await fetch('/api/v1/tools', {
@@ -154,10 +168,8 @@ export function PluginsAndApiHub() {
           temperature: 0.7,
         });
       } else if (apiEndpoint === '/api/v1/embeddings') {
-        body = JSON.stringify({
-          input: apiPrompt,
-          model: 'gemini-embedding-2'
-        });
+        // No model: the server uses the first configured embeddings provider's default model.
+        body = JSON.stringify({ input: apiPrompt });
       } else if (apiEndpoint === '/api/v1/models') {
         method = 'GET';
       } else if (apiEndpoint === '/api/v1/tools') {
@@ -214,9 +226,10 @@ response = client.chat.completions.create(
 )
 print(response.choices[0].message.content)
 
-# 2. Embeddings
+# 2. Embeddings (needs Gemini, OpenAI, or an Ollama embedding model; 503 otherwise).
+# model "" = server default, or a "provider:model" id such as "gemini:gemini-embedding-001".
 embedding_resp = client.embeddings.create(
-    model="gemini-embedding-2",
+    model="",
     input="Hello from Nova"
 )
 print("Vector length:", len(embedding_resp.data[0].embedding))`;
@@ -362,7 +375,7 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
             }`}
           >
             <Puzzle className="w-4 h-4" />
-            MCP Plugins ({plugins.length})
+            MCP Plugins ({loadingPlugins ? '...' : plugins.length})
           </button>
           <button
             onClick={() => { sound.tap(); setActiveTab('api'); }}
@@ -483,7 +496,11 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                                     <label className="text-[10px] font-mono text-slate-400">
                                       {paramName} <span className="text-slate-500">({paramSchema.type})</span>
                                     </label>
-                                    {paramName === 'code' ? (
+                                    {paramName === 'memories' && paramSchema.type === 'array' ? (
+                                      <span className="text-[11px] text-slate-500">
+                                        Sends the memories saved in this browser.
+                                      </span>
+                                    ) : paramName === 'code' ? (
                                       <textarea
                                         rows={3}
                                         value={toolInputs[tool.name]?.[paramName] || ''}

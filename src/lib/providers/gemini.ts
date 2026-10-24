@@ -1,16 +1,24 @@
 import {
+  batches,
+  checkVectors,
   elapsedSince,
   errorFromException,
   errorFromResponse,
   withTimeout,
 } from './openai';
-import { ProviderError, type LLMProvider, type LLMRequest, type LLMResult, type ProviderId } from './types';
+import { ProviderError, type EmbedResult, type LLMProvider, type LLMRequest, type LLMResult, type ProviderId } from './types';
 
 const ID: ProviderId = 'gemini';
 const LABEL = 'Gemini';
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const FALLBACK_MODEL = 'gemini-2.5-flash';
 const LIST_CACHE_MS = 5 * 60_000;
+const FALLBACK_EMBEDDING_MODEL = 'gemini-embedding-001';
+// Models that accept generateContent but are not text chat models (speech, images, music, robotics...).
+const NON_CHAT_MODEL = /(tts|image|banana|lyria|transcribe|robotics|computer-use|embedding|aqa|live|audio)/i;
+
+/** batchEmbedContents accepts at most 100 requests per call. */
+const EMBED_BATCH = 100;
 
 type GeminiPart =
   | { text: string; thought?: boolean }
@@ -33,6 +41,11 @@ interface GeminiResponse {
     thoughtsTokenCount?: number;
   };
   modelVersion?: string;
+}
+
+interface GeminiEmbedResponse {
+  embedding?: { values?: unknown };
+  embeddings?: Array<{ values?: unknown }>;
 }
 
 interface GeminiModelList {
@@ -117,7 +130,11 @@ export const geminiProvider: LLMProvider = {
         if (!res.ok) throw await errorFromResponse(ID, LABEL, res, [key]);
         const data = (await res.json()) as GeminiModelList;
         for (const model of data.models ?? []) {
-          if (model.name && model.supportedGenerationMethods?.includes('generateContent')) {
+          if (
+            model.name &&
+            model.supportedGenerationMethods?.includes('generateContent') &&
+            !NON_CHAT_MODEL.test(model.name)
+          ) {
             models.push(stripPrefix(model.name));
           }
         }
@@ -194,5 +211,47 @@ export const geminiProvider: LLMProvider = {
       };
     }
     return result;
+  },
+
+  async defaultEmbeddingModel() {
+    if (!apiKey()) return null;
+    return stripPrefix(process.env.GEMINI_EMBEDDING_MODEL?.trim() || FALLBACK_EMBEDDING_MODEL);
+  },
+
+  async embed({ model, texts, signal }): Promise<EmbedResult> {
+    const key = requireKey();
+    const embeddingModel = stripPrefix(
+      model?.trim() || process.env.GEMINI_EMBEDDING_MODEL?.trim() || FALLBACK_EMBEDDING_MODEL,
+    );
+    const path = `${BASE_URL}/models/${encodeURIComponent(embeddingModel)}`;
+    const vectors: number[][] = [];
+    for (const batch of batches(texts, EMBED_BATCH)) {
+      const single = batch.length === 1;
+      const body = single
+        ? { content: { parts: [{ text: batch[0] }] } }
+        : {
+            requests: batch.map(text => ({
+              model: `models/${embeddingModel}`,
+              content: { parts: [{ text }] },
+            })),
+          };
+      let data: GeminiEmbedResponse;
+      try {
+        const res = await fetch(`${path}:${single ? 'embedContent' : 'batchEmbedContents'}`, {
+          method: 'POST',
+          headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: withTimeout(signal),
+        });
+        if (!res.ok) throw await errorFromResponse(ID, LABEL, res, [key]);
+        data = (await res.json()) as GeminiEmbedResponse;
+      } catch (err) {
+        throw errorFromException(ID, LABEL, err, signal);
+      }
+      const values = single ? [data.embedding?.values] : (data.embeddings ?? []).map(item => item.values);
+      vectors.push(...checkVectors(ID, LABEL, values, batch.length));
+    }
+    // The Gemini embeddings API does not report token usage.
+    return { vectors, model: embeddingModel };
   },
 };
