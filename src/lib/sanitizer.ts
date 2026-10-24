@@ -51,6 +51,10 @@ export function sanitizeUserInput(input: string, maxLength: number = 8000): Sani
   };
 }
 
+export function sanitizeInput(input: string, maxLength: number = 8000): string {
+  return sanitizeUserInput(input, maxLength).text;
+}
+
 export function validateAttachmentSize(bytes: number, maxBytes: number = 5 * 1024 * 1024): boolean {
   return bytes > 0 && bytes <= maxBytes;
 }

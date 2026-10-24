@@ -17,7 +17,8 @@ import {
   VolumeX,
   Command,
   ChevronDown,
-  Users
+  Users,
+  Puzzle
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 
@@ -54,6 +55,7 @@ export function Navbar({
     { id: 'canvas', label: 'Visuals', icon: <BarChart2 className="w-3.5 h-3.5" />, desc: 'Interactive charts & telemetry' },
     { id: 'matrix', label: 'Decision Matrix', icon: <Scale className="w-3.5 h-3.5" />, desc: 'Multi-criteria dynamic scoring' },
     { id: 'intelligence', label: 'Embeddings v2', icon: <Brain className="w-3.5 h-3.5" />, desc: '3072-dim layered memory' },
+    { id: 'mcp', label: 'Plugins & APIs', icon: <Puzzle className="w-3.5 h-3.5" />, desc: 'MCP tools & OpenAI Gateway' },
     { id: 'coder', label: 'Synthesizer', icon: <Code2 className="w-3.5 h-3.5" />, desc: 'Modular architecture & preview' },
   ];
 

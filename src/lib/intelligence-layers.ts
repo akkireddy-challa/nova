@@ -58,7 +58,7 @@ export class CognitiveIntelligenceStack {
   }
 
   // Layer 3: Associative Knowledge Graph
-  public getKnowledgeGraphLayer(memories: KnowledgeMemoryItem[]): IntelligenceLayerStatus {
+  public getKnowledgeGraphLayer(memories: KnowledgeMemoryItem[] = []): IntelligenceLayerStatus {
     const categories = new Set(memories.map(m => m.category));
     return {
       layerNumber: 3,

@@ -103,6 +103,19 @@ class SoundEngine {
       osc.stop(ctx.currentTime + 0.05);
     } catch {}
   }
+
+  // Convenient aliases
+  public tap() {
+    this.playCheck();
+  }
+
+  public success() {
+    this.playSuccess();
+  }
+
+  public completion() {
+    this.playSuccess();
+  }
 }
 
 export const sound = new SoundEngine();

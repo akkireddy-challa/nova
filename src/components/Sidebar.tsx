@@ -16,6 +16,7 @@ import {
   GitBranch,
   Trash2,
   Brain,
+  Puzzle,
   Settings as SettingsIcon
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
@@ -50,6 +51,7 @@ export function Sidebar({
     { id: 'canvas', label: 'Generative Visuals', icon: <BarChart2 className="w-4 h-4" /> },
     { id: 'matrix', label: 'Decision Matrix', icon: <Scale className="w-4 h-4" /> },
     { id: 'intelligence', label: 'Embeddings v2', icon: <Brain className="w-4 h-4" /> },
+    { id: 'mcp', label: 'Plugins & APIs', icon: <Puzzle className="w-4 h-4" /> },
     { id: 'coder', label: 'Synthesizer', icon: <Code2 className="w-4 h-4" /> },
   ];
 

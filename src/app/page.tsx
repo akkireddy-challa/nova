@@ -10,6 +10,7 @@ import { McpInspector } from '@/components/McpInspector';
 import { DevHubModal } from '@/components/DevHubModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { IntelligenceCanvas } from '@/components/IntelligenceCanvas';
+import { PluginsAndApiHub } from '@/components/PluginsAndApiHub';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { 
   StudioMode, 
@@ -332,6 +333,8 @@ export default function Home() {
 
           {currentMode === 'intelligence' ? (
             <IntelligenceCanvas memoryItems={memoryItems} />
+          ) : currentMode === 'mcp' ? (
+            <PluginsAndApiHub />
           ) : (
             <AgentCanvas
               messages={currentMessages}

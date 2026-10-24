@@ -228,4 +228,47 @@ export interface SwarmAgentState {
   color: string;
   status: 'idle' | 'thinking' | 'active' | 'done';
   currentAction?: string;
+  toolInvocations?: {
+    tool: string;
+    params: any;
+    result?: string;
+    latencyMs?: number;
+  }[];
+}
+
+export interface McpToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: {
+    type: 'object';
+    properties: Record<string, { type: string; description: string; enum?: string[] }>;
+    required?: string[];
+  };
+}
+
+export interface McpPluginDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: 'search' | 'code' | 'memory' | 'integration' | 'custom';
+  version: string;
+  author: string;
+  icon: string;
+  enabled: boolean;
+  isCustom?: boolean;
+  endpoint?: string;
+  tools: McpToolDefinition[];
+  stats?: {
+    totalCalls: number;
+    avgLatencyMs: number;
+    lastExecuted?: string;
+  };
+}
+
+export interface McpToolExecutionResult {
+  success: boolean;
+  output: any;
+  error?: string;
+  executionTimeMs: number;
+  timestamp: string;
 }
