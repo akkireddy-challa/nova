@@ -41,7 +41,6 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
   const [activeTab, setActiveTab] = useState<'preview' | 'raw'>('preview');
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [sandboxExecuted, setSandboxExecuted] = useState(false);
 
   const [matrixWeights, setMatrixWeights] = useState<Record<string, number>>(() => {
     if (artifact.type === 'matrix') {
@@ -94,17 +93,17 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
   const getTitle = () => {
     switch (artifact.type) {
       case 'code':
-        return artifact.data.filename || 'Source Code Sandbox';
+        return artifact.data.filename || 'Code';
       case 'research':
-        return artifact.data.title || 'Deep Investigation Report';
+        return artifact.data.title || 'Research';
       case 'plan':
-        return artifact.data.goal || 'Goal-to-DAG Execution Plan';
+        return artifact.data.goal || 'Plan';
       case 'chart':
-        return artifact.data.title || 'Dynamic Visual Chart';
+        return artifact.data.title || 'Chart';
       case 'matrix':
-        return artifact.data.topic || 'Multi-Criteria Decision Matrix';
+        return artifact.data.topic || 'Comparison';
       case 'debate':
-        return artifact.data.topic || 'Dual-Agent Deliberation';
+        return artifact.data.topic || 'Debate';
     }
   };
 
@@ -173,7 +172,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
-            Interactive Stage
+            Preview
           </button>
           <button
             type="button"
@@ -188,19 +187,6 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
           </button>
         </div>
 
-        {artifact.type === 'code' && (
-          <button
-            type="button"
-            onClick={() => {
-              sound.playSuccess();
-              setSandboxExecuted(true);
-            }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-500 text-slate-950 text-xs font-semibold hover:bg-teal-400 transition cursor-pointer"
-          >
-            <Play className="w-3 h-3 fill-current" />
-            <span>Run Sandbox</span>
-          </button>
-        )}
       </div>
 
       {/* Main Content Area */}
@@ -224,7 +210,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
             {artifact.type === 'code' && (
               <div className="space-y-3">
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 leading-relaxed">
-                  <span className="font-semibold text-teal-400 block mb-1">Architecture Note:</span>
+                  <span className="font-semibold text-teal-400 block mb-1">Notes:</span>
                   {artifact.data.explanation}
                 </div>
 
@@ -245,17 +231,6 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                   </pre>
                 </div>
 
-                {sandboxExecuted && (
-                  <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 space-y-1">
-                    <div className="flex items-center gap-1.5 font-semibold">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      <span>Sandbox Execution Completed (0 runtime errors)</span>
-                    </div>
-                    <p className="text-[11px] text-emerald-400/80 font-mono">
-                      Output: Verified clean compile • Turbopack compatible • Zero memory leaks detected.
-                    </p>
-                  </div>
-                )}
               </div>
             )}
 
@@ -273,8 +248,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                 {artifact.data.sources && artifact.data.sources.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-xs font-semibold text-teal-300 uppercase font-mono flex items-center justify-between">
-                      <span>Fetched Sources & Origins ({artifact.data.sources.length})</span>
-                      <span className="text-[10px] text-slate-500 font-mono">Verified Web Grounding</span>
+                      <span>Sources ({artifact.data.sources.length})</span>
                     </h4>
                     <div className="space-y-2">
                       {artifact.data.sources.map((src) => (
@@ -296,7 +270,9 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                           </p>
                           <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
                             <span className="text-teal-400 font-medium">{src.domain}</span>
-                            <span className="px-1.5 py-0.2 rounded bg-slate-900 text-teal-300 border border-slate-800">{src.relevanceScore}% Match</span>
+                            {src.relevanceScore !== undefined && (
+                              <span className="px-1.5 py-0.2 rounded bg-slate-900 text-teal-300 border border-slate-800">{src.relevanceScore}% Match</span>
+                            )}
                           </div>
                         </a>
                       ))}
@@ -305,7 +281,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                 )}
 
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-slate-300 uppercase font-mono">Key Findings & Evidence</h4>
+                  <h4 className="text-xs font-semibold text-slate-300 uppercase font-mono">Key findings</h4>
                   {artifact.data.keyFindings.map((finding, idx) => (
                     <div key={idx} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1">
                       <div className="flex items-center justify-between">
@@ -327,7 +303,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                   <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 space-y-1 text-xs text-rose-300">
                     <div className="flex items-center gap-1.5 font-semibold">
                       <AlertTriangle className="w-4 h-4 text-rose-400" />
-                      <span>Counter-Arguments & Latent Risks</span>
+                      <span>Caveats and risks</span>
                     </div>
                     {artifact.data.contradictionsAndRisks.map((risk, i) => (
                       <p key={i} className="text-[11px] text-rose-300/80">• {risk}</p>
@@ -344,9 +320,8 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
                       <Sliders className="w-3.5 h-3.5 text-teal-400" />
-                      <span>Interactive Sensitivity Sliders</span>
+                      <span>Criteria weights</span>
                     </span>
-                    <span className="text-[10.5px] font-mono text-slate-500">Auto-Recalculating</span>
                   </div>
 
                   <div className="space-y-2.5">
@@ -374,7 +349,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                 </div>
 
                 <div className="space-y-2.5">
-                  <h4 className="text-xs font-semibold text-slate-300 uppercase font-mono">Options & Dynamic Scoring</h4>
+                  <h4 className="text-xs font-semibold text-slate-300 uppercase font-mono">Options</h4>
                   {artifact.data.options.map(opt => {
                     let dynamicScore = 0;
                     let totalWeight = 0;
@@ -450,20 +425,20 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
             {artifact.type === 'chart' && (
               <div className="space-y-3">
                 <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">
-                  <span className="font-semibold text-teal-400 block mb-1">Analytical Takeaway:</span>
+                  <span className="font-semibold text-teal-400 block mb-1">Takeaway:</span>
                   {artifact.data.insight}
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                  <span className="text-xs font-semibold text-slate-200 block mb-2 font-mono uppercase">Data Matrix</span>
+                  <span className="text-xs font-semibold text-slate-200 block mb-2 font-mono uppercase">Data</span>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs text-slate-300">
                       <thead className="text-[10.5px] uppercase font-mono text-slate-500 border-b border-slate-800">
                         <tr>
-                          <th className="pb-2">Metric / Cohort</th>
-                          <th className="pb-2">Primary Value</th>
+                          <th className="pb-2">Label</th>
+                          <th className="pb-2">Value</th>
                           {artifact.data.data[0]?.secondaryValue !== undefined && (
-                            <th className="pb-2">Secondary Value</th>
+                            <th className="pb-2">Secondary</th>
                           )}
                         </tr>
                       </thead>
@@ -488,7 +463,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
             {artifact.type === 'debate' && (
               <div className="space-y-4">
                 <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="text-[10.5px] font-mono text-teal-400 uppercase font-semibold">Synthesis Verdict</span>
+                  <span className="text-[10.5px] font-mono text-teal-400 uppercase font-semibold">Verdict</span>
                   <p className="text-xs text-slate-200 mt-1 leading-relaxed">{artifact.data.synthesisVerdict}</p>
                 </div>
 
@@ -520,7 +495,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
         <div className="p-3 bg-slate-950 border-t border-slate-800">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
             <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-            <span className="font-semibold text-slate-300">Quick Refinements:</span>
+            <span className="font-semibold text-slate-300">Follow-ups:</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {artifact.type === 'code' ? (
@@ -534,7 +509,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => onRefinePrompt('Write unit test suite for this code artifact with 100% boundary test coverage.')}
+                  onClick={() => onRefinePrompt('Write unit tests for this code, including edge cases.')}
                   className="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] text-teal-300 transition cursor-pointer"
                 >
                   + Write unit tests
@@ -544,20 +519,20 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
               <>
                 <button
                   type="button"
-                  onClick={() => onRefinePrompt('Add another comparison candidate to this decision matrix evaluating self-hosted models.')}
+                  onClick={() => onRefinePrompt('Add another relevant option to this comparison.')}
                   className="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] text-teal-300 transition cursor-pointer"
                 >
-                  + Add 4th option
+                  + Add an option
                 </button>
               </>
             ) : (
               <>
                 <button
                   type="button"
-                  onClick={() => onRefinePrompt('Deepen the evidence citations and add empirical latency benchmarks.')}
+                  onClick={() => onRefinePrompt('Find more sources and cite them for each finding.')}
                   className="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] text-teal-300 transition cursor-pointer"
                 >
-                  + Deepen citations
+                  + More sources
                 </button>
                 <button
                   type="button"

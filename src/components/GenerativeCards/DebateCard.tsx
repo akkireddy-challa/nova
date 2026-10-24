@@ -24,21 +24,15 @@ export function DebateCard({ debate }: Props) {
               {debate.topic}
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Dual-Agent Deliberation & Counter-Perspective Analysis
+              Arguments for and against
             </p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono uppercase bg-indigo-950/60 text-indigo-300 border border-indigo-800 px-2.5 py-1 rounded-full">
-            Multi-Perspective
-          </span>
         </div>
       </div>
 
       {/* Consensus Summary */}
       <div className="p-4 bg-slate-900/40 border-b border-slate-800 text-xs text-slate-300 leading-relaxed">
-        <span className="font-semibold text-teal-400 block mb-1">Deliberation Summary:</span>
+        <span className="font-semibold text-teal-400 block mb-1">Summary:</span>
         {debate.consensusSummary}
       </div>
 
@@ -100,7 +94,7 @@ export function DebateCard({ debate }: Props) {
       <div className="p-4 bg-slate-950/80 border-t border-slate-800 flex items-start gap-2.5">
         <Scale className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
         <div className="text-xs text-slate-200 leading-relaxed">
-          <span className="font-semibold text-indigo-300">Synthesized Equilibrium Verdict: </span>
+          <span className="font-semibold text-indigo-300">Verdict: </span>
           {debate.synthesisVerdict}
         </div>
       </div>

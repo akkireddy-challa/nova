@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   ChatMessage, 
   StudioMode, 
-  AgentThought, 
   GenerativeArtifact,
   Attachment,
   ThinkingBudget,
@@ -19,36 +18,31 @@ import { DebateCard } from './GenerativeCards/DebateCard';
 import { VoiceInput } from './VoiceInput';
 import { ArtifactStage } from './ArtifactStage';
 import { SessionExportModal } from './SessionExportModal';
-import { 
-  Send, 
-  Loader2, 
-  Bot, 
-  User, 
-  Sparkles, 
-  Compass, 
-  ListTodo, 
-  BarChart2, 
-  Scale, 
-  Code2, 
-  CheckCircle2, 
+import { ProviderOnboarding } from './ProviderOnboarding';
+import { TraceSteps } from './TraceSteps';
+import { isErrorMessage } from '@/lib/client/agent';
+import {
+  Loader2,
+  Bot,
+  User,
+  Sparkles,
+  Compass,
+  ListTodo,
+  BarChart2,
+  Scale,
+  Code2,
   Paperclip,
   X,
   FileText,
-  Zap,
   Wand2,
   Users,
-  CornerDownLeft,
   ArrowRight,
   Maximize2,
   Share2,
   Image as ImageIcon,
-  ShieldAlert,
-  ShieldCheck,
-  Activity,
-  Cpu,
   Globe,
   ExternalLink,
-  Volume2
+  AlertTriangle,
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 import { generateId } from '@/lib/utils';
@@ -60,6 +54,13 @@ interface Props {
   onSubmitPrompt: (text: string, attachments?: Attachment[], thinkingBudget?: ThinkingBudget) => void;
   onSelectMode: (mode: StudioMode) => void;
   sessionTitle?: string;
+  defaultThinkingBudget: ThinkingBudget;
+  /** True when GET /api/v1/models returned an empty list. */
+  noProvider: boolean;
+  /** Set when the model list could not be loaded at all. */
+  modelsError: string | null;
+  isCheckingModels: boolean;
+  onCheckModels: () => void;
 }
 
 export function AgentCanvas({
@@ -69,10 +70,17 @@ export function AgentCanvas({
   onSubmitPrompt,
   onSelectMode,
   sessionTitle,
+  defaultThinkingBudget,
+  noProvider,
+  modelsError,
+  isCheckingModels,
+  onCheckModels,
 }: Props) {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [thinkingBudget, setThinkingBudget] = useState<ThinkingBudget>('analytical');
+  // null = follow the default from Settings until the user picks one here.
+  const [budgetOverride, setThinkingBudget] = useState<ThinkingBudget | null>(null);
+  const thinkingBudget = budgetOverride ?? defaultThinkingBudget;
   const [isDragging, setIsDragging] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [selectedArtifact, setSelectedArtifact] = useState<GenerativeArtifact | null>(null);
@@ -172,7 +180,7 @@ export function AgentCanvas({
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if ((!input.trim() && attachments.length === 0) || isLoading) return;
+    if ((!input.trim() && attachments.length === 0) || isLoading || noProvider) return;
     const text = input.trim();
     const currentAtts = [...attachments];
     setInput('');
@@ -191,26 +199,28 @@ export function AgentCanvas({
   const getPlaceholder = (mode: StudioMode) => {
     switch (mode) {
       case 'research':
-        return 'Ask for deep autonomous research with verified citations, literature, or upload diagrams...';
+        return 'Ask a question. Nova searches the web and writes a cited answer...';
       case 'debate':
-        return 'Enter a technical hypothesis or architecture to debate across dual-agent perspectives...';
+        return 'Enter a claim or decision to see arguments for and against...';
       case 'planner':
-        return 'Describe a project, milestone, or goal to compile an interactive hierarchical DAG...';
+        return 'Describe a goal or project to break into a step-by-step plan...';
+      case 'canvas':
+        return 'Ask for data to chart, e.g. a comparison over time...';
       case 'matrix':
-        return 'Enter candidates, frameworks, or models to generate a multi-criteria decision matrix...';
+        return 'List the options you want compared, and what matters to you...';
       case 'coder':
-        return 'Describe algorithms, fullstack architectures, or MCP tools to synthesize in sandbox...';
+        return 'Describe the code you need...';
       default:
-        return 'Ask anything. Paste screenshots (⌘V) or drag & drop files to prompt the agent swarm...';
+        return 'Ask anything. Paste screenshots (⌘V) or drag & drop files...';
     }
   };
 
   const studioEngines: { id: StudioMode; label: string; icon: React.ReactNode }[] = [
     { id: 'research', label: 'Research', icon: <Compass className="w-3.5 h-3.5" /> },
     { id: 'debate', label: 'Debate', icon: <Users className="w-3.5 h-3.5" /> },
-    { id: 'planner', label: 'Planner', icon: <ListTodo className="w-3.5 h-3.5" /> },
-    { id: 'canvas', label: 'Visuals', icon: <BarChart2 className="w-3.5 h-3.5" /> },
-    { id: 'matrix', label: 'Matrix', icon: <Scale className="w-3.5 h-3.5" /> },
+    { id: 'planner', label: 'Plan', icon: <ListTodo className="w-3.5 h-3.5" /> },
+    { id: 'canvas', label: 'Chart', icon: <BarChart2 className="w-3.5 h-3.5" /> },
+    { id: 'matrix', label: 'Compare', icon: <Scale className="w-3.5 h-3.5" /> },
     { id: 'coder', label: 'Code', icon: <Code2 className="w-3.5 h-3.5" /> },
   ];
 
@@ -265,84 +275,96 @@ export function AgentCanvas({
 
         {/* Scrollable messages and artifacts area */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 max-w-4xl mx-auto w-full">
-          {messages.length === 0 ? (
-            /* Simplified, Inspiring Empty State with Community Accelerators */
+          {messages.length === 0 && noProvider ? (
+            <div className="py-10 md:py-14 animate-in fade-in duration-300">
+              <ProviderOnboarding onCheckAgain={onCheckModels} isChecking={isCheckingModels} />
+            </div>
+          ) : messages.length === 0 ? (
+            /* Empty state with example prompts */
             <div className="py-10 md:py-14 text-center space-y-7 max-w-3xl mx-auto animate-in fade-in duration-300">
               <div className="space-y-3">
                 <div className="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-teal-500/15 via-indigo-500/15 to-purple-500/15 border border-teal-500/20 text-teal-300 shadow-sm">
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <h2 className="text-2xl md:text-3xl font-bold text-slate-100 tracking-tight">
-                  What shall we build or solve today?
+                  What do you want to find out?
                 </h2>
                 <p className="text-xs md:text-sm text-slate-400 max-w-lg mx-auto leading-relaxed">
-                  Choose a cognitive engine or click an autonomous preset. Paste screenshots (<kbd className="font-mono bg-slate-900 px-1 rounded text-teal-300">⌘V</kbd>) or ask questions to trigger multi-agent reasoning.
+                  Pick a mode below or try an example. You can also paste screenshots (<kbd className="font-mono bg-slate-900 px-1 rounded text-teal-300">⌘V</kbd>) or drop files.
                 </p>
+                {modelsError && (
+                  <p className="text-[11px] text-amber-400">
+                    Could not load the model list ({modelsError}).{' '}
+                    <button type="button" onClick={onCheckModels} className="underline hover:text-amber-300 cursor-pointer">
+                      Retry
+                    </button>
+                  </p>
+                )}
               </div>
 
-              {/* 4 Clean Quick-Action Cards */}
+              {/* Example prompts */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-left max-w-2xl mx-auto">
                 <button
                   onClick={() => {
                     onSelectMode('research');
-                    setInput('Is the Agent Harness Dead? Analyze lightweight code loops, MCP, and evaluation-driven design.');
+                    setInput('What changed in the latest stable Node.js release?');
                   }}
                   className="p-4 rounded-xl border border-slate-800/80 bg-slate-900/50 hover:bg-slate-900 hover:border-teal-500/40 transition group cursor-pointer"
                 >
                   <div className="flex items-center gap-2 text-teal-400 mb-1 font-semibold text-xs">
                     <Compass className="w-4 h-4" />
-                    <span>Deep Research</span>
+                    <span>Research</span>
                   </div>
                   <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                    Autonomous literature crawl with verified citations and contradiction analysis.
+                    Searches the web and answers with numbered citations.
                   </p>
                 </button>
 
                 <button
                   onClick={() => {
                     onSelectMode('debate');
-                    setInput('Should production AI agents use LangGraph vs raw TypeScript code loops?');
+                    setInput('Should a small team self-host its LLM or use a hosted API?');
                   }}
                   className="p-4 rounded-xl border border-slate-800/80 bg-slate-900/50 hover:bg-slate-900 hover:border-purple-500/40 transition group cursor-pointer"
                 >
                   <div className="flex items-center gap-2 text-purple-400 mb-1 font-semibold text-xs">
                     <Users className="w-4 h-4" />
-                    <span>Dual-Agent Debate</span>
+                    <span>Debate</span>
                   </div>
                   <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                    Side-by-side advocate vs critic deliberation with equilibrium consensus.
+                    Arguments for and against, with a summary verdict.
                   </p>
                 </button>
 
                 <button
                   onClick={() => {
                     onSelectMode('planner');
-                    setInput('Plan a 14-day sprint to build an open-source MCP tool server with automated evals.');
+                    setInput('Plan a two-week sprint to ship a small open-source CLI tool.');
                   }}
                   className="p-4 rounded-xl border border-slate-800/80 bg-slate-900/50 hover:bg-slate-900 hover:border-cyan-500/40 transition group cursor-pointer"
                 >
                   <div className="flex items-center gap-2 text-cyan-400 mb-1 font-semibold text-xs">
                     <ListTodo className="w-4 h-4" />
-                    <span>Goal-to-DAG Planner</span>
+                    <span>Plan</span>
                   </div>
                   <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                    Hierarchical milestone roadmap with interactive task checkboxes and output notes.
+                    Breaks a goal into phases and tasks you can check off.
                   </p>
                 </button>
 
                 <button
                   onClick={() => {
                     onSelectMode('matrix');
-                    setInput('Compare local open-weight models (Ollama/DeepSeek) vs closed frontier APIs for latency & cost.');
+                    setInput('Compare Postgres, SQLite, and DuckDB for a local analytics app.');
                   }}
                   className="p-4 rounded-xl border border-slate-800/80 bg-slate-900/50 hover:bg-slate-900 hover:border-amber-500/40 transition group cursor-pointer"
                 >
                   <div className="flex items-center gap-2 text-amber-400 mb-1 font-semibold text-xs">
                     <Scale className="w-4 h-4" />
-                    <span>Decision Matrix</span>
+                    <span>Compare</span>
                   </div>
                   <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                    Multi-criteria comparison table with dynamic sliders and sensitivity recalculation.
+                    Weighted comparison table you can re-weight.
                   </p>
                 </button>
               </div>
@@ -363,7 +385,7 @@ export function AgentCanvas({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-semibold text-slate-200">
-                        {msg.role === 'assistant' ? 'Nova Autonomous Studio' : 'You'}
+                        {msg.role === 'assistant' ? 'Nova' : 'You'}
                       </span>
                       <span className="text-[10px] text-slate-500 font-mono">{msg.timestamp}</span>
                       {msg.mode && (
@@ -390,9 +412,29 @@ export function AgentCanvas({
                     )}
 
                     {/* Message body */}
-                    <div className="text-xs md:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
-                      {msg.content}
-                    </div>
+                    {isErrorMessage(msg) ? (
+                      <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/10 text-xs text-rose-200 space-y-1.5">
+                        <div className="flex items-center gap-1.5 font-semibold text-rose-300">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>Request failed</span>
+                          <span className="font-mono text-[10px] text-rose-400/80">{msg.errorCode}</span>
+                        </div>
+                        <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                        {msg.errorCode === 'NO_PROVIDER' && (
+                          <button
+                            type="button"
+                            onClick={onCheckModels}
+                            className="underline text-rose-200 hover:text-white cursor-pointer"
+                          >
+                            No model is configured. See setup steps
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-xs md:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
+                        {msg.content}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -401,16 +443,16 @@ export function AgentCanvas({
                   <div className="pl-10 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-mono uppercase text-slate-500">
-                        Artifact Generated: {msg.artifact.type}
+                        {msg.artifact.type}
                       </span>
                       <button
                         type="button"
                         onClick={() => { sound.playCheck(); setSelectedArtifact(msg.artifact!); }}
                         className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono text-teal-400 hover:text-teal-300 hover:bg-slate-800 transition cursor-pointer"
-                        title="Open in side-by-side Artifact Stage"
+                        title="Open in side panel"
                       >
                         <Maximize2 className="w-3 h-3" />
-                        <span>Inspect in Stage</span>
+                        <span>Open</span>
                       </button>
                     </div>
 
@@ -418,7 +460,7 @@ export function AgentCanvas({
                       <div className="flex flex-wrap items-center gap-1.5 py-1">
                         <span className="text-[10.5px] font-mono text-slate-500 uppercase flex items-center gap-1">
                           <Globe className="w-3 h-3 text-teal-400" />
-                          Fetched From:
+                          Sources:
                         </span>
                         {msg.artifact.data.sources.map(s => (
                           <a
@@ -456,14 +498,15 @@ export function AgentCanvas({
                   </div>
                 )}
 
-                {/* Latency & Telemetry Footer */}
+                {msg.thoughts && msg.thoughts.length > 0 && <TraceSteps steps={msg.thoughts} />}
+
+                {/* Telemetry footer: only values reported by the server */}
                 {msg.telemetry && (
-                  <div className="pl-10 text-[10.5px] font-mono text-slate-500 flex items-center gap-2">
-                    <span>{msg.telemetry.latencyMs}ms</span>
-                    <span>•</span>
-                    <span>{msg.telemetry.tokenCount} tokens</span>
-                    <span>•</span>
-                    <span>{msg.telemetry.model}</span>
+                  <div className="pl-10 text-[10.5px] font-mono text-slate-500 flex flex-wrap items-center gap-2">
+                    {msg.telemetry.latencyMs > 0 && <span>{(msg.telemetry.latencyMs / 1000).toFixed(1)}s</span>}
+                    {msg.telemetry.tokenCount > 0 && <span>• {msg.telemetry.tokenCount} tokens</span>}
+                    {msg.telemetry.tokensPerSec > 0 && <span>• {Math.round(msg.telemetry.tokensPerSec)} tok/s</span>}
+                    {msg.telemetry.model && <span>• {msg.telemetry.model}</span>}
                   </div>
                 )}
               </div>
@@ -472,25 +515,25 @@ export function AgentCanvas({
 
           {/* Loading Indicator */}
           {isLoading && (
-            <div className="flex items-start gap-3 p-4 rounded-xl border border-teal-500/20 bg-teal-500/5 animate-pulse">
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-teal-500/20 bg-teal-500/5">
               <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               </div>
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-teal-300">
-                  Autonomous Agents Deliberating ({thinkingBudget} budget)...
-                </p>
-                <p className="text-[11px] text-slate-400">
-                  CoAct self-consistency routing & verified evidence synthesis in progress.
-                </p>
-              </div>
+              <p className="text-xs text-teal-300">
+                Working on it… the steps taken will appear here when the answer is ready.
+              </p>
             </div>
+          )}
+
+          {messages.length > 0 && noProvider && (
+            <ProviderOnboarding onCheckAgain={onCheckModels} isChecking={isCheckingModels} />
           )}
 
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Simplified, Modern Floating Command Dock - Guaranteed pinned at bottom */}
+        {/* Composer, pinned at bottom. Hidden until a provider is configured. */}
+        {!noProvider && (
         <div className="flex-shrink-0 p-3 md:p-4 max-w-4xl mx-auto w-full z-10">
           <div 
             onPaste={handlePaste}
@@ -610,10 +653,10 @@ export function AgentCanvas({
                     onClick={handleEnhancePrompt}
                     disabled={isEnhancing}
                     className="flex items-center gap-1 text-[11px] text-teal-400 hover:text-teal-300 bg-teal-500/10 px-2 py-1 rounded-md transition cursor-pointer disabled:opacity-50"
-                    title="Enhance prompt with autonomous intent"
+                    title="Rewrite the prompt to be more specific"
                   >
                     {isEnhancing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
-                    <span>Enhance ✨</span>
+                    <span>Enhance</span>
                   </button>
                 )}
               </div>
@@ -641,6 +684,7 @@ export function AgentCanvas({
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Side-by-Side Artifact Stage (when an artifact is selected) */}

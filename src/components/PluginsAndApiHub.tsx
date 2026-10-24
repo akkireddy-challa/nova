@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 import { McpPluginDefinition, McpToolDefinition, McpToolExecutionResult } from '@/lib/types';
+import { useModels } from '@/lib/client/models';
 
 type ApiEndpoint = '/api/v1/chat/completions' | '/api/v1/embeddings' | '/api/v1/models' | '/api/v1/tools';
 
@@ -36,7 +37,7 @@ export function PluginsAndApiHub() {
   const [executingTool, setExecutingTool] = useState<string | null>(null);
   const [toolInputs, setToolInputs] = useState<Record<string, Record<string, string>>>({
     web_search: { query: 'Model Context Protocol 2026 adoption' },
-    vector_semantic_search: { query: 'autonomous multi-agent swarm division of labor' },
+    vector_semantic_search: { query: 'project preferences' },
     query_associative_graph: { concept: 'mcp' },
     inspect_github_repo: { repo: 'facebook/react' }
   });
@@ -50,8 +51,11 @@ export function PluginsAndApiHub() {
 
   // API Playground state
   const [apiEndpoint, setApiEndpoint] = useState<ApiEndpoint>('/api/v1/chat/completions');
-  const [apiModel, setApiModel] = useState('gemini-3-flash-preview');
-  const [apiPrompt, setApiPrompt] = useState('What makes Model Context Protocol (MCP) and Embeddings v2 better than legacy proprietary plugins?');
+  const { models } = useModels();
+  // '' = let the server pick its default model.
+  const [apiModel, setApiModel] = useState('');
+  const [apiPrompt, setApiPrompt] = useState('Explain the Model Context Protocol in two sentences.');
+  const snippetModel = apiModel || models.find(m => m.isDefault)?.id || models[0]?.id || 'provider:model';
   const [apiIsSending, setApiIsSending] = useState(false);
   const [apiResponse, setApiResponse] = useState<string | null>(null);
   const [apiLatency, setApiLatency] = useState<number | null>(null);
@@ -145,7 +149,7 @@ export function PluginsAndApiHub() {
 
       if (apiEndpoint === '/api/v1/chat/completions') {
         body = JSON.stringify({
-          model: apiModel,
+          model: apiModel || undefined,
           messages: [{ role: 'user', content: apiPrompt }],
           temperature: 0.7,
         });
@@ -200,9 +204,9 @@ client = OpenAI(
     api_key="nova-local-key"
 )
 
-# 1. Chat Completion with 4-Layer Metacognitive Reasoning
+# 1. Chat completion (model ids are "provider:model"; see GET /api/v1/models)
 response = client.chat.completions.create(
-    model="gemini-3-flash-preview",
+    model="${snippetModel}",
     messages=[
         {"role": "system", "content": "You are a senior systems engineer."},
         {"role": "user", "content": "${apiPrompt}"}
@@ -210,10 +214,10 @@ response = client.chat.completions.create(
 )
 print(response.choices[0].message.content)
 
-# 2. Embeddings v2 (3072 dimensions with sliding chunk overlap)
+# 2. Embeddings
 embedding_resp = client.embeddings.create(
     model="gemini-embedding-2",
-    input="Autonomous agent swarm architecture"
+    input="Hello from Nova"
 )
 print("Vector length:", len(embedding_resp.data[0].embedding))`;
 
@@ -227,7 +231,7 @@ const openai = new OpenAI({
 
 async function run() {
   const completion = await openai.chat.completions.create({
-    model: 'gemini-3-flash-preview',
+    model: '${snippetModel}',
     messages: [{ role: 'user', content: '${apiPrompt}' }],
   });
   console.log(completion.choices[0].message.content);
@@ -239,7 +243,7 @@ run();`;
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer nova-local-key" \\
   -d '{
-    "model": "gemini-3-flash-preview",
+    "model": "${snippetModel}",
     "messages": [
       {"role": "user", "content": "${apiPrompt}"}
     ]
@@ -249,7 +253,7 @@ run();`;
 
 # Drop-in LLM for LangChain agents
 llm = ChatOpenAI(
-    model="gemini-3-flash-preview",
+    model="${snippetModel}",
     openai_api_base="http://localhost:3000/api/v1",
     openai_api_key="nova-local-key",
     temperature=0.7
@@ -318,15 +322,12 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-400 border border-teal-500/20 flex items-center gap-1.5">
                 <Puzzle className="w-3.5 h-3.5" /> Model Context Protocol (MCP) & Open APIs
               </span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                Embeddings v2 Ready
-              </span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-              Plugin Ecosystem & Developer Gateway
+              Tools & API
             </h1>
             <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-              Equip your swarms with live MCP tools or drop Nova into Cursor, LangChain, and Python code via standard OpenAI-compatible endpoints.
+              Try the registered MCP tools, or call Nova from your own code through its OpenAI-compatible endpoints.
             </p>
           </div>
 
@@ -339,7 +340,7 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
               Add Custom MCP Server
             </button>
             <a
-              href="https://github.com/nova-autonomous/nova"
+              href="https://github.com/akkireddy-challa/nova"
               target="_blank"
               rel="noreferrer"
               className="px-3.5 py-2 rounded-lg text-xs font-medium bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-500/30 transition flex items-center gap-1.5 cursor-pointer"
@@ -406,35 +407,6 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                 </div>
               </div>
 
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-400">
-                  <Database className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-white">3072-dim</div>
-                  <div className="text-xs text-slate-400">Embeddings v2 Vectors</div>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-                  <Activity className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-white">180ms</div>
-                  <div className="text-xs text-slate-400">Average Tool Latency</div>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-white">Zero Lock-In</div>
-                  <div className="text-xs text-slate-400">Standard MCP Protocol</div>
-                </div>
-              </div>
             </div>
 
             {/* Plugin Cards Grid */}
@@ -628,28 +600,26 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                     onChange={(e) => setApiEndpoint(e.target.value as ApiEndpoint)}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-mono text-teal-300 focus:outline-none focus:border-teal-500"
                   >
-                    <option value="/api/v1/chat/completions">POST /api/v1/chat/completions (Multi-Model Chat)</option>
-                    <option value="/api/v1/embeddings">POST /api/v1/embeddings (Embeddings v2 3072-dim)</option>
-                    <option value="/api/v1/models">GET /api/v1/models (List Active Frontier Models)</option>
-                    <option value="/api/v1/tools">GET /api/v1/tools (List Registered MCP Tools)</option>
+                    <option value="/api/v1/chat/completions">POST /api/v1/chat/completions </option>
+                    <option value="/api/v1/embeddings">POST /api/v1/embeddings</option>
+                    <option value="/api/v1/models">GET /api/v1/models (configured models)</option>
+                    <option value="/api/v1/tools">GET /api/v1/tools (registered MCP tools)</option>
                   </select>
                 </div>
 
                 {/* Model selector (for chat) */}
                 {apiEndpoint === '/api/v1/chat/completions' && (
                   <div>
-                    <label className="text-xs font-medium text-slate-300 block mb-1">Model Engine</label>
+                    <label className="text-xs font-medium text-slate-300 block mb-1">Model</label>
                     <select
                       value={apiModel}
                       onChange={(e) => setApiModel(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-teal-500"
                     >
-                      <option value="gemini-3-flash-preview">gemini-3-flash-preview (Ultra-fast Frontier Reasoning)</option>
-                      <option value="gemini-2.5-flash">gemini-2.5-flash (Production Multi-Turn)</option>
-                      <option value="claude-3-7-sonnet">claude-3-7-sonnet (Hybrid Reasoning)</option>
-                      <option value="deepseek-r1">deepseek-r1 (Open Weights Reasoning)</option>
-                      <option value="llama-3.3-70b-instruct">llama-3.3-70b-instruct (Local / Open-Source)</option>
-                      <option value="ollama-local">ollama-local (Zero-Cost Offline)</option>
+                      <option value="">Server default</option>
+                      {models.map(m => (
+                        <option key={m.id} value={m.id}>{m.id}</option>
+                      ))}
                     </select>
                   </div>
                 )}
@@ -877,7 +847,7 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
             </div>
 
             <p className="text-xs text-slate-300">
-              Connect an external stdio or HTTP/SSE MCP server endpoint to Nova&apos;s multi-agent swarm.
+              Register an external HTTP MCP server endpoint with Nova.
             </p>
 
             <div className="space-y-3">

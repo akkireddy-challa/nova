@@ -25,7 +25,7 @@ interface Props {
   onClose: () => void;
   onSelectMode: (mode: StudioMode) => void;
   onOpenMemory: () => void;
-  onOpenMcp: () => void;
+  onOpenPlugins: () => void;
   onNewSession: () => void;
 }
 
@@ -34,7 +34,7 @@ export function CommandPalette({
   onClose,
   onSelectMode,
   onOpenMemory,
-  onOpenMcp,
+  onOpenPlugins,
   onNewSession,
 }: Props) {
   const [query, setQuery] = useState('');
@@ -58,70 +58,70 @@ export function CommandPalette({
   const actions = [
     {
       id: 'mode-research',
-      label: 'Deep Research Engine',
-      category: 'Autonomous Engines',
+      label: 'Research',
+      category: 'Modes',
       icon: <Compass className="w-4 h-4 text-teal-400" />,
       run: () => { onSelectMode('research'); onClose(); },
     },
     {
       id: 'mode-debate',
-      label: 'Dual-Agent Debate Engine',
-      category: 'Autonomous Engines',
+      label: 'Debate',
+      category: 'Modes',
       icon: <Scale className="w-4 h-4 text-indigo-400" />,
       run: () => { onSelectMode('debate'); onClose(); },
     },
     {
       id: 'mode-planner',
-      label: 'Goal-to-DAG Planner',
-      category: 'Autonomous Engines',
+      label: 'Plan',
+      category: 'Modes',
       icon: <ListTodo className="w-4 h-4 text-indigo-400" />,
       run: () => { onSelectMode('planner'); onClose(); },
     },
     {
       id: 'mode-canvas',
-      label: 'Generative Visual Charts',
-      category: 'Autonomous Engines',
+      label: 'Chart',
+      category: 'Modes',
       icon: <BarChart2 className="w-4 h-4 text-emerald-400" />,
       run: () => { onSelectMode('canvas'); onClose(); },
     },
     {
       id: 'mode-matrix',
-      label: 'Multi-Criteria Decision Matrix',
-      category: 'Autonomous Engines',
+      label: 'Compare',
+      category: 'Modes',
       icon: <Scale className="w-4 h-4 text-purple-400" />,
       run: () => { onSelectMode('matrix'); onClose(); },
     },
     {
       id: 'mode-coder',
-      label: 'Code & Architecture Synthesizer',
-      category: 'Autonomous Engines',
+      label: 'Code',
+      category: 'Modes',
       icon: <Code2 className="w-4 h-4 text-cyan-400" />,
       run: () => { onSelectMode('coder'); onClose(); },
     },
     {
       id: 'mcp-tools',
-      label: 'Open MCP Tools Registry',
-      category: 'Integrations & Protocol',
+      label: 'Tools & API',
+      category: 'Workspaces',
       icon: <Server className="w-4 h-4 text-amber-400" />,
-      run: () => { onOpenMcp(); onClose(); },
+      run: () => { onOpenPlugins(); onClose(); },
     },
     {
       id: 'open-memory',
-      label: 'Manage Context Memory & Preferences',
-      category: 'Personal Context',
+      label: 'Memory',
+      category: 'Workspaces',
       icon: <Brain className="w-4 h-4 text-pink-400" />,
       run: () => { onOpenMemory(); onClose(); },
     },
     {
       id: 'new-session',
-      label: 'Create Fresh Goal Workspace',
+      label: 'New session',
       category: 'Session',
       icon: <Sparkles className="w-4 h-4 text-yellow-400" />,
       run: () => { onNewSession(); onClose(); },
     },
     {
       id: 'toggle-sound',
-      label: isMuted ? 'Unmute Audio Haptics' : 'Mute Audio Haptics',
+      label: isMuted ? 'Unmute sounds' : 'Mute sounds',
       category: 'Preferences',
       icon: isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-teal-400" />,
       run: () => {
@@ -147,7 +147,7 @@ export function CommandPalette({
           <input
             type="text"
             autoFocus
-            placeholder="Type a command or jump to an engine..."
+            placeholder="Type a command or switch mode..."
             value={query}
             onChange={e => setQuery(e.target.value)}
             className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none"

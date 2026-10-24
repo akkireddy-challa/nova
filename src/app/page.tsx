@@ -6,7 +6,6 @@ import { Sidebar } from '@/components/Sidebar';
 import { AgentCanvas } from '@/components/AgentCanvas';
 import { MemoryModal } from '@/components/MemoryModal';
 import { CommandPalette } from '@/components/CommandPalette';
-import { McpInspector } from '@/components/McpInspector';
 import { DevHubModal } from '@/components/DevHubModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { IntelligenceCanvas } from '@/components/IntelligenceCanvas';
@@ -17,7 +16,6 @@ import {
   Session, 
   ChatMessage, 
   KnowledgeMemoryItem,
-  ModelProvider,
   Attachment,
   UserSettings,
   ThinkingBudget
@@ -25,6 +23,8 @@ import {
 import { generateId } from '@/lib/utils';
 import { sound } from '@/lib/sound';
 import { sanitizeUserInput } from '@/lib/sanitizer';
+import { useModels, useModelSelection } from '@/lib/client/models';
+import { ErrorChatMessage, parseAgentError } from '@/lib/client/agent';
 
 const DEFAULT_SETTINGS: UserSettings = {
   geminiKey: '',
@@ -33,15 +33,17 @@ const DEFAULT_SETTINGS: UserSettings = {
   groqKey: '',
   ollamaBaseUrl: 'http://localhost:11434',
   customEndpointUrl: '',
-  customModelName: 'llama3.3:latest',
+  customModelName: '',
   activeProvider: 'gemini',
-  enabledTools: ['web_search', 'filesystem', 'python_sandbox', 'vector_memory'],
+  enabledTools: [],
   defaultThinkingBudget: 'analytical',
 };
 
 export default function Home() {
   const [currentMode, setCurrentMode] = useState<StudioMode>('research');
-  const [currentModel, setCurrentModel] = useState<ModelProvider>('gemini-3-flash');
+  const { models, status: modelsStatus, error: modelsError, refetch: refetchModels } = useModels();
+  const [currentModel, setCurrentModel] = useModelSelection(models);
+  const noProvider = modelsStatus === 'ready' && models.length === 0;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -49,7 +51,6 @@ export default function Home() {
   // Modals state
   const [isMemoryOpen, setIsMemoryOpen] = useState<boolean>(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState<boolean>(false);
-  const [isMcpOpen, setIsMcpOpen] = useState<boolean>(false);
   const [isDevHubOpen, setIsDevHubOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   
@@ -82,33 +83,26 @@ export default function Home() {
     try {
       const savedSettings = localStorage.getItem('nova_settings');
       if (savedSettings) {
+        const parsed = JSON.parse(savedSettings) as Partial<UserSettings>;
+        // Only the thinking budget is a client setting. Provider keys live in the server's .env,
+        // so drop any keys an older version of the UI stored in the browser.
+        const cleaned: UserSettings = {
+          ...DEFAULT_SETTINGS,
+          defaultThinkingBudget: parsed.defaultThinkingBudget ?? DEFAULT_SETTINGS.defaultThinkingBudget,
+        };
         // localStorage is client-only, so hydrate after mount to avoid an SSR mismatch.
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setUserSettings(JSON.parse(savedSettings));
+        setUserSettings(cleaned);
+        localStorage.setItem('nova_settings', JSON.stringify(cleaned));
       }
 
       const savedMem = localStorage.getItem('nova_memory');
       if (savedMem) {
-        setMemoryItems(JSON.parse(savedMem));
-      } else {
-        const initialMem: KnowledgeMemoryItem[] = [
-          {
-            id: 'mem-1',
-            title: 'Preferred Architecture',
-            content: 'Local-first, modular, TypeScript + Python, zero telemetry, high agency.',
-            category: 'preference',
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: 'mem-2',
-            title: 'Core Philosophy',
-            content: 'Always provide tangible visual deliverables, not just plain chat walls.',
-            category: 'project_context',
-            createdAt: new Date().toISOString(),
-          },
-        ];
-        setMemoryItems(initialMem);
-        localStorage.setItem('nova_memory', JSON.stringify(initialMem));
+        // Older versions seeded two invented "memories" that were sent as context with every prompt.
+        const seeded: Record<string, string> = { 'mem-1': 'Preferred Architecture', 'mem-2': 'Core Philosophy' };
+        const items = (JSON.parse(savedMem) as KnowledgeMemoryItem[]).filter(m => seeded[m.id] !== m.title);
+        setMemoryItems(items);
+        localStorage.setItem('nova_memory', JSON.stringify(items));
       }
 
       const savedSessions = localStorage.getItem('nova_sessions');
@@ -171,7 +165,7 @@ export default function Home() {
     sound.playStart();
     const newSession: Session = {
       id: generateId(),
-      title: 'New Goal Workspace',
+      title: 'New session',
       mode: currentMode,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -194,7 +188,26 @@ export default function Home() {
     }
   };
 
-  const handlePromptSubmit = async (promptText: string, attachments?: Attachment[], thinkingBudget?: ThinkingBudget) => {
+  const appendMessage = (sessId: string, msg: ChatMessage | ErrorChatMessage) => {
+    setSessions(prev => {
+      const next = prev.map(s =>
+        s.id === sessId
+          ? { ...s, updatedAt: new Date().toISOString(), messages: [...s.messages, msg] }
+          : s
+      );
+      try {
+        localStorage.setItem('nova_sessions', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handlePromptSubmit = async (
+    promptText: string,
+    attachments?: Attachment[],
+    thinkingBudget?: ThinkingBudget,
+    mode: StudioMode = currentMode
+  ) => {
     const sanitized = sanitizeUserInput(promptText);
     const cleanPrompt = sanitized.text;
 
@@ -205,7 +218,7 @@ export default function Home() {
       const newSession: Session = {
         id: generateId(),
         title: (cleanPrompt || attachments?.[0]?.name || 'Workspace').slice(0, 36),
-        mode: currentMode,
+        mode,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         messages: [],
@@ -221,7 +234,7 @@ export default function Home() {
       role: 'user',
       content: cleanPrompt || 'Attached documents for analysis',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      mode: currentMode,
+      mode,
       attachments: attachments && attachments.length > 0 ? attachments : undefined,
     };
 
@@ -243,58 +256,54 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: cleanPrompt,
-          mode: currentMode,
+          mode,
           context: contextStr,
-          model: currentModel,
+          model: currentModel || undefined,
           attachments,
           thinkingBudget: thinkingBudget || userSettings.defaultThinkingBudget,
         }),
       });
 
-      const data = await res.json();
+      const data: unknown = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const { message, code } = parseAgentError(data, res.status);
+        // The server says nothing is configured; refresh the model list so onboarding appears.
+        if (code === 'NO_PROVIDER') refetchModels();
+        appendMessage(sessId, {
+          id: generateId(),
+          role: 'assistant',
+          content: message,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          mode,
+          errorCode: code,
+        });
+        return;
+      }
+
+      const ok = (data ?? {}) as Partial<ChatMessage>;
       sound.playSuccess();
 
-      const assistantMsg: ChatMessage = {
+      appendMessage(sessId, {
         id: generateId(),
         role: 'assistant',
-        content: data.content || 'Autonomous loop completed.',
+        content: typeof ok.content === 'string' ? ok.content : '',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        mode: currentMode,
-        thoughts: data.thoughts,
-        artifact: data.artifact,
-        telemetry: data.telemetry,
-      };
-
-      setSessions(prev => {
-        const next = prev.map(s => {
-          if (s.id !== sessId) return s;
-          return {
-            ...s,
-            updatedAt: new Date().toISOString(),
-            messages: [...s.messages, assistantMsg],
-          };
-        });
-        try {
-          localStorage.setItem('nova_sessions', JSON.stringify(next));
-        } catch {}
-        return next;
+        mode,
+        thoughts: Array.isArray(ok.thoughts) ? ok.thoughts : undefined,
+        artifact: ok.artifact,
+        telemetry: ok.telemetry,
       });
     } catch (err) {
-      console.error('Agent execution error:', err);
-      const fallbackMsg: ChatMessage = {
+      console.error('Agent request failed:', err);
+      appendMessage(sessId, {
         id: generateId(),
         role: 'assistant',
-        content: 'I encountered an offline condition. Switched automatically to resilient local execution mode.',
+        content: 'Could not reach the Nova server. Check that it is still running, then try again.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        mode: currentMode,
-      };
-      setSessions(prev =>
-        prev.map(s =>
-          s.id === sessId
-            ? { ...s, messages: [...s.messages, fallbackMsg] }
-            : s
-        )
-      );
+        mode,
+        errorCode: 'NETWORK',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -302,7 +311,7 @@ export default function Home() {
 
   const handleApplyPreset = (presetPrompt: string, mode: StudioMode) => {
     setCurrentMode(mode);
-    handlePromptSubmit(presetPrompt);
+    handlePromptSubmit(presetPrompt, undefined, undefined, mode);
   };
 
   return (
@@ -313,10 +322,11 @@ export default function Home() {
           currentMode={currentMode}
           onSelectMode={setCurrentMode}
           onOpenMemory={() => setIsMemoryOpen(true)}
-          onOpenMcp={() => setIsMcpOpen(true)}
           onOpenPalette={() => setIsPaletteOpen(true)}
           onNewSession={handleNewSession}
           memoryCount={memoryItems.length}
+          models={models}
+          modelsStatus={modelsStatus}
           currentModel={currentModel}
           onSelectModel={setCurrentModel}
         />
@@ -347,6 +357,11 @@ export default function Home() {
               onSubmitPrompt={handlePromptSubmit}
               onSelectMode={setCurrentMode}
               sessionTitle={activeSession?.title}
+              defaultThinkingBudget={userSettings.defaultThinkingBudget}
+              noProvider={noProvider}
+              modelsError={modelsStatus === 'error' ? modelsError : null}
+              isCheckingModels={modelsStatus === 'loading'}
+              onCheckModels={refetchModels}
             />
           )}
         </div>
@@ -357,25 +372,25 @@ export default function Home() {
           onClose={() => setIsPaletteOpen(false)}
           onSelectMode={setCurrentMode}
           onOpenMemory={() => setIsMemoryOpen(true)}
-          onOpenMcp={() => setIsMcpOpen(true)}
+          onOpenPlugins={() => setCurrentMode('mcp')}
           onNewSession={handleNewSession}
         />
 
-        {/* Settings & BYOM Engine Modal (⌘,) */}
+        {/* Settings Modal (⌘,) */}
+        {/* Mounted only while open so it starts from the current settings each time. */}
+        {isSettingsOpen && (
         <SettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
           settings={userSettings}
           onSaveSettings={handleSaveSettings}
+          models={models}
+          modelsStatus={modelsStatus}
+          onCheckModels={refetchModels}
         />
+        )}
 
-        {/* Model Context Protocol (MCP) Tools Registry Modal */}
-        <McpInspector
-          isOpen={isMcpOpen}
-          onClose={() => setIsMcpOpen(false)}
-        />
-
-        {/* Developer & Contributor Architecture Hub (⌘D) */}
+        {/* Developer Hub (⌘D) */}
         <DevHubModal
           isOpen={isDevHubOpen}
           onClose={() => setIsDevHubOpen(false)}

@@ -108,7 +108,7 @@ export function DevHubModal({ isOpen, onClose }: Props) {
                 </p>
                 <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-[11px] text-teal-300 space-y-1">
                   <p>bun install</p>
-                  <p>cp .env.example .env.local</p>
+                  <p>cp .env.example .env</p>
                   <p>bun dev</p>
                 </div>
               </div>
@@ -118,11 +118,11 @@ export function DevHubModal({ isOpen, onClose }: Props) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
                     <span className="font-semibold text-teal-400 block mb-1">Google Gemini</span>
-                    <p className="text-slate-400">Set <code>GEMINI_API_KEY</code> for fast grounded research via gemini-2.5-flash.</p>
+                    <p className="text-slate-400">Set <code>GEMINI_API_KEY</code> (or <code>GOOGLE_API_KEY</code>); optional <code>GEMINI_MODEL</code>.</p>
                   </div>
                   <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
                     <span className="font-semibold text-teal-400 block mb-1">Anthropic Claude</span>
-                    <p className="text-slate-400">Set <code>ANTHROPIC_API_KEY</code> for deep reasoning via Claude 3.5 Sonnet.</p>
+                    <p className="text-slate-400">Set <code>ANTHROPIC_API_KEY</code>; optional <code>ANTHROPIC_MODEL</code>.</p>
                   </div>
                   <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
                     <span className="font-semibold text-teal-400 block mb-1">OpenAI Compatible</span>
@@ -130,7 +130,7 @@ export function DevHubModal({ isOpen, onClose }: Props) {
                   </div>
                   <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
                     <span className="font-semibold text-teal-400 block mb-1">Local Ollama</span>
-                    <p className="text-slate-400">Zero-cost offline local inference via <code>http://localhost:11434</code>.</p>
+                    <p className="text-slate-400">Run <code>ollama serve</code> and pull a model. Uses <code>OLLAMA_BASE_URL</code> (default <code>http://localhost:11434</code>).</p>
                   </div>
                 </div>
               </div>
@@ -146,14 +146,14 @@ export function DevHubModal({ isOpen, onClose }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
                   <span className="font-semibold text-teal-400 block mb-1">Research Report Card</span>
-                  <p className="text-slate-400">Summary, findings, risks, and clickable citations linked to verified web sources.</p>
+                  <p className="text-slate-400">Summary, findings, risks, and clickable citations linked to the fetched web sources.</p>
                 </div>
                 <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
                   <span className="font-semibold text-teal-400 block mb-1">Comparison Matrix</span>
                   <p className="text-slate-400">Weighted decision matrix evaluating candidate technologies or strategies with interactive scoring.</p>
                 </div>
                 <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="font-semibold text-teal-400 block mb-1">Execution Plan</span>
+                  <span className="font-semibold text-teal-400 block mb-1">Plan</span>
                   <p className="text-slate-400">Hierarchical milestone phases with checkable task progression.</p>
                 </div>
                 <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
@@ -166,7 +166,7 @@ export function DevHubModal({ isOpen, onClose }: Props) {
 
           {activeTab === 'architecture' && (
             <div className="space-y-3">
-              <h4 className="font-semibold text-slate-100">Verified Grounding Pipeline</h4>
+              <h4 className="font-semibold text-slate-100">Research pipeline</h4>
               <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px] space-y-2 text-slate-300">
                 <p><span className="text-teal-400 font-bold">1. Query Decomposition:</span> Extract search terms and criteria.</p>
                 <p><span className="text-blue-400 font-bold">2. Pluggable Search:</span> Query Tavily, Brave, or DuckDuckGo HTML fallback.</p>
