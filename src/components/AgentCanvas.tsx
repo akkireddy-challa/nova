@@ -34,7 +34,9 @@ import {
   FileText,
   Zap,
   Wand2,
-  Users
+  Users,
+  CornerDownLeft,
+  ArrowRight
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 import { generateId } from '@/lib/utils';
@@ -116,8 +118,8 @@ export function AgentCanvas({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
     const text = input.trim();
     const currentAtts = [...attachments];
@@ -127,34 +129,39 @@ export function AgentCanvas({
     onSubmitPrompt(text, currentAtts, thinkingBudget);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   const getPlaceholder = (mode: StudioMode) => {
     switch (mode) {
       case 'research':
-        return 'Enter a research thesis (or attach files)...';
+        return 'Ask a research hypothesis, explore primary literature, or synthesize evidence...';
       case 'debate':
-        return 'Enter a controversial claim or architecture to trigger Dual-Agent Deliberation...';
+        return 'Enter two opposing views, technologies, or claims to trigger Dual-Agent Deliberation...';
       case 'planner':
-        return 'Enter any high-level objective to generate an interactive milestone DAG...';
+        return 'Enter any high-level objective to decompose into an interactive milestone DAG...';
       case 'canvas':
-        return 'Request a visual data model, market forecast, or metric comparison...';
+        return 'Request dynamic data charts, metric models, or visual forecasts...';
       case 'matrix':
-        return 'Enter alternatives to evaluate across weighted multi-variable criteria...';
+        return 'Enter options to evaluate across weighted multi-criteria matrices...';
       case 'coder':
-        return 'Describe a component, architecture, or script to synthesize...';
-      case 'mcp':
-        return 'Enter query to dispatch across registered Model Context Protocol tools...';
+        return 'Describe a component, API route, or algorithm to synthesize...';
       default:
-        return 'Ask anything, explore research, compare models, or synthesize code...';
+        return 'Ask anything, explore research, or synthesize code...';
     }
   };
 
   const studioEngines = [
-    { id: 'research' as StudioMode, label: 'Deep Research', icon: <Compass className="w-3.5 h-3.5" /> },
-    { id: 'debate' as StudioMode, label: 'Dual Debate', icon: <Users className="w-3.5 h-3.5" /> },
-    { id: 'planner' as StudioMode, label: 'Goal Planner', icon: <ListTodo className="w-3.5 h-3.5" /> },
-    { id: 'canvas' as StudioMode, label: 'Visuals & Charts', icon: <BarChart2 className="w-3.5 h-3.5" /> },
-    { id: 'matrix' as StudioMode, label: 'Decision Matrix', icon: <Scale className="w-3.5 h-3.5" /> },
-    { id: 'coder' as StudioMode, label: 'Synthesizer', icon: <Code2 className="w-3.5 h-3.5" /> },
+    { id: 'research' as StudioMode, label: 'Research', icon: <Compass className="w-3.5 h-3.5" /> },
+    { id: 'debate' as StudioMode, label: 'Debate', icon: <Users className="w-3.5 h-3.5" /> },
+    { id: 'planner' as StudioMode, label: 'Planner', icon: <ListTodo className="w-3.5 h-3.5" /> },
+    { id: 'canvas' as StudioMode, label: 'Visuals', icon: <BarChart2 className="w-3.5 h-3.5" /> },
+    { id: 'matrix' as StudioMode, label: 'Matrix', icon: <Scale className="w-3.5 h-3.5" /> },
+    { id: 'coder' as StudioMode, label: 'Code', icon: <Code2 className="w-3.5 h-3.5" /> },
   ];
 
   return (
@@ -185,43 +192,46 @@ export function AgentCanvas({
       {/* Scrollable messages and artifacts area */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto w-full">
         {messages.length === 0 ? (
-          /* Welcome Hero for New Workspace */
-          <div className="py-10 md:py-14 text-center space-y-6 max-w-2xl mx-auto animate-in fade-in duration-300">
-            <div className="inline-flex p-3.5 rounded-2xl bg-gradient-to-tr from-teal-500/20 via-indigo-500/20 to-purple-500/20 border border-teal-500/30 text-teal-300 shadow-xl shadow-teal-500/10">
-              <Sparkles className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-center gap-2">
-                <h2 className="text-2xl md:text-3xl font-extrabold text-slate-100 tracking-tight">
-                  What shall we build or solve today?
-                </h2>
+          /* Simplified, Inspiring Empty State */
+          <div className="py-12 md:py-16 text-center space-y-8 max-w-3xl mx-auto animate-in fade-in duration-300">
+            <div className="space-y-3">
+              <div className="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-teal-500/15 via-indigo-500/15 to-purple-500/15 border border-teal-500/20 text-teal-300 shadow-sm">
+                <Sparkles className="w-6 h-6" />
               </div>
-              <p className="text-xs md:text-sm text-slate-400 leading-relaxed max-w-lg mx-auto">
-                Nova orchestrates autonomous multi-agent pipelines to produce verified research, milestone DAGs, interactive charts, and production code.
+              <h2 className="text-2xl md:text-3xl font-bold text-slate-100 tracking-tight">
+                What shall we build or solve today?
+              </h2>
+              <p className="text-xs md:text-sm text-slate-400 max-w-lg mx-auto leading-relaxed">
+                Choose an engine below or type an inquiry. Nova coordinates multi-agent teams to research, debate, plan, and synthesize in seconds.
               </p>
             </div>
 
-            {/* Quick Action Mode Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-3 text-left">
+            {/* 4 Clean Quick-Action Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-left max-w-2xl mx-auto">
               <button
-                onClick={() => { onSelectMode('research'); setInput('Is the Agent Harness Dead? Analyze lightweight code loops, MCP, and evaluation-driven design.'); }}
-                className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-teal-500/40 transition group"
+                onClick={() => {
+                  onSelectMode('research');
+                  setInput('Is the Agent Harness Dead? Analyze lightweight code loops, MCP, and evaluation-driven design.');
+                }}
+                className="p-4 rounded-xl border border-slate-800/80 bg-slate-900/50 hover:bg-slate-900 hover:border-teal-500/40 transition group cursor-pointer"
               >
-                <div className="flex items-center gap-2 text-teal-400 mb-1.5 font-semibold text-xs">
+                <div className="flex items-center gap-2 text-teal-400 mb-1 font-semibold text-xs">
                   <Compass className="w-4 h-4" />
                   <span>Deep Research</span>
                 </div>
                 <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                  Autonomous crawling, source triangulation, and verified citations with audio briefing.
+                  Autonomous crawling across verified literature with audio briefing and citations.
                 </p>
               </button>
 
               <button
-                onClick={() => { onSelectMode('debate'); setInput('Should production AI agents use LangGraph vs raw TypeScript code loops?'); }}
-                className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-indigo-500/40 transition group"
+                onClick={() => {
+                  onSelectMode('debate');
+                  setInput('Should production AI agents use LangGraph vs raw TypeScript code loops?');
+                }}
+                className="p-4 rounded-xl border border-slate-800/80 bg-slate-900/50 hover:bg-slate-900 hover:border-purple-500/40 transition group cursor-pointer"
               >
-                <div className="flex items-center gap-2 text-indigo-400 mb-1.5 font-semibold text-xs">
+                <div className="flex items-center gap-2 text-purple-400 mb-1 font-semibold text-xs">
                   <Users className="w-4 h-4" />
                   <span>Dual-Agent Debate</span>
                 </div>
@@ -231,15 +241,34 @@ export function AgentCanvas({
               </button>
 
               <button
-                onClick={() => { onSelectMode('planner'); setInput('Plan a 14-day execution sprint to build an open-source MCP tool server'); }}
-                className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-purple-500/40 transition group"
+                onClick={() => {
+                  onSelectMode('planner');
+                  setInput('Plan a 14-day execution sprint to build an open-source MCP tool server.');
+                }}
+                className="p-4 rounded-xl border border-slate-800/80 bg-slate-900/50 hover:bg-slate-900 hover:border-cyan-500/40 transition group cursor-pointer"
               >
-                <div className="flex items-center gap-2 text-purple-400 mb-1.5 font-semibold text-xs">
+                <div className="flex items-center gap-2 text-cyan-400 mb-1 font-semibold text-xs">
                   <ListTodo className="w-4 h-4" />
                   <span>Goal-to-DAG Planner</span>
                 </div>
                 <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                  Dependency-ordered milestone roadmap with live checkbox tracking and confetti.
+                  Hierarchical milestone roadmap with interactive task checkboxes and output notes.
+                </p>
+              </button>
+
+              <button
+                onClick={() => {
+                  onSelectMode('matrix');
+                  setInput('Compare local open-weight models (Ollama/DeepSeek) vs closed frontier APIs.');
+                }}
+                className="p-4 rounded-xl border border-slate-800/80 bg-slate-900/50 hover:bg-slate-900 hover:border-amber-500/40 transition group cursor-pointer"
+              >
+                <div className="flex items-center gap-2 text-amber-400 mb-1 font-semibold text-xs">
+                  <Scale className="w-4 h-4" />
+                  <span>Decision Matrix</span>
+                </div>
+                <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                  Multi-criteria comparison table with dynamic sliders and sensitivity recalculation.
                 </p>
               </button>
             </div>
@@ -249,122 +278,84 @@ export function AgentCanvas({
             <div key={msg.id} className="space-y-3 animate-in fade-in duration-200">
               {/* Message Header */}
               <div className="flex items-start gap-3">
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs shadow-md ${
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs shadow-sm ${
                   msg.role === 'assistant' 
                     ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' 
                     : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
                 }`}>
-                  {msg.role === 'assistant' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                  {msg.role === 'assistant' ? <Bot className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-semibold text-slate-200">
                       {msg.role === 'assistant' ? 'Nova Autonomous Studio' : 'You'}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      {msg.timestamp}
-                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">{msg.timestamp}</span>
                     {msg.mode && (
-                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-900 text-teal-400 border border-slate-800 font-mono">
+                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-slate-900 text-slate-400 border border-slate-800">
                         {msg.mode}
                       </span>
                     )}
                   </div>
 
-                  {/* Attached files preview */}
-                  {msg.attachments && msg.attachments.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {msg.attachments.map(att => (
-                        <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300">
-                          <FileText className="w-3.5 h-3.5 text-teal-400" />
-                          <span className="truncate max-w-[180px]">{att.name}</span>
-                          <span className="text-[9px] text-slate-500 font-mono">({Math.round(att.size / 1024)}KB)</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Message content text */}
-                  <div className="text-xs md:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                  {/* Message body */}
+                  <div className="text-xs md:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
                     {msg.content}
                   </div>
-
-                  {/* Agent Thoughts disclosure */}
-                  {msg.thoughts && msg.thoughts.length > 0 && (
-                    <div className="my-3 p-3 rounded-xl border border-slate-800/80 bg-slate-900/60 space-y-1.5 text-xs">
-                      <div className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3 h-3 text-teal-400" />
-                        Autonomous Swarm Execution Trail
-                      </div>
-                      <div className="space-y-1">
-                        {msg.thoughts.map((th) => (
-                          <div key={th.id} className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
-                            <span className="text-teal-400 font-semibold">{th.agentName}:</span>
-                            <span className="truncate">{th.action}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Render Generative Artifact */}
-                  {msg.artifact && (
-                    <div className="mt-3">
-                      {msg.artifact.type === 'research' && (
-                        <ResearchReportCard report={msg.artifact.data} />
-                      )}
-                      {msg.artifact.type === 'debate' && (
-                        <DebateCard debate={msg.artifact.data} />
-                      )}
-                      {msg.artifact.type === 'plan' && (
-                        <TaskDagCard plan={msg.artifact.data} />
-                      )}
-                      {msg.artifact.type === 'chart' && (
-                        <ChartCard chart={msg.artifact.data} />
-                      )}
-                      {msg.artifact.type === 'matrix' && (
-                        <DecisionMatrixCard matrix={msg.artifact.data} />
-                      )}
-                      {msg.artifact.type === 'code' && (
-                        <CodeSandboxCard codeArtifact={msg.artifact.data} />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Telemetry pill */}
-                  {msg.telemetry && (
-                    <div className="mt-2.5 flex items-center gap-3 text-[10px] text-slate-500 font-mono">
-                      <span className="flex items-center gap-1 text-teal-400/80">
-                        <Zap className="w-3 h-3" />
-                        {msg.telemetry.latencyMs}ms
-                      </span>
-                      <span>•</span>
-                      <span>{msg.telemetry.tokenCount} tokens</span>
-                      <span>•</span>
-                      <span>{msg.telemetry.tokensPerSec} t/s</span>
-                      <span>•</span>
-                      <span>{msg.telemetry.model}</span>
-                    </div>
-                  )}
                 </div>
               </div>
+
+              {/* Generative Interactive Artifact */}
+              {msg.artifact && (
+                <div className="pl-10">
+                  {msg.artifact.type === 'research' && (
+                    <ResearchReportCard report={msg.artifact.data} />
+                  )}
+                  {msg.artifact.type === 'plan' && (
+                    <TaskDagCard plan={msg.artifact.data} />
+                  )}
+                  {msg.artifact.type === 'chart' && (
+                    <ChartCard chart={msg.artifact.data} />
+                  )}
+                  {msg.artifact.type === 'matrix' && (
+                    <DecisionMatrixCard matrix={msg.artifact.data} />
+                  )}
+                  {msg.artifact.type === 'code' && (
+                    <CodeSandboxCard codeArtifact={msg.artifact.data} />
+                  )}
+                  {msg.artifact.type === 'debate' && (
+                    <DebateCard debate={msg.artifact.data} />
+                  )}
+                </div>
+              )}
+
+              {/* Latency & Telemetry Footer */}
+              {msg.telemetry && (
+                <div className="pl-10 text-[10.5px] font-mono text-slate-500 flex items-center gap-2">
+                  <span>{msg.telemetry.latencyMs}ms</span>
+                  <span>•</span>
+                  <span>{msg.telemetry.tokenCount} tokens</span>
+                  <span>•</span>
+                  <span>{msg.telemetry.model}</span>
+                </div>
+              )}
             </div>
           ))
         )}
 
-        {/* Loading indicator */}
+        {/* Loading Indicator */}
         {isLoading && (
           <div className="flex items-start gap-3 p-4 rounded-xl border border-teal-500/20 bg-teal-500/5 animate-pulse">
-            <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <p className="text-xs font-semibold text-teal-300">
-                Autonomous Agents Collaborating ({thinkingBudget} mode)...
+                Autonomous Agents Deliberating ({thinkingBudget} budget)...
               </p>
               <p className="text-[11px] text-slate-400">
-                Planning queries, analyzing knowledge sources, and generating visual artifacts.
+                CoAct self-consistency routing & verified evidence synthesis in progress.
               </p>
             </div>
           </div>
@@ -373,142 +364,139 @@ export function AgentCanvas({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Dock */}
-      <div className="p-4 bg-slate-950/80 border-t border-slate-800 backdrop-blur-md">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-2.5">
-          {/* Studio Engine Selector Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {studioEngines.map(e => {
-              const isSelected = currentMode === e.id;
-              return (
-                <button
-                  key={e.id}
-                  type="button"
-                  onClick={() => { sound.playCheck(); onSelectMode(e.id); }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 ${
-                    isSelected
-                      ? 'bg-teal-500/15 text-teal-300 border border-teal-500/40 shadow-sm font-semibold'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
-                  }`}
-                >
-                  <span className={isSelected ? 'text-teal-400' : 'text-slate-500'}>{e.icon}</span>
-                  <span>{e.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Controls bar: Thinking Depth & Prompt Enhancer */}
-          <div className="flex items-center justify-between text-xs px-1">
-            {/* Thinking Depth Selector */}
-            <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-[11px]">
-              <span className="text-[10px] text-slate-500 uppercase px-2 font-mono">Thinking:</span>
-              <button
-                type="button"
-                onClick={() => { sound.playCheck(); setThinkingBudget('quick'); }}
-                className={`px-2 py-0.5 rounded transition ${
-                  thinkingBudget === 'quick' ? 'bg-slate-800 text-teal-300 font-semibold' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                ⚡ Quick
-              </button>
-              <button
-                type="button"
-                onClick={() => { sound.playCheck(); setThinkingBudget('analytical'); }}
-                className={`px-2 py-0.5 rounded transition ${
-                  thinkingBudget === 'analytical' ? 'bg-slate-800 text-teal-300 font-semibold' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                🧠 Analytical
-              </button>
-              <button
-                type="button"
-                onClick={() => { sound.playCheck(); setThinkingBudget('deep'); }}
-                className={`px-2 py-0.5 rounded transition ${
-                  thinkingBudget === 'deep' ? 'bg-slate-800 text-teal-300 font-semibold' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                🔬 Deep
-              </button>
+      {/* Simplified, Modern Floating Command Dock */}
+      <div className="p-4 max-w-4xl mx-auto w-full">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md p-3 space-y-2.5 transition focus-within:border-teal-500/50 focus-within:shadow-teal-500/5">
+          {/* Top Row: Engine Selector & Thinking Depth */}
+          <div className="flex items-center justify-between text-xs border-b border-slate-800/60 pb-2">
+            {/* Mode Selector Chips */}
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+              {studioEngines.map(e => {
+                const isSelected = currentMode === e.id;
+                return (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => { sound.playCheck(); onSelectMode(e.id); }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 ${
+                      isSelected
+                        ? 'bg-teal-500/15 text-teal-300 border border-teal-500/40 font-semibold'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+                    }`}
+                  >
+                    <span className={isSelected ? 'text-teal-400' : 'text-slate-500'}>{e.icon}</span>
+                    <span>{e.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Prompt Enhancer Button */}
-            {input.trim() && (
-              <button
-                type="button"
-                onClick={handleEnhancePrompt}
-                disabled={isEnhancing}
-                className="flex items-center gap-1 text-[11px] text-teal-400 hover:text-teal-300 bg-teal-500/10 hover:bg-teal-500/20 px-2 py-0.5 rounded-md border border-teal-500/30 transition disabled:opacity-40"
-                title="Automatically upgrade prompt into a high-agency inquiry"
-              >
-                {isEnhancing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
-                <span>{isEnhancing ? 'Enhancing...' : 'Enhance Prompt ✨'}</span>
-              </button>
-            )}
+            {/* Thinking Depth Segment */}
+            <div className="hidden sm:flex items-center gap-0.5 bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10.5px] font-mono">
+              {(['quick', 'analytical', 'deep'] as const).map(b => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => { sound.playCheck(); setThinkingBudget(b); }}
+                  className={`px-2 py-0.5 rounded transition cursor-pointer capitalize ${
+                    thinkingBudget === b ? 'bg-slate-800 text-teal-300 font-semibold' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  {b === 'quick' ? '⚡ Quick' : b === 'analytical' ? '🧠 Analytical' : '🔬 Deep'}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Pending attachments pill bar */}
+          {/* Pending Attachments List */}
           {attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2 pb-1">
+            <div className="flex flex-wrap gap-1.5 pb-1">
               {attachments.map(att => (
-                <div key={att.id} className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900 border border-teal-500/40 text-xs text-teal-200">
-                  <FileText className="w-3.5 h-3.5 text-teal-400" />
-                  <span className="font-medium truncate max-w-[200px]">{att.name}</span>
+                <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-950 border border-teal-500/40 text-xs text-teal-200">
+                  <FileText className="w-3 h-3 text-teal-400" />
+                  <span className="font-medium truncate max-w-[180px] text-[11px]">{att.name}</span>
                   <button
                     type="button"
                     onClick={() => removeAttachment(att.id)}
-                    className="p-0.5 rounded text-slate-400 hover:text-rose-400 ml-1 transition"
+                    className="p-0.5 rounded text-slate-400 hover:text-rose-400 ml-1 transition cursor-pointer"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-2.5 h-2.5" />
                   </button>
                 </div>
               ))}
             </div>
           )}
 
+          {/* Main Input Row */}
           <div className="flex items-center gap-2">
             <input
-              type="file"
-              ref={fileInputRef}
-              onChange={(e) => handleFileUpload(e.target.files)}
-              className="hidden"
-              multiple
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={getPlaceholder(currentMode)}
+              disabled={isLoading}
+              className="w-full bg-transparent px-2 py-1.5 text-xs md:text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
             />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Attach documents, data files, or code"
-              className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition"
-            >
-              <Paperclip className="w-4 h-4" />
-            </button>
+          </div>
 
-            <VoiceInput onTranscription={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} />
-
-            <div className="flex-1 relative">
+          {/* Bottom Action Row: Attach, Voice, Enhance, and Submit */}
+          <div className="flex items-center justify-between pt-1 border-t border-slate-800/40">
+            <div className="flex items-center gap-1.5">
               <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={getPlaceholder(currentMode)}
-                disabled={isLoading}
-                className="w-full pl-4 pr-10 py-3 rounded-xl bg-slate-900 border border-slate-700/80 text-xs md:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition shadow-inner"
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => handleFileUpload(e.target.files)}
+                className="hidden"
+                multiple
               />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach code or data files"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
+              >
+                <Paperclip className="w-3.5 h-3.5" />
+              </button>
+
+              <VoiceInput onTranscription={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} />
+
+              {input.trim() && (
+                <button
+                  type="button"
+                  onClick={handleEnhancePrompt}
+                  disabled={isEnhancing}
+                  className="flex items-center gap-1 text-[11px] text-teal-400 hover:text-teal-300 bg-teal-500/10 px-2 py-1 rounded-md transition cursor-pointer disabled:opacity-50"
+                  title="Enhance prompt with autonomous intent"
+                >
+                  {isEnhancing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                  <span>Enhance ✨</span>
+                </button>
+              )}
             </div>
 
-            <button
-              type="submit"
-              disabled={(!input.trim() && attachments.length === 0) || isLoading}
-              className="p-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 disabled:opacity-40 font-semibold transition flex items-center justify-center shadow-lg shadow-teal-500/10"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="hidden md:inline text-[10px] font-mono text-slate-500">
+                Press Enter ↵
+              </span>
+              <button
+                type="button"
+                onClick={() => handleSubmit()}
+                disabled={(!input.trim() && attachments.length === 0) || isLoading}
+                className="px-3 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 shadow-sm"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <span>Send</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
