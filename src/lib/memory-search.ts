@@ -8,19 +8,22 @@ import {
   getProvider,
   resolveEmbeddingModel,
   toModelId,
-} from './providers';
-import type { KnowledgeMemoryItem } from './types';
+} from "./providers";
+import type { KnowledgeMemoryItem } from "./types";
 
-export type MemoryInput = Pick<KnowledgeMemoryItem, 'id' | 'title' | 'content'> & {
-  category?: KnowledgeMemoryItem['category'];
+export type MemoryInput = Pick<
+  KnowledgeMemoryItem,
+  "id" | "title" | "content"
+> & {
+  category?: KnowledgeMemoryItem["category"];
 };
 
-export type MemorySearchMethod = 'embeddings' | 'keyword';
+export type MemorySearchMethod = "embeddings" | "keyword";
 
 export interface MemorySearchHit {
   memoryId: string;
   title: string;
-  category?: KnowledgeMemoryItem['category'];
+  category?: KnowledgeMemoryItem["category"];
   /** The best-matching passage of the memory. */
   text: string;
   /** 1-based passage number within the memory. */
@@ -44,15 +47,19 @@ const CHUNK_WORDS = 200;
 const CHUNK_OVERLAP = 40;
 
 /** Split text into word windows that overlap so a match on a boundary is not lost. */
-export function chunkText(text: string, chunkSize = CHUNK_WORDS, overlap = CHUNK_OVERLAP): string[] {
+export function chunkText(
+  text: string,
+  chunkSize = CHUNK_WORDS,
+  overlap = CHUNK_OVERLAP,
+): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return [];
-  if (words.length <= chunkSize) return [words.join(' ')];
+  if (words.length <= chunkSize) return [words.join(" ")];
   const step = Math.max(1, chunkSize - overlap);
   const chunks: string[] = [];
   for (let start = 0; start < words.length; start += step) {
     const end = Math.min(start + chunkSize, words.length);
-    chunks.push(words.slice(start, end).join(' '));
+    chunks.push(words.slice(start, end).join(" "));
     if (end === words.length) break;
   }
   return chunks;
@@ -73,8 +80,8 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 const STOPWORDS = new Set(
-  'a an and are as at be but by for from has have how i in is it its me my of on or our so that the their them then there these this to was we were what when where which who why will with you your'.split(
-    ' ',
+  "a an and are as at be but by for from has have how i in is it its me my of on or our so that the their them then there these this to was we were what when where which who why will with you your".split(
+    " ",
   ),
 );
 
@@ -82,28 +89,40 @@ const STOPWORDS = new Set(
 export function tokenize(text: string): string[] {
   const tokens = text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
   return tokens
-    .filter(token => token.length > 1 && !STOPWORDS.has(token))
-    .map(token => (token.length > 3 && token.endsWith('s') && !token.endsWith('ss') ? token.slice(0, -1) : token));
+    .filter((token) => token.length > 1 && !STOPWORDS.has(token))
+    .map((token) =>
+      token.length > 3 && token.endsWith("s") && !token.endsWith("ss")
+        ? token.slice(0, -1)
+        : token,
+    );
 }
 
 /** Okapi BM25 score of each document for the query. Documents sharing no term with the query score 0. */
-export function bm25Scores(query: string, documents: string[], k1 = 1.2, b = 0.75): number[] {
+export function bm25Scores(
+  query: string,
+  documents: string[],
+  k1 = 1.2,
+  b = 0.75,
+): number[] {
   const queryTerms = [...new Set(tokenize(query))];
   const docs = documents.map(tokenize);
   if (queryTerms.length === 0 || docs.length === 0) return docs.map(() => 0);
-  const avgLength = docs.reduce((sum, doc) => sum + doc.length, 0) / docs.length || 1;
+  const avgLength =
+    docs.reduce((sum, doc) => sum + doc.length, 0) / docs.length || 1;
   const docFreq = new Map<string, number>();
   for (const term of queryTerms) {
-    docFreq.set(term, docs.filter(doc => doc.includes(term)).length);
+    docFreq.set(term, docs.filter((doc) => doc.includes(term)).length);
   }
-  return docs.map(doc => {
+  return docs.map((doc) => {
     let score = 0;
     for (const term of queryTerms) {
-      const tf = doc.filter(token => token === term).length;
+      const tf = doc.filter((token) => token === term).length;
       if (tf === 0) continue;
       const df = docFreq.get(term) ?? 0;
       const idf = Math.log(1 + (docs.length - df + 0.5) / (df + 0.5));
-      score += idf * ((tf * (k1 + 1)) / (tf + k1 * (1 - b + (b * doc.length) / avgLength)));
+      score +=
+        idf *
+        ((tf * (k1 + 1)) / (tf + k1 * (1 - b + (b * doc.length) / avgLength)));
     }
     return score;
   });
@@ -144,7 +163,7 @@ function toPassages(memories: MemoryInput[]): Passage[] {
   const passages: Passage[] = [];
   for (const memory of memories) {
     const chunks = chunkText(memory.content);
-    if (chunks.length === 0) chunks.push('');
+    if (chunks.length === 0) chunks.push("");
     chunks.forEach((text, index) => {
       passages.push({
         memory,
@@ -155,11 +174,16 @@ function toPassages(memories: MemoryInput[]): Passage[] {
       });
     });
   }
-  return passages.filter(passage => passage.indexed.length > 0);
+  return passages.filter((passage) => passage.indexed.length > 0);
 }
 
 /** Keep the best passage per memory, highest score first. */
-function rank(passages: Passage[], scores: number[], topK: number, keepZero: boolean): MemorySearchHit[] {
+function rank(
+  passages: Passage[],
+  scores: number[],
+  topK: number,
+  keepZero: boolean,
+): MemorySearchHit[] {
   const best = new Map<string, MemorySearchHit>();
   passages.forEach((passage, index) => {
     const score = scores[index];
@@ -189,17 +213,28 @@ async function embedWithCache(
   if (!provider.embed) throw new NoEmbeddingProviderError();
   const modelId = toModelId(selection);
 
-  const texts = [query, ...passages.map(passage => passage.indexed)];
-  const missing = [...new Set(texts.filter(text => !vectorCache.has(cacheKey(modelId, text))))];
+  const texts = [query, ...passages.map((passage) => passage.indexed)];
+  const missing = [
+    ...new Set(
+      texts.filter((text) => !vectorCache.has(cacheKey(modelId, text))),
+    ),
+  ];
   if (missing.length > 0) {
-    const { vectors } = await provider.embed({ model: selection.model, texts: missing, signal });
-    missing.forEach((text, index) => remember(cacheKey(modelId, text), vectors[index]));
+    const { vectors } = await provider.embed({
+      model: selection.model,
+      texts: missing,
+      signal,
+    });
+    missing.forEach((text, index) =>
+      remember(cacheKey(modelId, text), vectors[index]),
+    );
   }
-  const lookup = (text: string): number[] => vectorCache.get(cacheKey(modelId, text)) ?? [];
+  const lookup = (text: string): number[] =>
+    vectorCache.get(cacheKey(modelId, text)) ?? [];
   return {
     modelId,
     queryVector: lookup(query),
-    vectors: passages.map(passage => lookup(passage.indexed)),
+    vectors: passages.map((passage) => lookup(passage.indexed)),
   };
 }
 
@@ -216,16 +251,22 @@ export async function searchMemories(
   const topK = Math.max(1, Math.min(options.topK ?? 5, 50));
   const passages = toPassages(memories);
   if (!trimmed || passages.length === 0) {
-    return { query: trimmed, method: 'keyword', results: [] };
+    return { query: trimmed, method: "keyword", results: [] };
   }
 
   let fallbackReason: string | undefined;
   try {
-    const { modelId, queryVector, vectors } = await embedWithCache(passages, trimmed, options.signal);
-    const scores = vectors.map(vector => cosineSimilarity(queryVector, vector));
+    const { modelId, queryVector, vectors } = await embedWithCache(
+      passages,
+      trimmed,
+      options.signal,
+    );
+    const scores = vectors.map((vector) =>
+      cosineSimilarity(queryVector, vector),
+    );
     return {
       query: trimmed,
-      method: 'embeddings',
+      method: "embeddings",
       embeddingModel: modelId,
       results: rank(passages, scores, topK, true),
     };
@@ -235,14 +276,17 @@ export async function searchMemories(
       fallbackReason =
         err instanceof ProviderError || err instanceof ModelSelectionError
           ? err.message
-          : 'The embeddings request failed';
+          : "The embeddings request failed";
     }
   }
 
-  const scores = bm25Scores(trimmed, passages.map(passage => passage.indexed));
+  const scores = bm25Scores(
+    trimmed,
+    passages.map((passage) => passage.indexed),
+  );
   return {
     query: trimmed,
-    method: 'keyword',
+    method: "keyword",
     ...(fallbackReason ? { fallbackReason } : {}),
     results: rank(passages, scores, topK, false),
   };

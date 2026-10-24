@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { StudioMode, Session } from '@/lib/types';
+import React from "react";
+import { StudioMode, Session } from "@/lib/types";
 import {
   Brain,
   Puzzle,
@@ -10,9 +10,9 @@ import {
   ChevronRight,
   FolderGit2,
   Settings as SettingsIcon,
-  MessageSquare
-} from 'lucide-react';
-import { sound } from '@/lib/sound';
+  MessageSquare,
+} from "lucide-react";
+import { sound } from "@/lib/sound";
 
 interface Props {
   currentMode: StudioMode;
@@ -37,46 +37,55 @@ export function Sidebar({
   onOpenDevHub,
   onOpenSettings,
 }: Props) {
-  const isStudioMode = ['research', 'debate', 'planner', 'canvas', 'matrix', 'coder'].includes(currentMode);
+  const isStudioMode = [
+    "research",
+    "debate",
+    "planner",
+    "canvas",
+    "matrix",
+    "coder",
+  ].includes(currentMode);
 
   const workspaces = [
-    { 
-      id: 'research' as StudioMode, 
-      label: 'Chat', 
+    {
+      id: "research" as StudioMode,
+      label: "Chat",
       icon: <MessageSquare className="w-4 h-4" />,
       isActive: isStudioMode,
-      description: 'Research, Plan, Compare, Chart, Code, Debate'
+      description: "Research, Plan, Compare, Chart, Code, Debate",
     },
-    { 
-      id: 'intelligence' as StudioMode, 
-      label: 'Memory Search', 
+    {
+      id: "intelligence" as StudioMode,
+      label: "Memory Search",
       icon: <Brain className="w-4 h-4" />,
-      isActive: currentMode === 'intelligence',
+      isActive: currentMode === "intelligence",
     },
-    { 
-      id: 'mcp' as StudioMode, 
-      label: 'Tools & API', 
+    {
+      id: "mcp" as StudioMode,
+      label: "Tools & API",
       icon: <Puzzle className="w-4 h-4" />,
-      isActive: currentMode === 'mcp',
-      badge: 'MCP'
+      isActive: currentMode === "mcp",
+      badge: "MCP",
     },
   ];
 
   const presets: { label: string; mode: StudioMode; prompt: string }[] = [
     {
-      label: 'What is new in the latest Node.js LTS?',
-      mode: 'research',
-      prompt: 'What are the notable changes in the latest Node.js LTS release?',
+      label: "What is new in the latest Node.js LTS?",
+      mode: "research",
+      prompt: "What are the notable changes in the latest Node.js LTS release?",
     },
     {
-      label: 'Plan a small open-source launch',
-      mode: 'planner',
-      prompt: 'Plan a two-week schedule to prepare and launch a small open-source library.',
+      label: "Plan a small open-source launch",
+      mode: "planner",
+      prompt:
+        "Plan a two-week schedule to prepare and launch a small open-source library.",
     },
     {
-      label: 'Compare local vs hosted LLMs',
-      mode: 'matrix',
-      prompt: 'Compare running an open-weight model locally with Ollama against a hosted LLM API for privacy, latency, and cost.',
+      label: "Compare local vs hosted LLMs",
+      mode: "matrix",
+      prompt:
+        "Compare running an open-weight model locally with Ollama against a hosted LLM API for privacy, latency, and cost.",
     },
   ];
 
@@ -93,19 +102,24 @@ export function Sidebar({
         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-2 py-1">
           Workspaces
         </p>
-        {workspaces.map(w => {
+        {workspaces.map((w) => {
           return (
             <button
               key={w.label}
-              onClick={() => { sound.playCheck(); onSelectMode(w.id); }}
+              onClick={() => {
+                sound.playCheck();
+                onSelectMode(w.id);
+              }}
               className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
                 w.isActive
-                  ? 'bg-slate-900 text-teal-300 border border-slate-800 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'
+                  ? "bg-slate-900 text-teal-300 border border-slate-800 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40"
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className={w.isActive ? 'text-teal-400' : 'text-slate-500'}>
+                <span
+                  className={w.isActive ? "text-teal-400" : "text-slate-500"}
+                >
                   {w.icon}
                 </span>
                 <span>{w.label}</span>
@@ -128,7 +142,9 @@ export function Sidebar({
           <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
             Recent Sessions
           </p>
-          <span className="text-[10px] font-mono text-slate-500">{sessions.length}</span>
+          <span className="text-[10px] font-mono text-slate-500">
+            {sessions.length}
+          </span>
         </div>
 
         {sessions.length === 0 ? (
@@ -136,21 +152,26 @@ export function Sidebar({
             No sessions yet. Ask a question to start one.
           </div>
         ) : (
-          sessions.map(s => {
+          sessions.map((s) => {
             const isActive = s.id === activeSessionId;
             return (
               <div
                 key={s.id}
-                onClick={() => { sound.playCheck(); onSelectSession(s.id); }}
+                onClick={() => {
+                  sound.playCheck();
+                  onSelectSession(s.id);
+                }}
                 className={`group flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer ${
                   isActive
-                    ? 'bg-slate-900 text-teal-300 font-medium border border-slate-800'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'
+                    ? "bg-slate-900 text-teal-300 font-medium border border-slate-800"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40"
                 }`}
               >
                 <div className="flex items-center gap-2 truncate">
                   <Clock className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                  <span className="truncate max-w-[150px]">{s.title || 'Untitled Session'}</span>
+                  <span className="truncate max-w-[150px]">
+                    {s.title || "Untitled Session"}
+                  </span>
                 </div>
                 {onDeleteSession && (
                   <button
@@ -181,7 +202,9 @@ export function Sidebar({
                 }}
                 className="w-full text-left p-2 rounded-lg bg-slate-900/40 hover:bg-slate-900 border border-slate-800/60 hover:border-slate-700 transition cursor-pointer text-[11px]"
               >
-                <div className="text-slate-300 font-medium line-clamp-1">{p.label}</div>
+                <div className="text-slate-300 font-medium line-clamp-1">
+                  {p.label}
+                </div>
               </button>
             ))}
           </div>
@@ -191,7 +214,10 @@ export function Sidebar({
       {/* Pinned Bottom Footer */}
       <div className="p-3 border-t border-slate-800/80 bg-slate-950/80 space-y-1">
         <button
-          onClick={() => { sound.playCheck(); onOpenSettings?.(); }}
+          onClick={() => {
+            sound.playCheck();
+            onOpenSettings?.();
+          }}
           className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition cursor-pointer"
         >
           <SettingsIcon className="w-4 h-4 text-slate-400" />
@@ -199,7 +225,10 @@ export function Sidebar({
         </button>
 
         <button
-          onClick={() => { sound.playCheck(); onOpenDevHub?.(); }}
+          onClick={() => {
+            sound.playCheck();
+            onOpenDevHub?.();
+          }}
           className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition cursor-pointer"
         >
           <FolderGit2 className="w-4 h-4 text-teal-400" />

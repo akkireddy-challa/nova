@@ -1,9 +1,17 @@
-export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'debate' | 'intelligence' | 'mcp';
+export type StudioMode =
+  | "research"
+  | "planner"
+  | "canvas"
+  | "coder"
+  | "matrix"
+  | "debate"
+  | "intelligence"
+  | "mcp";
 
 // Serialized model selection: "provider:model", e.g. "anthropic:claude-sonnet-5-5". See src/lib/providers/types.ts.
 export type ModelProvider = string;
 
-export type ThinkingBudget = 'quick' | 'analytical' | 'deep';
+export type ThinkingBudget = "quick" | "analytical" | "deep";
 
 export interface SourceCitation {
   id: string;
@@ -20,7 +28,7 @@ export interface SourceCitation {
 export interface ResearchPlanStep {
   id: string;
   query: string;
-  status: 'pending' | 'searching' | 'analyzing' | 'completed';
+  status: "pending" | "searching" | "analyzing" | "completed";
   sourcesFound: number;
 }
 
@@ -30,7 +38,7 @@ export interface ResearchReport {
   keyFindings: {
     point: string;
     description: string;
-    confidence: 'high' | 'medium' | 'low';
+    confidence: "high" | "medium" | "low";
     citationIds: string[];
   }[];
   sources: SourceCitation[];
@@ -47,7 +55,7 @@ export interface TaskSubItem {
   id: string;
   title: string;
   description: string;
-  status: 'todo' | 'in_progress' | 'completed';
+  status: "todo" | "in_progress" | "completed";
   actionableOutput?: string;
 }
 
@@ -56,7 +64,7 @@ export interface MilestonePhase {
   phaseNumber: number;
   phaseName: string;
   summary: string;
-  status: 'pending' | 'active' | 'completed';
+  status: "pending" | "active" | "completed";
   tasks: TaskSubItem[];
 }
 
@@ -78,7 +86,7 @@ export interface ChartDatum {
 
 export interface ChartArtifact {
   title: string;
-  type: 'bar' | 'line' | 'area';
+  type: "bar" | "line" | "area";
   xAxisKey: string;
   data: ChartDatum[];
   insight: string;
@@ -118,7 +126,7 @@ export interface CodeArtifact {
 
 export interface DebatePerspective {
   agentName: string;
-  stance: 'Advocate' | 'Critic' | 'Neutral Arbiter';
+  stance: "Advocate" | "Critic" | "Neutral Arbiter";
   avatarColor: string;
   arguments: string[];
   caveats: string[];
@@ -144,18 +152,18 @@ export interface McpTool {
 // --- Voice Briefing Engine Contracts ---
 export interface TraceStep {
   at: string;
-  kind: 'search' | 'fetch' | 'llm' | 'parse' | 'error';
+  kind: "search" | "fetch" | "llm" | "parse" | "error";
   detail: string;
   ms: number;
 }
 
-export type GenerativeArtifact = 
-  | { type: 'research'; data: ResearchReport }
-  | { type: 'plan'; data: GoalPlan }
-  | { type: 'chart'; data: ChartArtifact }
-  | { type: 'matrix'; data: DecisionMatrix }
-  | { type: 'code'; data: CodeArtifact }
-  | { type: 'debate'; data: DebateArtifact };
+export type GenerativeArtifact =
+  | { type: "research"; data: ResearchReport }
+  | { type: "plan"; data: GoalPlan }
+  | { type: "chart"; data: ChartArtifact }
+  | { type: "matrix"; data: DecisionMatrix }
+  | { type: "code"; data: CodeArtifact }
+  | { type: "debate"; data: DebateArtifact };
 
 export interface AgentThought {
   id: string;
@@ -163,12 +171,12 @@ export interface AgentThought {
   agentName: string;
   action: string;
   details?: string;
-  status: 'running' | 'success' | 'warn';
+  status: "running" | "success" | "warn";
 }
 
 /** One earlier turn of the conversation, sent with follow-up questions (text only, no artifacts). */
 export interface ConversationTurn {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -190,7 +198,7 @@ export interface GenerationTelemetry {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: string;
   mode?: StudioMode;
@@ -204,7 +212,7 @@ export interface KnowledgeMemoryItem {
   id: string;
   title: string;
   content: string;
-  category: 'preference' | 'project_context' | 'personal_fact' | 'document';
+  category: "preference" | "project_context" | "personal_fact" | "document";
   createdAt: string;
 }
 
@@ -225,7 +233,8 @@ export interface UserSettings {
   ollamaBaseUrl: string;
   customEndpointUrl: string;
   customModelName: string;
-  activeProvider: 'gemini' | 'anthropic' | 'openai' | 'groq' | 'ollama' | 'custom';
+  activeProvider:
+    "gemini" | "anthropic" | "openai" | "groq" | "ollama" | "custom";
   enabledTools: string[];
   defaultThinkingBudget: ThinkingBudget;
 }
@@ -234,8 +243,11 @@ export interface McpToolDefinition {
   name: string;
   description: string;
   inputSchema: {
-    type: 'object';
-    properties: Record<string, { type: string; description: string; enum?: string[] }>;
+    type: "object";
+    properties: Record<
+      string,
+      { type: string; description: string; enum?: string[] }
+    >;
     required?: string[];
   };
 }
@@ -244,7 +256,7 @@ export interface McpPluginDefinition {
   id: string;
   name: string;
   description: string;
-  category: 'search' | 'code' | 'memory' | 'integration' | 'custom';
+  category: "search" | "code" | "memory" | "integration" | "custom";
   version: string;
   author: string;
   icon: string;
@@ -270,8 +282,12 @@ export interface McpToolExecutionResult {
 export interface EvalScenario {
   id: string;
   title: string;
-  category: 'tool_composition' | 'conflict_resolution' | 'recursive_harness' | 'safety_guardrail';
-  complexity: 'K1' | 'K2' | 'K3' | 'K4';
+  category:
+    | "tool_composition"
+    | "conflict_resolution"
+    | "recursive_harness"
+    | "safety_guardrail";
+  complexity: "K1" | "K2" | "K3" | "K4";
   description: string;
   prompt: string;
   expectedBehavior: string;

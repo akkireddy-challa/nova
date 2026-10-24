@@ -1,34 +1,36 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { ResearchReport } from '@/lib/types';
-import { 
-  ExternalLink, 
-  AlertTriangle, 
-  Download, 
-  Sparkles, 
+import React, { useState } from "react";
+import { ResearchReport } from "@/lib/types";
+import {
+  ExternalLink,
+  AlertTriangle,
+  Download,
+  Sparkles,
   CheckCircle2,
   BookOpen,
-  Globe
-} from 'lucide-react';
-import { sound } from '@/lib/sound';
+  Globe,
+} from "lucide-react";
+import { sound } from "@/lib/sound";
 
 interface Props {
   report: ResearchReport;
 }
 
 export function ResearchReportCard({ report }: Props) {
-  const [activeTab, setActiveTab] = useState<'findings' | 'sources' | 'risks'>('findings');
+  const [activeTab, setActiveTab] = useState<"findings" | "sources" | "risks">(
+    "findings",
+  );
   const [copied, setCopied] = useState(false);
 
   const handleDownload = () => {
     sound.playCheck();
-    const md = `# ${report.title}\n\n## Executive Summary\n${report.executiveSummary}\n\n## Key Findings\n${report.keyFindings.map(f => `### ${f.point}\n${f.description}\nConfidence: ${f.confidence}`).join('\n\n')}\n\n## Recommendation\n${report.recommendation}\n\n## Primary Citations\n${report.sources.map(s => `- [${s.title}](${s.url}) - ${s.snippet}`).join('\n')}`;
-    const blob = new Blob([md], { type: 'text/markdown' });
+    const md = `# ${report.title}\n\n## Executive Summary\n${report.executiveSummary}\n\n## Key Findings\n${report.keyFindings.map((f) => `### ${f.point}\n${f.description}\nConfidence: ${f.confidence}`).join("\n\n")}\n\n## Recommendation\n${report.recommendation}\n\n## Primary Citations\n${report.sources.map((s) => `- [${s.title}](${s.url}) - ${s.snippet}`).join("\n")}`;
+    const blob = new Blob([md], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `${report.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`;
+    a.download = `${report.title.toLowerCase().replace(/[^a-z0-9]/g, "-")}.md`;
     a.click();
     URL.revokeObjectURL(url);
     setCopied(true);
@@ -52,7 +54,9 @@ export function ResearchReportCard({ report }: Props) {
               {report.metrics && report.metrics.synthesisTimeMs > 0 && (
                 <>
                   <span>•</span>
-                  <span>{(report.metrics.synthesisTimeMs / 1000).toFixed(1)}s</span>
+                  <span>
+                    {(report.metrics.synthesisTimeMs / 1000).toFixed(1)}s
+                  </span>
                 </>
               )}
             </div>
@@ -65,8 +69,12 @@ export function ResearchReportCard({ report }: Props) {
             onClick={handleDownload}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
           >
-            {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" /> : <Download className="w-3.5 h-3.5" />}
-            <span>{copied ? 'Downloaded' : 'Export'}</span>
+            {copied ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            <span>{copied ? "Downloaded" : "Export"}</span>
           </button>
         </div>
       </div>
@@ -110,9 +118,13 @@ export function ResearchReportCard({ report }: Props) {
                   {src.snippet}
                 </p>
                 <div className="flex items-center justify-between text-[9.5px] font-mono text-slate-500">
-                  <span className="text-teal-400/90 font-semibold">{src.domain}</span>
+                  <span className="text-teal-400/90 font-semibold">
+                    {src.domain}
+                  </span>
                   {src.relevanceScore !== undefined && (
-                    <span className="px-1.5 py-0.2 rounded bg-slate-800 text-teal-300 border border-slate-700">{src.relevanceScore}% Match</span>
+                    <span className="px-1.5 py-0.2 rounded bg-slate-800 text-teal-300 border border-slate-700">
+                      {src.relevanceScore}% Match
+                    </span>
                   )}
                 </div>
               </a>
@@ -124,46 +136,47 @@ export function ResearchReportCard({ report }: Props) {
       {/* Tabs */}
       <div className="flex border-b border-slate-800 bg-slate-950/40 px-5 text-xs font-medium">
         <button
-          onClick={() => setActiveTab('findings')}
+          onClick={() => setActiveTab("findings")}
           className={`py-2.5 px-3 border-b-2 transition ${
-            activeTab === 'findings'
-              ? 'border-teal-400 text-teal-300 font-semibold'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+            activeTab === "findings"
+              ? "border-teal-400 text-teal-300 font-semibold"
+              : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
           Key Findings ({report.keyFindings.length})
         </button>
         <button
-          onClick={() => setActiveTab('sources')}
+          onClick={() => setActiveTab("sources")}
           className={`py-2.5 px-3 border-b-2 transition ${
-            activeTab === 'sources'
-              ? 'border-teal-400 text-teal-300 font-semibold'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+            activeTab === "sources"
+              ? "border-teal-400 text-teal-300 font-semibold"
+              : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
           Primary Sources ({report.sources.length})
         </button>
-        {report.contradictionsAndRisks && report.contradictionsAndRisks.length > 0 && (
-          <button
-            onClick={() => setActiveTab('risks')}
-            className={`py-2.5 px-3 border-b-2 transition ${
-              activeTab === 'risks'
-                ? 'border-teal-400 text-teal-300 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Risks & Trade-offs
-          </button>
-        )}
+        {report.contradictionsAndRisks &&
+          report.contradictionsAndRisks.length > 0 && (
+            <button
+              onClick={() => setActiveTab("risks")}
+              className={`py-2.5 px-3 border-b-2 transition ${
+                activeTab === "risks"
+                  ? "border-teal-400 text-teal-300 font-semibold"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Risks & Trade-offs
+            </button>
+          )}
       </div>
 
       {/* Content Area */}
       <div className="p-5">
-        {activeTab === 'findings' && (
+        {activeTab === "findings" && (
           <div className="space-y-4">
             {report.keyFindings.map((finding, idx) => (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 className="p-4 rounded-lg border border-slate-800 bg-slate-950/40 hover:border-slate-700/80 transition"
               >
                 <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -173,11 +186,13 @@ export function ResearchReportCard({ report }: Props) {
                     </span>
                     {finding.point}
                   </h4>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${
-                    finding.confidence === 'high' 
-                      ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' 
-                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  }`}>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${
+                      finding.confidence === "high"
+                        ? "bg-teal-500/20 text-teal-300 border border-teal-500/30"
+                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    }`}
+                  >
                     {finding.confidence} confidence
                   </span>
                 </div>
@@ -189,7 +204,7 @@ export function ResearchReportCard({ report }: Props) {
           </div>
         )}
 
-        {activeTab === 'sources' && (
+        {activeTab === "sources" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {report.sources.map((src) => (
               <a
@@ -222,10 +237,13 @@ export function ResearchReportCard({ report }: Props) {
           </div>
         )}
 
-        {activeTab === 'risks' && report.contradictionsAndRisks && (
+        {activeTab === "risks" && report.contradictionsAndRisks && (
           <div className="space-y-3">
             {report.contradictionsAndRisks.map((risk, idx) => (
-              <div key={idx} className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
+              <div
+                key={idx}
+                className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/5 flex items-start gap-3"
+              >
                 <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-200/90 leading-relaxed">
                   {risk}

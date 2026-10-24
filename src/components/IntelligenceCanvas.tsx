@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Brain, Search, Tag } from 'lucide-react';
-import { KnowledgeMemoryItem } from '@/lib/types';
-import type { MemorySearchHit, MemorySearchResult } from '@/lib/memory-search';
-import { sound } from '@/lib/sound';
+import React, { useState } from "react";
+import { Brain, Search, Tag } from "lucide-react";
+import { KnowledgeMemoryItem } from "@/lib/types";
+import type { MemorySearchHit, MemorySearchResult } from "@/lib/memory-search";
+import { sound } from "@/lib/sound";
 
 interface Props {
   memoryItems: KnowledgeMemoryItem[];
@@ -12,7 +12,7 @@ interface Props {
 
 /** Search over the user's saved memories via POST /api/intelligence (embeddings or keyword). */
 export function IntelligenceCanvas({ memoryItems }: Props) {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [search, setSearch] = useState<MemorySearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,9 +26,9 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
     sound.playStart();
 
     try {
-      const res = await fetch('/api/intelligence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/intelligence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: searchQuery.trim(),
           memories: memoryItems,
@@ -36,22 +36,39 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
       });
 
       const data: unknown = await res.json().catch(() => null);
-      const rec = (data ?? {}) as Partial<MemorySearchResult> & { error?: unknown };
-      if (!res.ok || (rec.method !== 'embeddings' && rec.method !== 'keyword')) {
-        setError(typeof rec.error === 'string' ? rec.error : `Search failed (HTTP ${res.status}).`);
+      const rec = (data ?? {}) as Partial<MemorySearchResult> & {
+        error?: unknown;
+      };
+      if (
+        !res.ok ||
+        (rec.method !== "embeddings" && rec.method !== "keyword")
+      ) {
+        setError(
+          typeof rec.error === "string"
+            ? rec.error
+            : `Search failed (HTTP ${res.status}).`,
+        );
         setSearch(null);
         return;
       }
       setSearch({
-        query: typeof rec.query === 'string' ? rec.query : searchQuery.trim(),
+        query: typeof rec.query === "string" ? rec.query : searchQuery.trim(),
         method: rec.method,
-        embeddingModel: typeof rec.embeddingModel === 'string' ? rec.embeddingModel : undefined,
-        fallbackReason: typeof rec.fallbackReason === 'string' ? rec.fallbackReason : undefined,
-        results: Array.isArray(rec.results) ? (rec.results as MemorySearchHit[]) : [],
+        embeddingModel:
+          typeof rec.embeddingModel === "string"
+            ? rec.embeddingModel
+            : undefined,
+        fallbackReason:
+          typeof rec.fallbackReason === "string"
+            ? rec.fallbackReason
+            : undefined,
+        results: Array.isArray(rec.results)
+          ? (rec.results as MemorySearchHit[])
+          : [],
       });
       sound.playSuccess();
     } catch {
-      setError('Could not reach the Nova server.');
+      setError("Could not reach the Nova server.");
       setSearch(null);
     } finally {
       setIsSearching(false);
@@ -68,7 +85,10 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
         <div>
           <h2 className="text-xl font-bold text-slate-100">Memory Search</h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Search your {memoryItems.length} saved {memoryItems.length === 1 ? 'memory' : 'memories'}. Uses embeddings when Gemini, OpenAI, or an Ollama embedding model is configured; otherwise keyword search.
+            Search your {memoryItems.length} saved{" "}
+            {memoryItems.length === 1 ? "memory" : "memories"}. Uses embeddings
+            when Gemini, OpenAI, or an Ollama embedding model is configured;
+            otherwise keyword search.
           </p>
         </div>
       </div>
@@ -76,17 +96,21 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
       <div className="p-5 rounded-2xl border border-slate-800 bg-slate-900/70 backdrop-blur-md space-y-4">
         {memoryItems.length === 0 && (
           <p className="text-xs text-slate-400">
-            You have no saved memories yet. Add some with Memory (⌘J), then search them here.
+            You have no saved memories yet. Add some with Memory (⌘J), then
+            search them here.
           </p>
         )}
 
-        <form onSubmit={handleSemanticSearch} className="flex items-center gap-2">
+        <form
+          onSubmit={handleSemanticSearch}
+          className="flex items-center gap-2"
+        >
           <div className="flex-1 relative">
             <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search your memories..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700/80 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition"
             />
@@ -97,7 +121,7 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
             disabled={!searchQuery.trim() || isSearching}
             className="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-xs transition disabled:opacity-40"
           >
-            {isSearching ? 'Searching...' : 'Search'}
+            {isSearching ? "Searching..." : "Search"}
           </button>
         </form>
 
@@ -106,18 +130,25 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
         {search !== null && !error && (
           <div className="space-y-3 pt-2">
             <p className="text-[11px] text-slate-400">
-              {search.method === 'embeddings' ? (
+              {search.method === "embeddings" ? (
                 <>
-                  Ranked by embedding similarity using{' '}
-                  <span className="font-mono text-slate-300">{search.embeddingModel}</span>.
+                  Ranked by embedding similarity using{" "}
+                  <span className="font-mono text-slate-300">
+                    {search.embeddingModel}
+                  </span>
+                  .
                 </>
               ) : (
-                <>Ranked by keyword match (BM25). Configure an embeddings provider for meaning-based search.</>
+                <>
+                  Ranked by keyword match (BM25). Configure an embeddings
+                  provider for meaning-based search.
+                </>
               )}
             </p>
             {search.fallbackReason && (
               <p className="text-[11px] text-amber-300">
-                Embeddings failed, so keyword search was used: {search.fallbackReason}
+                Embeddings failed, so keyword search was used:{" "}
+                {search.fallbackReason}
               </p>
             )}
 
@@ -130,7 +161,7 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
                 </span>
 
                 <div className="space-y-2.5">
-                  {search.results.map(hit => (
+                  {search.results.map((hit) => (
                     <div
                       key={hit.memoryId}
                       className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/70 space-y-2"
@@ -138,7 +169,9 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Tag className="w-3.5 h-3.5 text-teal-400" />
-                          <span className="text-xs font-semibold text-slate-200">{hit.title}</span>
+                          <span className="text-xs font-semibold text-slate-200">
+                            {hit.title}
+                          </span>
                           {hit.totalChunks > 1 && (
                             <span className="text-[10px] text-slate-500 font-mono">
                               part {hit.chunkIndex} of {hit.totalChunks}
@@ -146,11 +179,16 @@ export function IntelligenceCanvas({ memoryItems }: Props) {
                           )}
                         </div>
                         <span className="text-[11px] text-teal-300 font-mono">
-                          {search.method === 'embeddings' ? 'similarity' : 'score'} {hit.score.toFixed(2)}
+                          {search.method === "embeddings"
+                            ? "similarity"
+                            : "score"}{" "}
+                          {hit.score.toFixed(2)}
                         </span>
                       </div>
 
-                      <p className="text-xs text-slate-300 leading-relaxed font-sans">{hit.text}</p>
+                      <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                        {hit.text}
+                      </p>
                     </div>
                   ))}
                 </div>

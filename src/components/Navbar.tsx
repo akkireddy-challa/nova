@@ -1,26 +1,26 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { StudioMode, ModelProvider } from '@/lib/types';
-import { ModelEntry, ModelsStatus, providerLabel } from '@/lib/client/models';
-import { 
-  Sparkles, 
-  Cpu, 
-  Volume2, 
-  VolumeX, 
-  Command, 
-  ChevronDown, 
-  Plus, 
-  Brain, 
-  Compass, 
-  Users, 
-  ListTodo, 
-  BarChart2, 
-  Scale, 
-  Code2, 
+import React, { useState } from "react";
+import { StudioMode, ModelProvider } from "@/lib/types";
+import { ModelEntry, ModelsStatus, providerLabel } from "@/lib/client/models";
+import {
+  Sparkles,
+  Cpu,
+  Volume2,
+  VolumeX,
+  Command,
+  ChevronDown,
+  Plus,
+  Brain,
+  Compass,
+  Users,
+  ListTodo,
+  BarChart2,
+  Scale,
+  Code2,
   Puzzle,
-} from 'lucide-react';
-import { sound } from '@/lib/sound';
+} from "lucide-react";
+import { sound } from "@/lib/sound";
 
 interface Props {
   currentMode: StudioMode;
@@ -35,31 +35,67 @@ interface Props {
   onSelectModel: (m: ModelProvider) => void;
 }
 
-export function Navbar({ 
-  currentMode, 
-  onOpenMemory, 
-  onOpenPalette, 
-  onNewSession, 
-  memoryCount, 
+export function Navbar({
+  currentMode,
+  onOpenMemory,
+  onOpenPalette,
+  onNewSession,
+  memoryCount,
   models,
   modelsStatus,
-  currentModel, 
-  onSelectModel 
+  currentModel,
+  onSelectModel,
 }: Props) {
   const [isMuted, setIsMuted] = useState(sound.getMuted());
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
 
   const getModeLabel = (mode: StudioMode) => {
     switch (mode) {
-      case 'research': return { label: 'Research', icon: <Compass className="w-3.5 h-3.5 text-teal-400" /> };
-      case 'debate': return { label: 'Debate', icon: <Users className="w-3.5 h-3.5 text-purple-400" /> };
-      case 'planner': return { label: 'Plan', icon: <ListTodo className="w-3.5 h-3.5 text-cyan-400" /> };
-      case 'canvas': return { label: 'Chart', icon: <BarChart2 className="w-3.5 h-3.5 text-amber-400" /> };
-      case 'matrix': return { label: 'Compare', icon: <Scale className="w-3.5 h-3.5 text-emerald-400" /> };
-      case 'coder': return { label: 'Code', icon: <Code2 className="w-3.5 h-3.5 text-rose-400" /> };
-      case 'intelligence': return { label: 'Memory Search', icon: <Brain className="w-3.5 h-3.5 text-purple-400" /> };
-      case 'mcp': return { label: 'Tools & API', icon: <Puzzle className="w-3.5 h-3.5 text-teal-400" /> };
-      default: return { label: 'Nova', icon: <Sparkles className="w-3.5 h-3.5 text-teal-400" /> };
+      case "research":
+        return {
+          label: "Research",
+          icon: <Compass className="w-3.5 h-3.5 text-teal-400" />,
+        };
+      case "debate":
+        return {
+          label: "Debate",
+          icon: <Users className="w-3.5 h-3.5 text-purple-400" />,
+        };
+      case "planner":
+        return {
+          label: "Plan",
+          icon: <ListTodo className="w-3.5 h-3.5 text-cyan-400" />,
+        };
+      case "canvas":
+        return {
+          label: "Chart",
+          icon: <BarChart2 className="w-3.5 h-3.5 text-amber-400" />,
+        };
+      case "matrix":
+        return {
+          label: "Compare",
+          icon: <Scale className="w-3.5 h-3.5 text-emerald-400" />,
+        };
+      case "coder":
+        return {
+          label: "Code",
+          icon: <Code2 className="w-3.5 h-3.5 text-rose-400" />,
+        };
+      case "intelligence":
+        return {
+          label: "Memory Search",
+          icon: <Brain className="w-3.5 h-3.5 text-purple-400" />,
+        };
+      case "mcp":
+        return {
+          label: "Tools & API",
+          icon: <Puzzle className="w-3.5 h-3.5 text-teal-400" />,
+        };
+      default:
+        return {
+          label: "Nova",
+          icon: <Sparkles className="w-3.5 h-3.5 text-teal-400" />,
+        };
     }
   };
 
@@ -69,7 +105,7 @@ export function Navbar({
     if (!next) sound.playCheck();
   };
 
-  const selectedModel = models.find(m => m.id === currentModel);
+  const selectedModel = models.find((m) => m.id === currentModel);
   const modeInfo = getModeLabel(currentMode);
 
   return (
@@ -101,7 +137,9 @@ export function Navbar({
         {/* Model Selector Dropdown (from GET /api/v1/models) */}
         <div className="relative">
           <button
-            onClick={() => models.length > 0 && setModelDropdownOpen(!modelDropdownOpen)}
+            onClick={() =>
+              models.length > 0 && setModelDropdownOpen(!modelDropdownOpen)
+            }
             disabled={models.length === 0}
             title={selectedModel ? selectedModel.id : undefined}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition cursor-pointer disabled:cursor-default disabled:hover:bg-slate-900"
@@ -112,12 +150,18 @@ export function Navbar({
                 <span className="text-[10px] font-mono text-teal-400 bg-teal-950/60 px-1 py-0.2 rounded border border-teal-800/40">
                   {providerLabel(selectedModel.provider, selectedModel.ownedBy)}
                 </span>
-                <span className="font-mono text-xs max-w-[180px] truncate">{selectedModel.model}</span>
+                <span className="font-mono text-xs max-w-[180px] truncate">
+                  {selectedModel.model}
+                </span>
                 <ChevronDown className="w-3 h-3 text-slate-500" />
               </>
             ) : (
               <span className="font-mono text-xs text-slate-500">
-                {modelsStatus === 'loading' ? 'Loading models…' : modelsStatus === 'error' ? 'Models unavailable' : 'No model configured'}
+                {modelsStatus === "loading"
+                  ? "Loading models…"
+                  : modelsStatus === "error"
+                    ? "Models unavailable"
+                    : "No model configured"}
               </span>
             )}
           </button>
@@ -127,7 +171,7 @@ export function Navbar({
               <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                 Model
               </div>
-              {models.map(m => (
+              {models.map((m) => (
                 <button
                   key={m.id}
                   onClick={() => {
@@ -137,14 +181,16 @@ export function Navbar({
                   }}
                   className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-xs text-left transition cursor-pointer ${
                     currentModel === m.id
-                      ? 'bg-slate-800 text-teal-300 font-semibold'
-                      : 'text-slate-300 hover:bg-slate-800/60'
+                      ? "bg-slate-800 text-teal-300 font-semibold"
+                      : "text-slate-300 hover:bg-slate-800/60"
                   }`}
                 >
                   <span className="font-mono truncate">{m.model}</span>
                   <span className="flex items-center gap-1 shrink-0">
                     {m.isDefault && (
-                      <span className="text-[10px] text-slate-500">default</span>
+                      <span className="text-[10px] text-slate-500">
+                        default
+                      </span>
                     )}
                     <span className="text-[10px] font-mono text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
                       {providerLabel(m.provider, m.ownedBy)}
@@ -158,12 +204,17 @@ export function Navbar({
 
         {/* Personal Knowledge Memory Button */}
         <button
-          onClick={() => { sound.playCheck(); onOpenMemory(); }}
+          onClick={() => {
+            sound.playCheck();
+            onOpenMemory();
+          }}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs transition cursor-pointer"
           title="Memory (⌘J)"
         >
           <Brain className="w-3.5 h-3.5 text-purple-400" />
-          <span className="hidden sm:inline font-mono text-[11px]">{memoryCount} Memories</span>
+          <span className="hidden sm:inline font-mono text-[11px]">
+            {memoryCount} Memories
+          </span>
         </button>
 
         {/* Command Palette Button */}
@@ -180,14 +231,21 @@ export function Navbar({
         <button
           onClick={toggleSound}
           className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition cursor-pointer"
-          title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+          title={isMuted ? "Unmute sounds" : "Mute sounds"}
         >
-          {isMuted ? <VolumeX className="w-3.5 h-3.5 text-slate-500" /> : <Volume2 className="w-3.5 h-3.5 text-teal-400" />}
+          {isMuted ? (
+            <VolumeX className="w-3.5 h-3.5 text-slate-500" />
+          ) : (
+            <Volume2 className="w-3.5 h-3.5 text-teal-400" />
+          )}
         </button>
 
         {/* Quick New Session Button */}
         <button
-          onClick={() => { sound.playCheck(); onNewSession(); }}
+          onClick={() => {
+            sound.playCheck();
+            onNewSession();
+          }}
           className="px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-medium transition flex items-center gap-1 cursor-pointer"
           title="New session"
         >

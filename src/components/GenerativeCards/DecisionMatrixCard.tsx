@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { DecisionMatrix } from '@/lib/types';
-import { Scale, Trophy, Check, X } from 'lucide-react';
+import React, { useState } from "react";
+import { DecisionMatrix } from "@/lib/types";
+import { Scale, Trophy, Check, X } from "lucide-react";
 
 interface Props {
   matrix: DecisionMatrix;
@@ -11,28 +11,30 @@ interface Props {
 export function DecisionMatrixCard({ matrix }: Props) {
   // Allow user to dynamically adjust weights to see scores update in real time!
   const [weights, setWeights] = useState<Record<string, number>>(
-    matrix.criteria.reduce((acc, c) => ({ ...acc, [c.id]: c.weight }), {})
+    matrix.criteria.reduce((acc, c) => ({ ...acc, [c.id]: c.weight }), {}),
   );
 
   const handleWeightChange = (cid: string, val: number) => {
-    setWeights(prev => ({ ...prev, [cid]: val }));
+    setWeights((prev) => ({ ...prev, [cid]: val }));
   };
 
   // Recalculate options based on current weights
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
-  const computedOptions = matrix.options.map(opt => {
-    let scoreSum = 0;
-    matrix.criteria.forEach(c => {
-      const w = weights[c.id] ?? c.weight;
-      const s = opt.scores[c.id] ?? 5;
-      scoreSum += s * w;
-    });
-    const weightedAvg = (scoreSum / totalWeight).toFixed(1);
-    return {
-      ...opt,
-      currentScore: parseFloat(weightedAvg),
-    };
-  }).sort((a, b) => b.currentScore - a.currentScore);
+  const computedOptions = matrix.options
+    .map((opt) => {
+      let scoreSum = 0;
+      matrix.criteria.forEach((c) => {
+        const w = weights[c.id] ?? c.weight;
+        const s = opt.scores[c.id] ?? 5;
+        scoreSum += s * w;
+      });
+      const weightedAvg = (scoreSum / totalWeight).toFixed(1);
+      return {
+        ...opt,
+        currentScore: parseFloat(weightedAvg),
+      };
+    })
+    .sort((a, b) => b.currentScore - a.currentScore);
 
   const winner = computedOptions[0];
 
@@ -57,7 +59,9 @@ export function DecisionMatrixCard({ matrix }: Props) {
         {winner && (
           <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded-full text-xs font-semibold">
             <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            <span>Leader: {winner.name.split('(')[0]} ({winner.currentScore}/10)</span>
+            <span>
+              Leader: {winner.name.split("(")[0]} ({winner.currentScore}/10)
+            </span>
           </div>
         )}
       </div>
@@ -68,18 +72,25 @@ export function DecisionMatrixCard({ matrix }: Props) {
           Adjust Criteria Priority (Dynamic Recalculation)
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {matrix.criteria.map(c => (
-            <div key={c.id} className="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+          {matrix.criteria.map((c) => (
+            <div
+              key={c.id}
+              className="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800"
+            >
               <div className="flex justify-between text-xs text-slate-300 mb-1">
                 <span className="truncate">{c.name}</span>
-                <span className="font-bold text-purple-400 font-mono">{weights[c.id]}x</span>
+                <span className="font-bold text-purple-400 font-mono">
+                  {weights[c.id]}x
+                </span>
               </div>
               <input
                 type="range"
                 min="1"
                 max="10"
                 value={weights[c.id]}
-                onChange={e => handleWeightChange(c.id, parseInt(e.target.value))}
+                onChange={(e) =>
+                  handleWeightChange(c.id, parseInt(e.target.value))
+                }
                 className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
               />
             </div>
@@ -95,24 +106,32 @@ export function DecisionMatrixCard({ matrix }: Props) {
             <div
               key={opt.id}
               className={`p-4 rounded-xl border transition ${
-                isTop 
-                  ? 'bg-purple-950/20 border-purple-500/40 shadow-lg' 
-                  : 'bg-slate-950/40 border-slate-800'
+                isTop
+                  ? "bg-purple-950/20 border-purple-500/40 shadow-lg"
+                  : "bg-slate-950/40 border-slate-800"
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    isTop ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-400'
-                  }`}>
+                  <span
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      isTop
+                        ? "bg-purple-500 text-white"
+                        : "bg-slate-800 text-slate-400"
+                    }`}
+                  >
                     #{rank + 1}
                   </span>
-                  <h4 className="text-sm font-semibold text-slate-100">{opt.name}</h4>
+                  <h4 className="text-sm font-semibold text-slate-100">
+                    {opt.name}
+                  </h4>
                 </div>
                 <div className="text-right">
-                  <span className={`text-base font-bold font-mono ${
-                    isTop ? 'text-purple-400' : 'text-slate-300'
-                  }`}>
+                  <span
+                    className={`text-base font-bold font-mono ${
+                      isTop ? "text-purple-400" : "text-slate-300"
+                    }`}
+                  >
                     {opt.currentScore} / 10
                   </span>
                 </div>
@@ -126,7 +145,10 @@ export function DecisionMatrixCard({ matrix }: Props) {
                   </span>
                   <ul className="space-y-1">
                     {opt.pros.map((p, i) => (
-                      <li key={i} className="flex items-start gap-1.5 text-slate-300">
+                      <li
+                        key={i}
+                        className="flex items-start gap-1.5 text-slate-300"
+                      >
                         <Check className="w-3.5 h-3.5 text-teal-400 flex-shrink-0 mt-0.5" />
                         <span>{p}</span>
                       </li>
@@ -139,7 +161,10 @@ export function DecisionMatrixCard({ matrix }: Props) {
                   </span>
                   <ul className="space-y-1">
                     {opt.cons.map((c, i) => (
-                      <li key={i} className="flex items-start gap-1.5 text-slate-400">
+                      <li
+                        key={i}
+                        className="flex items-start gap-1.5 text-slate-400"
+                      >
                         <X className="w-3.5 h-3.5 text-rose-400 flex-shrink-0 mt-0.5" />
                         <span>{c}</span>
                       </li>

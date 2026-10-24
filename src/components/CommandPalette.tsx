@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { StudioMode } from '@/lib/types';
-import { 
-  Search, 
-  Compass, 
-  ListTodo, 
-  BarChart2, 
-  Scale, 
-  Code2, 
-  Brain, 
-  Server, 
-  Volume2, 
-  VolumeX, 
+import React, { useState, useEffect } from "react";
+import { StudioMode } from "@/lib/types";
+import {
+  Search,
+  Compass,
+  ListTodo,
+  BarChart2,
+  Scale,
+  Code2,
+  Brain,
+  Server,
+  Volume2,
+  VolumeX,
   Sparkles,
-  ArrowRight
-} from 'lucide-react';
-import { sound } from '@/lib/sound';
+  ArrowRight,
+} from "lucide-react";
+import { sound } from "@/lib/sound";
 
 interface Props {
   isOpen: boolean;
@@ -35,93 +35,124 @@ export function CommandPalette({
   onOpenPlugins,
   onNewSession,
 }: Props) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [isMuted, setIsMuted] = useState(sound.getMuted());
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         if (isOpen) onClose(); // Handled by parent toggle
-      } else if (e.key === 'Escape' && isOpen) {
+      } else if (e.key === "Escape" && isOpen) {
         onClose();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const actions = [
     {
-      id: 'mode-research',
-      label: 'Research',
-      category: 'Modes',
+      id: "mode-research",
+      label: "Research",
+      category: "Modes",
       icon: <Compass className="w-4 h-4 text-teal-400" />,
-      run: () => { onSelectMode('research'); onClose(); },
+      run: () => {
+        onSelectMode("research");
+        onClose();
+      },
     },
     {
-      id: 'mode-debate',
-      label: 'Debate',
-      category: 'Modes',
+      id: "mode-debate",
+      label: "Debate",
+      category: "Modes",
       icon: <Scale className="w-4 h-4 text-indigo-400" />,
-      run: () => { onSelectMode('debate'); onClose(); },
+      run: () => {
+        onSelectMode("debate");
+        onClose();
+      },
     },
     {
-      id: 'mode-planner',
-      label: 'Plan',
-      category: 'Modes',
+      id: "mode-planner",
+      label: "Plan",
+      category: "Modes",
       icon: <ListTodo className="w-4 h-4 text-indigo-400" />,
-      run: () => { onSelectMode('planner'); onClose(); },
+      run: () => {
+        onSelectMode("planner");
+        onClose();
+      },
     },
     {
-      id: 'mode-canvas',
-      label: 'Chart',
-      category: 'Modes',
+      id: "mode-canvas",
+      label: "Chart",
+      category: "Modes",
       icon: <BarChart2 className="w-4 h-4 text-emerald-400" />,
-      run: () => { onSelectMode('canvas'); onClose(); },
+      run: () => {
+        onSelectMode("canvas");
+        onClose();
+      },
     },
     {
-      id: 'mode-matrix',
-      label: 'Compare',
-      category: 'Modes',
+      id: "mode-matrix",
+      label: "Compare",
+      category: "Modes",
       icon: <Scale className="w-4 h-4 text-purple-400" />,
-      run: () => { onSelectMode('matrix'); onClose(); },
+      run: () => {
+        onSelectMode("matrix");
+        onClose();
+      },
     },
     {
-      id: 'mode-coder',
-      label: 'Code',
-      category: 'Modes',
+      id: "mode-coder",
+      label: "Code",
+      category: "Modes",
       icon: <Code2 className="w-4 h-4 text-cyan-400" />,
-      run: () => { onSelectMode('coder'); onClose(); },
+      run: () => {
+        onSelectMode("coder");
+        onClose();
+      },
     },
     {
-      id: 'mcp-tools',
-      label: 'Tools & API',
-      category: 'Workspaces',
+      id: "mcp-tools",
+      label: "Tools & API",
+      category: "Workspaces",
       icon: <Server className="w-4 h-4 text-amber-400" />,
-      run: () => { onOpenPlugins(); onClose(); },
+      run: () => {
+        onOpenPlugins();
+        onClose();
+      },
     },
     {
-      id: 'open-memory',
-      label: 'Memory',
-      category: 'Workspaces',
+      id: "open-memory",
+      label: "Memory",
+      category: "Workspaces",
       icon: <Brain className="w-4 h-4 text-pink-400" />,
-      run: () => { onOpenMemory(); onClose(); },
+      run: () => {
+        onOpenMemory();
+        onClose();
+      },
     },
     {
-      id: 'new-session',
-      label: 'New session',
-      category: 'Session',
+      id: "new-session",
+      label: "New session",
+      category: "Session",
       icon: <Sparkles className="w-4 h-4 text-yellow-400" />,
-      run: () => { onNewSession(); onClose(); },
+      run: () => {
+        onNewSession();
+        onClose();
+      },
     },
     {
-      id: 'toggle-sound',
-      label: isMuted ? 'Unmute sounds' : 'Mute sounds',
-      category: 'Preferences',
-      icon: isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-teal-400" />,
+      id: "toggle-sound",
+      label: isMuted ? "Unmute sounds" : "Mute sounds",
+      category: "Preferences",
+      icon: isMuted ? (
+        <VolumeX className="w-4 h-4 text-slate-400" />
+      ) : (
+        <Volume2 className="w-4 h-4 text-teal-400" />
+      ),
       run: () => {
         const next = sound.toggleMute();
         setIsMuted(next);
@@ -131,9 +162,10 @@ export function CommandPalette({
     },
   ];
 
-  const filtered = actions.filter(a =>
-    a.label.toLowerCase().includes(query.toLowerCase()) ||
-    a.category.toLowerCase().includes(query.toLowerCase())
+  const filtered = actions.filter(
+    (a) =>
+      a.label.toLowerCase().includes(query.toLowerCase()) ||
+      a.category.toLowerCase().includes(query.toLowerCase()),
   );
 
   return (
@@ -147,7 +179,7 @@ export function CommandPalette({
             autoFocus
             placeholder="Type a command or switch mode..."
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
             className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
           />
           <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono bg-slate-800 text-slate-400 rounded border border-slate-700">

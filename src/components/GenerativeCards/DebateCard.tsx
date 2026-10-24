@@ -1,15 +1,14 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { DebateArtifact } from '@/lib/types';
-import { Users, AlertTriangle, Scale } from 'lucide-react';
+import React from "react";
+import { DebateArtifact } from "@/lib/types";
+import { Users, AlertTriangle, Scale } from "lucide-react";
 
 interface Props {
   debate: DebateArtifact;
 }
 
 export function DebateCard({ debate }: Props) {
-
   return (
     <div className="w-full my-4 rounded-xl border border-slate-700/80 bg-slate-900/90 backdrop-blur-md overflow-hidden shadow-2xl transition-all">
       {/* Header */}
@@ -38,19 +37,25 @@ export function DebateCard({ debate }: Props) {
       {/* Side-by-Side Perspectives */}
       <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-800">
         {debate.perspectives.map((p, idx) => {
-          const isAdvocate = p.stance === 'Advocate';
+          const isAdvocate = p.stance === "Advocate";
           return (
             <div key={idx} className="p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className={`w-3 h-3 rounded-full ${isAdvocate ? 'bg-teal-400' : 'bg-rose-400'}`} />
-                  <h4 className="font-bold text-slate-100 text-xs">{p.agentName}</h4>
+                  <span
+                    className={`w-3 h-3 rounded-full ${isAdvocate ? "bg-teal-400" : "bg-rose-400"}`}
+                  />
+                  <h4 className="font-bold text-slate-100 text-xs">
+                    {p.agentName}
+                  </h4>
                 </div>
-                <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded border ${
-                  isAdvocate 
-                    ? 'bg-teal-500/10 text-teal-300 border-teal-500/30' 
-                    : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
-                }`}>
+                <span
+                  className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded border ${
+                    isAdvocate
+                      ? "bg-teal-500/10 text-teal-300 border-teal-500/30"
+                      : "bg-rose-500/10 text-rose-300 border-rose-500/30"
+                  }`}
+                >
                   {p.stance}
                 </span>
               </div>
@@ -61,8 +66,15 @@ export function DebateCard({ debate }: Props) {
                 </span>
                 <ul className="space-y-1.5">
                   {p.arguments.map((arg, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-slate-300 leading-snug">
-                      <span className={`mt-0.5 text-xs ${isAdvocate ? 'text-teal-400' : 'text-rose-400'}`}>•</span>
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-xs text-slate-300 leading-snug"
+                    >
+                      <span
+                        className={`mt-0.5 text-xs ${isAdvocate ? "text-teal-400" : "text-rose-400"}`}
+                      >
+                        •
+                      </span>
                       <span>{arg}</span>
                     </li>
                   ))}
@@ -76,7 +88,10 @@ export function DebateCard({ debate }: Props) {
                   </span>
                   <ul className="space-y-1">
                     {p.caveats.map((cav, i) => (
-                      <li key={i} className="text-[11px] text-slate-400 flex items-start gap-1.5">
+                      <li
+                        key={i}
+                        className="text-[11px] text-slate-400 flex items-start gap-1.5"
+                      >
                         <AlertTriangle className="w-3 h-3 text-amber-400 flex-shrink-0 mt-0.5" />
                         <span>{cav}</span>
                       </li>

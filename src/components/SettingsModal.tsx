@@ -1,10 +1,17 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { ThinkingBudget, UserSettings } from '@/lib/types';
-import { ModelEntry, ModelsStatus, providerLabel } from '@/lib/client/models';
-import { Settings, X, Server, KeyRound, RefreshCw, Loader2 } from 'lucide-react';
-import { sound } from '@/lib/sound';
+import React, { useState } from "react";
+import { ThinkingBudget, UserSettings } from "@/lib/types";
+import { ModelEntry, ModelsStatus, providerLabel } from "@/lib/client/models";
+import {
+  Settings,
+  X,
+  Server,
+  KeyRound,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
+import { sound } from "@/lib/sound";
 
 interface Props {
   isOpen: boolean;
@@ -17,20 +24,37 @@ interface Props {
 }
 
 const BUDGETS: { id: ThinkingBudget; label: string; desc: string }[] = [
-  { id: 'quick', label: 'Quick', desc: 'Fewer sources, shorter answers.' },
-  { id: 'analytical', label: 'Analytical', desc: 'The default balance.' },
-  { id: 'deep', label: 'Deep', desc: 'More sources and longer answers; slower.' },
+  { id: "quick", label: "Quick", desc: "Fewer sources, shorter answers." },
+  { id: "analytical", label: "Analytical", desc: "The default balance." },
+  {
+    id: "deep",
+    label: "Deep",
+    desc: "More sources and longer answers; slower.",
+  },
 ];
 
 const ENV_VARS: { provider: string; vars: string }[] = [
-  { provider: 'gemini', vars: 'GEMINI_API_KEY (or GOOGLE_API_KEY), GEMINI_MODEL' },
-  { provider: 'anthropic', vars: 'ANTHROPIC_API_KEY, ANTHROPIC_MODEL' },
-  { provider: 'openai', vars: 'OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL' },
-  { provider: 'ollama', vars: 'OLLAMA_BASE_URL, OLLAMA_MODEL' },
+  {
+    provider: "gemini",
+    vars: "GEMINI_API_KEY (or GOOGLE_API_KEY), GEMINI_MODEL",
+  },
+  { provider: "anthropic", vars: "ANTHROPIC_API_KEY, ANTHROPIC_MODEL" },
+  { provider: "openai", vars: "OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL" },
+  { provider: "ollama", vars: "OLLAMA_BASE_URL, OLLAMA_MODEL" },
 ];
 
-export function SettingsModal({ isOpen, onClose, settings, onSaveSettings, models, modelsStatus, onCheckModels }: Props) {
-  const [budget, setBudget] = useState<ThinkingBudget>(settings.defaultThinkingBudget);
+export function SettingsModal({
+  isOpen,
+  onClose,
+  settings,
+  onSaveSettings,
+  models,
+  modelsStatus,
+  onCheckModels,
+}: Props) {
+  const [budget, setBudget] = useState<ThinkingBudget>(
+    settings.defaultThinkingBudget,
+  );
 
   if (!isOpen) return null;
 
@@ -56,7 +80,9 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings, model
             </div>
             <div>
               <h3 className="font-semibold text-slate-100 text-sm">Settings</h3>
-              <p className="text-xs text-slate-400">Model providers and defaults</p>
+              <p className="text-xs text-slate-400">
+                Model providers and defaults
+              </p>
             </div>
           </div>
 
@@ -72,38 +98,55 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings, model
           {/* Providers */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-100">Available models</span>
+              <span className="font-semibold text-slate-100">
+                Available models
+              </span>
               <button
                 onClick={onCheckModels}
-                disabled={modelsStatus === 'loading'}
+                disabled={modelsStatus === "loading"}
                 className="flex items-center gap-1 text-[11px] text-teal-400 hover:text-teal-300 font-medium disabled:opacity-50"
               >
-                {modelsStatus === 'loading' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                {modelsStatus === "loading" ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3 h-3" />
+                )}
                 <span>Refresh</span>
               </button>
             </div>
 
-            {modelsStatus === 'error' ? (
-              <p className="text-amber-400">Could not load the model list from the server.</p>
-            ) : models.length === 0 && modelsStatus === 'ready' ? (
+            {modelsStatus === "error" ? (
+              <p className="text-amber-400">
+                Could not load the model list from the server.
+              </p>
+            ) : models.length === 0 && modelsStatus === "ready" ? (
               <p className="text-slate-400">No providers are configured yet.</p>
             ) : (
               <div className="space-y-2">
                 {[...byProvider.entries()].map(([provider, list]) => (
-                  <div key={provider} className="p-3 rounded-xl border border-slate-800 bg-slate-950/40">
+                  <div
+                    key={provider}
+                    className="p-3 rounded-xl border border-slate-800 bg-slate-950/40"
+                  >
                     <div className="flex items-center gap-2 mb-1.5">
                       <Server className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="font-semibold text-slate-200">{providerLabel(provider, list[0]?.ownedBy)}</span>
-                      <span className="text-[10px] font-mono text-slate-500">{list.length} model{list.length === 1 ? '' : 's'}</span>
+                      <span className="font-semibold text-slate-200">
+                        {providerLabel(provider, list[0]?.ownedBy)}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-500">
+                        {list.length} model{list.length === 1 ? "" : "s"}
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {list.map(m => (
+                      {list.map((m) => (
                         <span
                           key={m.id}
                           className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 font-mono text-[11px] text-slate-300"
                         >
                           {m.model}
-                          {m.isDefault && <span className="text-slate-500"> (default)</span>}
+                          {m.isDefault && (
+                            <span className="text-slate-500"> (default)</span>
+                          )}
                         </span>
                       ))}
                     </div>
@@ -118,14 +161,19 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings, model
                 <span>Adding a provider</span>
               </div>
               <p className="text-slate-400 leading-relaxed">
-                Keys are read by the server from <code className="font-mono text-teal-300">.env</code>, never stored in the
-                browser. Copy <code className="font-mono text-teal-300">.env.example</code> to{' '}
-                <code className="font-mono text-teal-300">.env</code>, set the variables below, and restart Nova.
+                Keys are read by the server from{" "}
+                <code className="font-mono text-teal-300">.env</code>, never
+                stored in the browser. Copy{" "}
+                <code className="font-mono text-teal-300">.env.example</code> to{" "}
+                <code className="font-mono text-teal-300">.env</code>, set the
+                variables below, and restart Nova.
               </p>
               <ul className="space-y-1 font-mono text-[11px]">
-                {ENV_VARS.map(v => (
+                {ENV_VARS.map((v) => (
                   <li key={v.provider}>
-                    <span className="text-slate-200">{providerLabel(v.provider)}:</span>{' '}
+                    <span className="text-slate-200">
+                      {providerLabel(v.provider)}:
+                    </span>{" "}
                     <span className="text-slate-400">{v.vars}</span>
                   </li>
                 ))}
@@ -135,17 +183,22 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings, model
 
           {/* Defaults */}
           <section className="space-y-2">
-            <span className="font-semibold text-slate-100 block">Default depth</span>
+            <span className="font-semibold text-slate-100 block">
+              Default depth
+            </span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {BUDGETS.map(b => (
+              {BUDGETS.map((b) => (
                 <button
                   key={b.id}
                   type="button"
-                  onClick={() => { sound.playCheck(); setBudget(b.id); }}
+                  onClick={() => {
+                    sound.playCheck();
+                    setBudget(b.id);
+                  }}
                   className={`p-3 rounded-xl border text-left transition cursor-pointer ${
                     budget === b.id
-                      ? 'bg-slate-950 border-teal-500/40 text-slate-100'
-                      : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? "bg-slate-950 border-teal-500/40 text-slate-100"
+                      : "bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700"
                   }`}
                 >
                   <span className="font-semibold block">{b.label}</span>

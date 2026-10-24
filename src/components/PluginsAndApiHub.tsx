@@ -1,75 +1,108 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Puzzle, 
-  Terminal, 
-  Globe, 
-  Database, 
-  Network, 
-  GitBranch, 
-  Play, 
-  Copy, 
-  Check, 
-  Code2, 
-  Cpu, 
-  Plus, 
+import React, { useState, useEffect } from "react";
+import {
+  Puzzle,
+  Terminal,
+  Globe,
+  Database,
+  Network,
+  GitBranch,
+  Play,
+  Copy,
+  Check,
+  Code2,
+  Cpu,
+  Plus,
   Sparkles,
-  Zap
-} from 'lucide-react';
-import { sound } from '@/lib/sound';
-import { KnowledgeMemoryItem, McpPluginDefinition, McpToolDefinition, McpToolExecutionResult } from '@/lib/types';
-import { useModels } from '@/lib/client/models';
+  Zap,
+} from "lucide-react";
+import { sound } from "@/lib/sound";
+import {
+  KnowledgeMemoryItem,
+  McpPluginDefinition,
+  McpToolDefinition,
+  McpToolExecutionResult,
+} from "@/lib/types";
+import { useModels } from "@/lib/client/models";
 
 /** Saved memories live in this browser (see src/app/page.tsx); tools that search them need them sent along. */
 function readSavedMemories(): KnowledgeMemoryItem[] {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem('nova_memory') || '[]');
+    const parsed: unknown = JSON.parse(
+      localStorage.getItem("nova_memory") || "[]",
+    );
     return Array.isArray(parsed) ? (parsed as KnowledgeMemoryItem[]) : [];
   } catch {
     return [];
   }
 }
 
-type ApiEndpoint = '/api/v1/chat/completions' | '/api/v1/embeddings' | '/api/v1/models' | '/api/v1/tools';
+type ApiEndpoint =
+  | "/api/v1/chat/completions"
+  | "/api/v1/embeddings"
+  | "/api/v1/models"
+  | "/api/v1/tools";
 
 export function PluginsAndApiHub() {
-  const [activeTab, setActiveTab] = useState<'plugins' | 'api' | 'contribute'>('plugins');
+  const [activeTab, setActiveTab] = useState<"plugins" | "api" | "contribute">(
+    "plugins",
+  );
   const [plugins, setPlugins] = useState<McpPluginDefinition[]>([]);
   const [loadingPlugins, setLoadingPlugins] = useState(true);
-  
+
   // Plugin execution state
   const [executingTool, setExecutingTool] = useState<string | null>(null);
-  const [toolInputs, setToolInputs] = useState<Record<string, Record<string, string>>>({
-    web_search: { query: 'Model Context Protocol 2026 adoption' },
-    vector_semantic_search: { query: 'project preferences' },
-    inspect_github_repo: { repo: 'facebook/react' }
+  const [toolInputs, setToolInputs] = useState<
+    Record<string, Record<string, string>>
+  >({
+    web_search: { query: "Model Context Protocol 2026 adoption" },
+    vector_semantic_search: { query: "project preferences" },
+    inspect_github_repo: { repo: "facebook/react" },
   });
-  const [executionResults, setExecutionResults] = useState<Record<string, McpToolExecutionResult | null>>({});
+  const [executionResults, setExecutionResults] = useState<
+    Record<string, McpToolExecutionResult | null>
+  >({});
 
   // Custom MCP modal
   const [showCustomModal, setShowCustomModal] = useState(false);
-  const [customName, setCustomName] = useState('');
-  const [customEndpoint, setCustomEndpoint] = useState('http://localhost:8080/mcp');
-  const [customToolName, setCustomToolName] = useState('custom_tool');
+  const [customName, setCustomName] = useState("");
+  const [customEndpoint, setCustomEndpoint] = useState(
+    "http://localhost:8080/mcp",
+  );
+  const [customToolName, setCustomToolName] = useState("custom_tool");
+  const [customError, setCustomError] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // API Playground state
-  const [apiEndpoint, setApiEndpoint] = useState<ApiEndpoint>('/api/v1/chat/completions');
+  const [apiEndpoint, setApiEndpoint] = useState<ApiEndpoint>(
+    "/api/v1/chat/completions",
+  );
   const { models } = useModels();
   // '' = let the server pick its default model.
-  const [apiModel, setApiModel] = useState('');
-  const [apiPrompt, setApiPrompt] = useState('Explain the Model Context Protocol in two sentences.');
-  const snippetModel = apiModel || models.find(m => m.isDefault)?.id || models[0]?.id || 'provider:model';
+  const [apiModel, setApiModel] = useState("");
+  const [apiPrompt, setApiPrompt] = useState(
+    "Explain the Model Context Protocol in two sentences.",
+  );
+  const snippetModel =
+    apiModel ||
+    models.find((m) => m.isDefault)?.id ||
+    models[0]?.id ||
+    "provider:model";
   const [apiIsSending, setApiIsSending] = useState(false);
   const [apiResponse, setApiResponse] = useState<string | null>(null);
   const [apiLatency, setApiLatency] = useState<number | null>(null);
   const [apiStatusCode, setApiStatusCode] = useState<number | null>(null);
-  const [codeSnippetLanguage, setCodeSnippetLanguage] = useState<'python' | 'typescript' | 'curl' | 'langchain'>('python');
+  const [codeSnippetLanguage, setCodeSnippetLanguage] = useState<
+    "python" | "typescript" | "curl" | "langchain"
+  >("python");
   const [copiedSnippet, setCopiedSnippet] = useState(false);
 
   // Contributor scaffolding state
-  const [scaffoldName, setScaffoldName] = useState('MyCustomIntegration');
-  const [scaffoldToolName, setScaffoldToolName] = useState('fetch_external_data');
+  const [scaffoldName, setScaffoldName] = useState("MyCustomIntegration");
+  const [scaffoldToolName, setScaffoldToolName] = useState(
+    "fetch_external_data",
+  );
   const [copiedScaffold, setCopiedScaffold] = useState(false);
 
   // Fetch plugins on mount
@@ -80,33 +113,46 @@ export function PluginsAndApiHub() {
   const fetchPlugins = async () => {
     try {
       setLoadingPlugins(true);
-      const res = await fetch('/api/v1/tools');
+      const res = await fetch("/api/v1/tools");
       if (res.ok) {
         const data = await res.json();
         setPlugins(data.plugins || []);
       }
     } catch (err) {
-      console.error('Failed to load plugins:', err);
+      console.error("Failed to load plugins:", err);
     } finally {
       setLoadingPlugins(false);
     }
   };
 
-  const handleTogglePlugin = async (pluginId: string, currentEnabled: boolean) => {
+  const handleTogglePlugin = async (
+    pluginId: string,
+    currentEnabled: boolean,
+  ) => {
     sound.tap();
     const newEnabled = !currentEnabled;
-    setPlugins(prev => prev.map(p => p.id === pluginId ? { ...p, enabled: newEnabled } : p));
+    setPlugins((prev) =>
+      prev.map((p) => (p.id === pluginId ? { ...p, enabled: newEnabled } : p)),
+    );
 
     try {
-      await fetch('/api/v1/tools', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'toggle_plugin', pluginId, enabled: newEnabled })
+      await fetch("/api/v1/tools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "toggle_plugin",
+          pluginId,
+          enabled: newEnabled,
+        }),
       });
       sound.completion();
     } catch {
       // Revert on error
-      setPlugins(prev => prev.map(p => p.id === pluginId ? { ...p, enabled: currentEnabled } : p));
+      setPlugins((prev) =>
+        prev.map((p) =>
+          p.id === pluginId ? { ...p, enabled: currentEnabled } : p,
+        ),
+      );
     }
   };
 
@@ -117,36 +163,119 @@ export function PluginsAndApiHub() {
     const args: Record<string, unknown> = {};
     for (const [param, schema] of Object.entries(tool.inputSchema.properties)) {
       const value = inputs[param];
-      if (param === 'memories' && schema.type === 'array') {
+      if (param === "memories" && schema.type === "array") {
         args.memories = readSavedMemories();
-      } else if (value !== undefined && value !== '') {
+      } else if (value !== undefined && value !== "") {
         const num = Number(value);
-        args[param] = schema.type === 'number' && Number.isFinite(num) ? num : value;
+        args[param] =
+          schema.type === "number" && Number.isFinite(num) ? num : value;
       }
     }
 
     try {
-      const res = await fetch('/api/v1/tools', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tool: tool.name, arguments: args })
+      const res = await fetch("/api/v1/tools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool: tool.name, arguments: args }),
       });
       const data = await res.json();
-      setExecutionResults(prev => ({ ...prev, [tool.name]: data }));
+      setExecutionResults((prev) => ({ ...prev, [tool.name]: data }));
       sound.success();
     } catch (err) {
-      setExecutionResults(prev => ({
+      setExecutionResults((prev) => ({
         ...prev,
         [tool.name]: {
           success: false,
           output: null,
-          error: err instanceof Error ? err.message : 'Execution failed',
+          error: err instanceof Error ? err.message : "Execution failed",
           executionTimeMs: 0,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       }));
     } finally {
       setExecutingTool(null);
+    }
+  };
+
+  const handleRegisterCustomPlugin = async () => {
+    sound.tap();
+    setCustomError(null);
+
+    const name = customName.trim();
+    const endpoint = customEndpoint.trim();
+    const toolName = customToolName.trim();
+
+    if (!name) {
+      setCustomError("Server name is required.");
+      return;
+    }
+    if (!endpoint) {
+      setCustomError("Endpoint URL is required.");
+      return;
+    }
+    if (!toolName) {
+      setCustomError("Tool identifier is required.");
+      return;
+    }
+
+    setIsRegistering(true);
+    const newPlugin: McpPluginDefinition = {
+      id:
+        name
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9_-]/g, "") || `custom-${Date.now()}`,
+      name,
+      description: `User-connected external MCP server at ${endpoint}`,
+      category: "custom",
+      version: "1.0.0",
+      author: "Local User",
+      icon: "Server",
+      enabled: true,
+      isCustom: true,
+      endpoint,
+      tools: [
+        {
+          name: toolName,
+          description: `Custom tool hosted on ${endpoint}`,
+          inputSchema: {
+            type: "object",
+            properties: {
+              payload: { type: "string", description: "Arguments payload" },
+            },
+          },
+        },
+      ],
+    };
+
+    try {
+      const res = await fetch("/api/v1/tools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "register_plugin", plugin: newPlugin }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setCustomError(data.error || "Failed to register MCP server");
+        return;
+      }
+
+      setPlugins((prev) => [
+        ...prev.filter((p) => p.id !== newPlugin.id),
+        data.plugin || newPlugin,
+      ]);
+      setShowCustomModal(false);
+      setCustomName("");
+      setCustomEndpoint("http://localhost:8080/mcp");
+      setCustomToolName("custom_tool");
+      setCustomError(null);
+      sound.success();
+    } catch (err) {
+      setCustomError(
+        err instanceof Error ? err.message : "Network error registering plugin",
+      );
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -159,26 +288,26 @@ export function PluginsAndApiHub() {
 
     try {
       let body: string | null = null;
-      let method = 'POST';
+      let method = "POST";
 
-      if (apiEndpoint === '/api/v1/chat/completions') {
+      if (apiEndpoint === "/api/v1/chat/completions") {
         body = JSON.stringify({
           model: apiModel || undefined,
-          messages: [{ role: 'user', content: apiPrompt }],
+          messages: [{ role: "user", content: apiPrompt }],
           temperature: 0.7,
         });
-      } else if (apiEndpoint === '/api/v1/embeddings') {
+      } else if (apiEndpoint === "/api/v1/embeddings") {
         // No model: the server uses the first configured embeddings provider's default model.
         body = JSON.stringify({ input: apiPrompt });
-      } else if (apiEndpoint === '/api/v1/models') {
-        method = 'GET';
-      } else if (apiEndpoint === '/api/v1/tools') {
-        method = 'GET';
+      } else if (apiEndpoint === "/api/v1/models") {
+        method = "GET";
+      } else if (apiEndpoint === "/api/v1/tools") {
+        method = "GET";
       }
 
       const res = await fetch(apiEndpoint, {
         method,
-        headers: body ? { 'Content-Type': 'application/json' } : {},
+        headers: body ? { "Content-Type": "application/json" } : {},
         body: body || undefined,
       });
 
@@ -190,7 +319,13 @@ export function PluginsAndApiHub() {
       setApiResponse(JSON.stringify(json, null, 2));
       sound.success();
     } catch (err) {
-      setApiResponse(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }, null, 2));
+      setApiResponse(
+        JSON.stringify(
+          { error: err instanceof Error ? err.message : String(err) },
+          null,
+          2,
+        ),
+      );
       setApiStatusCode(500);
     } finally {
       setApiIsSending(false);
@@ -199,12 +334,18 @@ export function PluginsAndApiHub() {
 
   const getPluginIcon = (name: string) => {
     switch (name) {
-      case 'Globe': return <Globe className="w-5 h-5 text-teal-400" />;
-      case 'Terminal': return <Terminal className="w-5 h-5 text-emerald-400" />;
-      case 'Database': return <Database className="w-5 h-5 text-purple-400" />;
-      case 'Network': return <Network className="w-5 h-5 text-cyan-400" />;
-      case 'Github': return <GitBranch className="w-5 h-5 text-amber-400" />;
-      default: return <Puzzle className="w-5 h-5 text-teal-400" />;
+      case "Globe":
+        return <Globe className="w-5 h-5 text-teal-400" />;
+      case "Terminal":
+        return <Terminal className="w-5 h-5 text-emerald-400" />;
+      case "Database":
+        return <Database className="w-5 h-5 text-purple-400" />;
+      case "Network":
+        return <Network className="w-5 h-5 text-cyan-400" />;
+      case "Github":
+        return <GitBranch className="w-5 h-5 text-amber-400" />;
+      default:
+        return <Puzzle className="w-5 h-5 text-teal-400" />;
     }
   };
 
@@ -277,10 +418,14 @@ print(response.content)`;
 
   const getActiveSnippet = () => {
     switch (codeSnippetLanguage) {
-      case 'python': return pythonSnippet;
-      case 'typescript': return tsSnippet;
-      case 'curl': return curlSnippet;
-      case 'langchain': return langchainSnippet;
+      case "python":
+        return pythonSnippet;
+      case "typescript":
+        return tsSnippet;
+      case "curl":
+        return curlSnippet;
+      case "langchain":
+        return langchainSnippet;
     }
   };
 
@@ -333,20 +478,26 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-400 border border-teal-500/20 flex items-center gap-1.5">
-                <Puzzle className="w-3.5 h-3.5" /> Model Context Protocol (MCP) & Open APIs
+                <Puzzle className="w-3.5 h-3.5" /> Model Context Protocol (MCP)
+                & Open APIs
               </span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
               Tools & API
             </h1>
             <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-              Try the registered MCP tools, or call Nova from your own code through its OpenAI-compatible endpoints.
+              Try the registered MCP tools, or call Nova from your own code
+              through its OpenAI-compatible endpoints.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { sound.tap(); setShowCustomModal(true); }}
+              onClick={() => {
+                sound.tap();
+                setCustomError(null);
+                setShowCustomModal(true);
+              }}
               className="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 text-teal-400" />
@@ -367,33 +518,42 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 mt-6 max-w-7xl mx-auto border-b border-slate-800/80 -mb-6 pb-2">
           <button
-            onClick={() => { sound.tap(); setActiveTab('plugins'); }}
+            onClick={() => {
+              sound.tap();
+              setActiveTab("plugins");
+            }}
             className={`px-4 py-2 rounded-lg text-xs font-medium transition flex items-center gap-2 cursor-pointer ${
-              activeTab === 'plugins' 
-                ? 'bg-teal-500/10 text-teal-300 border border-teal-500/30 shadow-sm' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              activeTab === "plugins"
+                ? "bg-teal-500/10 text-teal-300 border border-teal-500/30 shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
             }`}
           >
             <Puzzle className="w-4 h-4" />
-            MCP Plugins ({loadingPlugins ? '...' : plugins.length})
+            MCP Plugins ({loadingPlugins ? "..." : plugins.length})
           </button>
           <button
-            onClick={() => { sound.tap(); setActiveTab('api'); }}
+            onClick={() => {
+              sound.tap();
+              setActiveTab("api");
+            }}
             className={`px-4 py-2 rounded-lg text-xs font-medium transition flex items-center gap-2 cursor-pointer ${
-              activeTab === 'api' 
-                ? 'bg-teal-500/10 text-teal-300 border border-teal-500/30 shadow-sm' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              activeTab === "api"
+                ? "bg-teal-500/10 text-teal-300 border border-teal-500/30 shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
             }`}
           >
             <Code2 className="w-4 h-4" />
             Open API Playground (/api/v1/)
           </button>
           <button
-            onClick={() => { sound.tap(); setActiveTab('contribute'); }}
+            onClick={() => {
+              sound.tap();
+              setActiveTab("contribute");
+            }}
             className={`px-4 py-2 rounded-lg text-xs font-medium transition flex items-center gap-2 cursor-pointer ${
-              activeTab === 'contribute' 
-                ? 'bg-teal-500/10 text-teal-300 border border-teal-500/30 shadow-sm' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              activeTab === "contribute"
+                ? "bg-teal-500/10 text-teal-300 border border-teal-500/30 shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
             }`}
           >
             <Zap className="w-4 h-4" />
@@ -404,9 +564,8 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
 
       {/* Main Content Area */}
       <div className="p-8 max-w-7xl mx-auto w-full space-y-6">
-        
         {/* ================= TAB 1: PLUGINS ================= */}
-        {activeTab === 'plugins' && (
+        {activeTab === "plugins" && (
           <div className="space-y-6">
             {/* Quick Metrics Bar */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -415,22 +574,27 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                   <Puzzle className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="text-xl font-bold text-white">{plugins.filter(p => p.enabled).length} / {plugins.length}</div>
-                  <div className="text-xs text-slate-400">Active MCP Plugins</div>
+                  <div className="text-xl font-bold text-white">
+                    {plugins.filter((p) => p.enabled).length} / {plugins.length}
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    Active MCP Plugins
+                  </div>
                 </div>
               </div>
-
             </div>
 
             {/* Plugin Cards Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {plugins.map(plugin => {
+              {plugins.map((plugin) => {
                 const isCustom = plugin.isCustom;
                 return (
-                  <div 
-                    key={plugin.id} 
+                  <div
+                    key={plugin.id}
                     className={`bg-slate-900/70 border rounded-xl p-5 flex flex-col justify-between transition ${
-                      plugin.enabled ? 'border-slate-800 hover:border-slate-700' : 'border-slate-800/40 opacity-70'
+                      plugin.enabled
+                        ? "border-slate-800 hover:border-slate-700"
+                        : "border-slate-800/40 opacity-70"
                     }`}
                   >
                     <div>
@@ -442,7 +606,9 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-white text-base">{plugin.name}</h3>
+                              <h3 className="font-semibold text-white text-base">
+                                {plugin.name}
+                              </h3>
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-400 border border-slate-700">
                                 v{plugin.version}
                               </span>
@@ -452,20 +618,24 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-slate-400 mt-0.5">By {plugin.author}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">
+                              By {plugin.author}
+                            </div>
                           </div>
                         </div>
 
                         {/* Toggle Switch */}
                         <button
-                          onClick={() => handleTogglePlugin(plugin.id, plugin.enabled)}
+                          onClick={() =>
+                            handleTogglePlugin(plugin.id, plugin.enabled)
+                          }
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition cursor-pointer ${
-                            plugin.enabled ? 'bg-teal-500' : 'bg-slate-700'
+                            plugin.enabled ? "bg-teal-500" : "bg-slate-700"
                           }`}
                         >
                           <span
                             className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition ${
-                              plugin.enabled ? 'translate-x-4' : 'translate-x-1'
+                              plugin.enabled ? "translate-x-4" : "translate-x-1"
                             }`}
                           />
                         </button>
@@ -477,38 +647,63 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
 
                       {/* Tool Definition & Live Tester */}
                       <div className="mt-4 space-y-3">
-                        {plugin.tools.map(tool => {
+                        {plugin.tools.map((tool) => {
                           const result = executionResults[tool.name];
                           const isExecuting = executingTool === tool.name;
 
                           return (
-                            <div key={tool.name} className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-3 text-xs">
+                            <div
+                              key={tool.name}
+                              className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-3 text-xs"
+                            >
                               <div className="flex items-center justify-between mb-2">
-                                <span className="font-mono text-teal-400 font-semibold">{tool.name}()</span>
-                                <span className="text-[10px] text-slate-500">MCP Tool</span>
+                                <span className="font-mono text-teal-400 font-semibold">
+                                  {tool.name}()
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  MCP Tool
+                                </span>
                               </div>
-                              <p className="text-slate-400 text-[11px] mb-2">{tool.description}</p>
+                              <p className="text-slate-400 text-[11px] mb-2">
+                                {tool.description}
+                              </p>
 
                               {/* Interactive Inputs */}
                               <div className="space-y-1.5 pt-1 border-t border-slate-800/60">
-                                {Object.entries(tool.inputSchema.properties).map(([paramName, paramSchema]) => (
-                                  <div key={paramName} className="flex flex-col gap-1">
+                                {Object.entries(
+                                  tool.inputSchema.properties,
+                                ).map(([paramName, paramSchema]) => (
+                                  <div
+                                    key={paramName}
+                                    className="flex flex-col gap-1"
+                                  >
                                     <label className="text-[10px] font-mono text-slate-400">
-                                      {paramName} <span className="text-slate-500">({paramSchema.type})</span>
-                                    </label>
-                                    {paramName === 'memories' && paramSchema.type === 'array' ? (
-                                      <span className="text-[11px] text-slate-500">
-                                        Sends the memories saved in this browser.
+                                      {paramName}{" "}
+                                      <span className="text-slate-500">
+                                        ({paramSchema.type})
                                       </span>
-                                    ) : paramName === 'code' ? (
+                                    </label>
+                                    {paramName === "memories" &&
+                                    paramSchema.type === "array" ? (
+                                      <span className="text-[11px] text-slate-500">
+                                        Sends the memories saved in this
+                                        browser.
+                                      </span>
+                                    ) : paramName === "code" ? (
                                       <textarea
                                         rows={3}
-                                        value={toolInputs[tool.name]?.[paramName] || ''}
+                                        value={
+                                          toolInputs[tool.name]?.[paramName] ||
+                                          ""
+                                        }
                                         onChange={(e) => {
                                           const val = e.target.value;
-                                          setToolInputs(prev => ({
+                                          setToolInputs((prev) => ({
                                             ...prev,
-                                            [tool.name]: { ...(prev[tool.name] || {}), [paramName]: val }
+                                            [tool.name]: {
+                                              ...(prev[tool.name] || {}),
+                                              [paramName]: val,
+                                            },
                                           }));
                                         }}
                                         className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 font-mono text-[11px] text-slate-200 focus:outline-none focus:border-teal-500"
@@ -516,12 +711,18 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                                     ) : (
                                       <input
                                         type="text"
-                                        value={toolInputs[tool.name]?.[paramName] || ''}
+                                        value={
+                                          toolInputs[tool.name]?.[paramName] ||
+                                          ""
+                                        }
                                         onChange={(e) => {
                                           const val = e.target.value;
-                                          setToolInputs(prev => ({
+                                          setToolInputs((prev) => ({
                                             ...prev,
-                                            [tool.name]: { ...(prev[tool.name] || {}), [paramName]: val }
+                                            [tool.name]: {
+                                              ...(prev[tool.name] || {}),
+                                              [paramName]: val,
+                                            },
                                           }));
                                         }}
                                         className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 font-mono text-[11px] text-slate-200 focus:outline-none focus:border-teal-500"
@@ -537,12 +738,13 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                                     className="px-2.5 py-1 rounded bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/30 transition text-[11px] font-medium flex items-center gap-1 cursor-pointer disabled:opacity-50"
                                   >
                                     <Play className="w-3 h-3" />
-                                    {isExecuting ? 'Executing...' : 'Run Tool'}
+                                    {isExecuting ? "Executing..." : "Run Tool"}
                                   </button>
 
                                   {result && (
                                     <span className="text-[10px] font-mono text-slate-400">
-                                      {result.executionTimeMs}ms • {result.success ? '✓ 200 OK' : '✗ Failed'}
+                                      {result.executionTimeMs}ms •{" "}
+                                      {result.success ? "✓ 200 OK" : "✗ Failed"}
                                     </span>
                                   )}
                                 </div>
@@ -551,7 +753,11 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                                 {result && (
                                   <div className="mt-2 p-2 rounded bg-slate-900/90 border border-slate-800 font-mono text-[10.5px] max-h-36 overflow-y-auto">
                                     <pre className="text-slate-300 whitespace-pre-wrap">
-                                      {JSON.stringify(result.output || result.error, null, 2)}
+                                      {JSON.stringify(
+                                        result.output || result.error,
+                                        null,
+                                        2,
+                                      )}
                                     </pre>
                                   </div>
                                 )}
@@ -564,8 +770,18 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
 
                     {/* Footer Stats */}
                     <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                      <span>Total Calls: <strong className="text-slate-200">{plugin.stats?.totalCalls || 0}</strong></span>
-                      <span>Avg Latency: <strong className="text-slate-200">{plugin.stats?.avgLatencyMs || 0}ms</strong></span>
+                      <span>
+                        Total Calls:{" "}
+                        <strong className="text-slate-200">
+                          {plugin.stats?.totalCalls || 0}
+                        </strong>
+                      </span>
+                      <span>
+                        Avg Latency:{" "}
+                        <strong className="text-slate-200">
+                          {plugin.stats?.avgLatencyMs || 0}ms
+                        </strong>
+                      </span>
                     </div>
                   </div>
                 );
@@ -575,7 +791,7 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
         )}
 
         {/* ================= TAB 2: OPEN API PLAYGROUND ================= */}
-        {activeTab === 'api' && (
+        {activeTab === "api" && (
           <div className="space-y-6">
             {/* Header info */}
             <div className="bg-gradient-to-r from-teal-950/40 via-slate-900 to-purple-950/30 border border-teal-500/30 rounded-xl p-6">
@@ -584,14 +800,21 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                   <span className="text-xs font-semibold uppercase tracking-wider text-teal-400 flex items-center gap-1.5">
                     <Zap className="w-3.5 h-3.5" /> OpenAI Drop-in Standard
                   </span>
-                  <h2 className="text-xl font-bold text-white mt-1">Open Nova API Gateway</h2>
+                  <h2 className="text-xl font-bold text-white mt-1">
+                    Open Nova API Gateway
+                  </h2>
                   <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-                    Connect Cursor, Claude Code, Windsurf, LangChain, or your custom Python/Node scripts directly to Nova. No code rewrites needed.
+                    Connect Cursor, Claude Code, Windsurf, LangChain, or your
+                    custom Python/Node scripts directly to Nova. No code
+                    rewrites needed.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 font-mono text-xs text-teal-300">
-                    Base URL: <strong className="text-white">http://localhost:3000/api/v1</strong>
+                    Base URL:{" "}
+                    <strong className="text-white">
+                      http://localhost:3000/api/v1
+                    </strong>
                   </div>
                 </div>
               </div>
@@ -606,46 +829,67 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                     <Terminal className="w-4 h-4 text-teal-400" />
                     Request Parameters
                   </h3>
-                  <span className="text-xs text-slate-400">Interactive Console</span>
+                  <span className="text-xs text-slate-400">
+                    Interactive Console
+                  </span>
                 </div>
 
                 {/* Endpoint selector */}
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">Target Endpoint</label>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Target Endpoint
+                  </label>
                   <select
                     value={apiEndpoint}
-                    onChange={(e) => setApiEndpoint(e.target.value as ApiEndpoint)}
+                    onChange={(e) =>
+                      setApiEndpoint(e.target.value as ApiEndpoint)
+                    }
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-mono text-teal-300 focus:outline-none focus:border-teal-500"
                   >
-                    <option value="/api/v1/chat/completions">POST /api/v1/chat/completions </option>
-                    <option value="/api/v1/embeddings">POST /api/v1/embeddings</option>
-                    <option value="/api/v1/models">GET /api/v1/models (configured models)</option>
-                    <option value="/api/v1/tools">GET /api/v1/tools (registered MCP tools)</option>
+                    <option value="/api/v1/chat/completions">
+                      POST /api/v1/chat/completions{" "}
+                    </option>
+                    <option value="/api/v1/embeddings">
+                      POST /api/v1/embeddings
+                    </option>
+                    <option value="/api/v1/models">
+                      GET /api/v1/models (configured models)
+                    </option>
+                    <option value="/api/v1/tools">
+                      GET /api/v1/tools (registered MCP tools)
+                    </option>
                   </select>
                 </div>
 
                 {/* Model selector (for chat) */}
-                {apiEndpoint === '/api/v1/chat/completions' && (
+                {apiEndpoint === "/api/v1/chat/completions" && (
                   <div>
-                    <label className="text-xs font-medium text-slate-300 block mb-1">Model</label>
+                    <label className="text-xs font-medium text-slate-300 block mb-1">
+                      Model
+                    </label>
                     <select
                       value={apiModel}
                       onChange={(e) => setApiModel(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-teal-500"
                     >
                       <option value="">Server default</option>
-                      {models.map(m => (
-                        <option key={m.id} value={m.id}>{m.id}</option>
+                      {models.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.id}
+                        </option>
                       ))}
                     </select>
                   </div>
                 )}
 
                 {/* Prompt / Input Area */}
-                {(apiEndpoint === '/api/v1/chat/completions' || apiEndpoint === '/api/v1/embeddings') && (
+                {(apiEndpoint === "/api/v1/chat/completions" ||
+                  apiEndpoint === "/api/v1/embeddings") && (
                   <div>
                     <label className="text-xs font-medium text-slate-300 block mb-1">
-                      {apiEndpoint === '/api/v1/embeddings' ? 'Input Text to Embed' : 'User Message Prompt'}
+                      {apiEndpoint === "/api/v1/embeddings"
+                        ? "Input Text to Embed"
+                        : "User Message Prompt"}
                     </label>
                     <textarea
                       rows={4}
@@ -663,7 +907,7 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                   className="w-full py-2.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Play className="w-4 h-4 fill-current" />
-                  {apiIsSending ? 'Sending Request...' : 'Send API Request'}
+                  {apiIsSending ? "Sending Request..." : "Send API Request"}
                 </button>
               </div>
 
@@ -677,9 +921,13 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                     </h3>
                     <div className="flex items-center gap-2">
                       {apiStatusCode && (
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${
-                          apiStatusCode === 200 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400'
-                        }`}>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${
+                            apiStatusCode === 200
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : "bg-red-500/10 text-red-400"
+                          }`}
+                        >
                           HTTP {apiStatusCode}
                         </span>
                       )}
@@ -694,18 +942,25 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                   {/* JSON Display */}
                   <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 font-mono text-[11px] h-[280px] overflow-y-auto">
                     {apiResponse ? (
-                      <pre className="text-teal-300 whitespace-pre-wrap">{apiResponse}</pre>
+                      <pre className="text-teal-300 whitespace-pre-wrap">
+                        {apiResponse}
+                      </pre>
                     ) : (
                       <div className="text-slate-500 h-full flex items-center justify-center text-center">
-                        Hit &quot;Send API Request&quot; to test Nova&apos;s live response payload.
+                        Hit &quot;Send API Request&quot; to test Nova&apos;s
+                        live response payload.
                       </div>
                     )}
                   </div>
                 </div>
 
                 <div className="text-[11px] text-slate-400 pt-3 border-t border-slate-800/80 flex items-center justify-between">
-                  <span>Protocol: <strong>HTTP/1.1 REST + SSE</strong></span>
-                  <span>Auth: <strong>Bearer Optional</strong></span>
+                  <span>
+                    Protocol: <strong>HTTP/1.1 REST + SSE</strong>
+                  </span>
+                  <span>
+                    Auth: <strong>Bearer Optional</strong>
+                  </span>
                 </div>
               </div>
             </div>
@@ -725,19 +980,24 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
 
                 {/* Language switcher */}
                 <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                  {(['python', 'typescript', 'curl', 'langchain'] as const).map(lang => (
-                    <button
-                      key={lang}
-                      onClick={() => { sound.tap(); setCodeSnippetLanguage(lang); }}
-                      className={`px-2.5 py-1 rounded text-xs font-mono transition cursor-pointer capitalize ${
-                        codeSnippetLanguage === lang
-                          ? 'bg-teal-500/20 text-teal-300 font-semibold'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      {lang}
-                    </button>
-                  ))}
+                  {(["python", "typescript", "curl", "langchain"] as const).map(
+                    (lang) => (
+                      <button
+                        key={lang}
+                        onClick={() => {
+                          sound.tap();
+                          setCodeSnippetLanguage(lang);
+                        }}
+                        className={`px-2.5 py-1 rounded text-xs font-mono transition cursor-pointer capitalize ${
+                          codeSnippetLanguage === lang
+                            ? "bg-teal-500/20 text-teal-300 font-semibold"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        {lang}
+                      </button>
+                    ),
+                  )}
                 </div>
               </div>
 
@@ -747,11 +1007,17 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                   {getActiveSnippet()}
                 </pre>
                 <button
-                  onClick={() => copyToClipboard(getActiveSnippet(), setCopiedSnippet)}
+                  onClick={() =>
+                    copyToClipboard(getActiveSnippet(), setCopiedSnippet)
+                  }
                   className="absolute top-3 right-3 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs flex items-center gap-1.5 transition cursor-pointer"
                 >
-                  {copiedSnippet ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copiedSnippet ? 'Copied!' : 'Copy Code'}
+                  {copiedSnippet ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  {copiedSnippet ? "Copied!" : "Copy Code"}
                 </button>
               </div>
             </div>
@@ -759,37 +1025,52 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
         )}
 
         {/* ================= TAB 3: CONTRIBUTOR GUIDE ================= */}
-        {activeTab === 'contribute' && (
+        {activeTab === "contribute" && (
           <div className="space-y-6">
             <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-6">
               <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5" /> Open Source Extensibility
               </span>
-              <h2 className="text-xl font-bold text-white mt-1">Why Nova is Built for Contributors</h2>
+              <h2 className="text-xl font-bold text-white mt-1">
+                Why Nova is Built for Contributors
+              </h2>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed max-w-3xl">
-                Unlike closed-source assistants, Nova is designed so any developer can contribute a brand new Model Context Protocol (MCP) tool or LLM gateway in less than 50 lines of code. There are zero proprietary APIs, zero locked-in SDKs, and zero paywalls.
+                Unlike closed-source assistants, Nova is designed so any
+                developer can contribute a brand new Model Context Protocol
+                (MCP) tool or LLM gateway in less than 50 lines of code. There
+                are zero proprietary APIs, zero locked-in SDKs, and zero
+                paywalls.
               </p>
 
               {/* 3 Steps */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                 <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-4">
-                  <div className="text-teal-400 font-bold text-sm mb-1">1. Define Schema</div>
+                  <div className="text-teal-400 font-bold text-sm mb-1">
+                    1. Define Schema
+                  </div>
                   <p className="text-xs text-slate-400">
-                    Write standard JSON Schema for your tool inputs and outputs. Works with any MCP client.
+                    Write standard JSON Schema for your tool inputs and outputs.
+                    Works with any MCP client.
                   </p>
                 </div>
 
                 <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-4">
-                  <div className="text-purple-400 font-bold text-sm mb-1">2. Implement Handler</div>
+                  <div className="text-purple-400 font-bold text-sm mb-1">
+                    2. Implement Handler
+                  </div>
                   <p className="text-xs text-slate-400">
-                    Write your async execution handler (API fetch, database query, CLI command, or ML model).
+                    Write your async execution handler (API fetch, database
+                    query, CLI command, or ML model).
                   </p>
                 </div>
 
                 <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-4">
-                  <div className="text-cyan-400 font-bold text-sm mb-1">3. Submit PR</div>
+                  <div className="text-cyan-400 font-bold text-sm mb-1">
+                    3. Submit PR
+                  </div>
                   <p className="text-xs text-slate-400">
-                    Run <code className="text-teal-300">bun test</code> and open a Pull Request. CI validates it automatically!
+                    Run <code className="text-teal-300">bun test</code> and open
+                    a Pull Request. CI validates it automatically!
                   </p>
                 </div>
               </div>
@@ -802,12 +1083,15 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                 Live Plugin Boilerplate Generator
               </h3>
               <p className="text-xs text-slate-400">
-                Type your plugin and tool name to generate ready-to-commit TypeScript code.
+                Type your plugin and tool name to generate ready-to-commit
+                TypeScript code.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">Plugin Name</label>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Plugin Name
+                  </label>
                   <input
                     type="text"
                     value={scaffoldName}
@@ -817,7 +1101,9 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">Primary Tool Function Name</label>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Primary Tool Function Name
+                  </label>
                   <input
                     type="text"
                     value={scaffoldToolName}
@@ -833,17 +1119,22 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                   {contributorBoilerplate}
                 </pre>
                 <button
-                  onClick={() => copyToClipboard(contributorBoilerplate, setCopiedScaffold)}
+                  onClick={() =>
+                    copyToClipboard(contributorBoilerplate, setCopiedScaffold)
+                  }
                   className="absolute top-3 right-3 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs flex items-center gap-1.5 transition cursor-pointer"
                 >
-                  {copiedScaffold ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copiedScaffold ? 'Copied!' : 'Copy Boilerplate'}
+                  {copiedScaffold ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  {copiedScaffold ? "Copied!" : "Copy Boilerplate"}
                 </button>
               </div>
             </div>
           </div>
         )}
-
       </div>
 
       {/* Modal: Add Custom MCP Server */}
@@ -856,7 +1147,10 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                 Add Custom MCP Server
               </h3>
               <button
-                onClick={() => setShowCustomModal(false)}
+                onClick={() => {
+                  setShowCustomModal(false);
+                  setCustomError(null);
+                }}
                 className="text-slate-400 hover:text-white text-xs cursor-pointer"
               >
                 ✕
@@ -865,22 +1159,37 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
 
             <p className="text-xs text-slate-300">
               Register an external HTTP MCP server endpoint with Nova.
+              Localhost, loopback, and private network addresses are blocked by
+              SSRF protection.
             </p>
+
+            {customError && (
+              <div className="p-3 rounded-lg bg-red-950/70 border border-red-500/40 text-red-300 text-xs flex items-start gap-2">
+                <span className="font-semibold text-red-400 shrink-0">
+                  Error:
+                </span>
+                <span className="break-all">{customError}</span>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-slate-300 block mb-1">Server Name</label>
+                <label className="text-xs text-slate-300 block mb-1">
+                  Server Name
+                </label>
                 <input
                   type="text"
                   value={customName}
                   onChange={(e) => setCustomName(e.target.value)}
-                  placeholder="e.g. Local SQLite MCP"
+                  placeholder="e.g. Remote SQLite MCP"
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-teal-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-300 block mb-1">Endpoint URL (SSE / HTTP)</label>
+                <label className="text-xs text-slate-300 block mb-1">
+                  Endpoint URL (SSE / HTTP)
+                </label>
                 <input
                   type="text"
                   value={customEndpoint}
@@ -891,7 +1200,9 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
               </div>
 
               <div>
-                <label className="text-xs text-slate-300 block mb-1">Tool Identifier</label>
+                <label className="text-xs text-slate-300 block mb-1">
+                  Tool Identifier
+                </label>
                 <input
                   type="text"
                   value={customToolName}
@@ -904,45 +1215,21 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
               <button
-                onClick={() => setShowCustomModal(false)}
-                className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 cursor-pointer"
+                onClick={() => {
+                  setShowCustomModal(false);
+                  setCustomError(null);
+                }}
+                disabled={isRegistering}
+                className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  sound.tap();
-                  const newPlugin: McpPluginDefinition = {
-                    id: customName.toLowerCase().replace(/\s+/g, '-'),
-                    name: customName || 'Custom MCP Server',
-                    description: `User-connected external MCP server at ${customEndpoint}`,
-                    category: 'custom',
-                    version: '1.0.0',
-                    author: 'Local User',
-                    icon: 'Server',
-                    enabled: true,
-                    isCustom: true,
-                    endpoint: customEndpoint,
-                    tools: [
-                      {
-                        name: customToolName || 'custom_tool',
-                        description: `Custom tool hosted on ${customEndpoint}`,
-                        inputSchema: {
-                          type: 'object',
-                          properties: {
-                            payload: { type: 'string', description: 'Arguments payload' }
-                          }
-                        }
-                      }
-                    ]
-                  };
-                  setPlugins(prev => [...prev, newPlugin]);
-                  setShowCustomModal(false);
-                  sound.success();
-                }}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-teal-500 text-slate-950 hover:bg-teal-400 cursor-pointer"
+                onClick={handleRegisterCustomPlugin}
+                disabled={isRegistering}
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-teal-500 text-slate-950 hover:bg-teal-400 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
-                Register MCP Server
+                {isRegistering ? "Registering..." : "Register MCP Server"}
               </button>
             </div>
           </div>

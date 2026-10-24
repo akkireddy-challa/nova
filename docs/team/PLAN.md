@@ -1,9 +1,11 @@
 # Nova Startup Engineering Plan (Sprint 0–4)
 
 ## Core Mission
+
 Transform Nova into a local-first, honest, open-source research assistant where queries trigger real web searches and any selected LLM (Gemini, Claude, OpenAI, Ollama) synthesizes cited answers rendered as interactive visual cards with 0% mock output.
 
 ## Sprint Roadmap
+
 - **Sprint 0: Architecture, Team Setup & Contracts** [CEO / Lead Agent]
   - Create `docs/team/` (`PLAN.md`, `STANDUP.md`, `REQUESTS.md`, `CONTRACTS.md`)
   - Formalize shared contracts across all teams.

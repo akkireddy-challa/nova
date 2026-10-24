@@ -26,6 +26,9 @@ jobs:
       - name: Audit Dependencies
         run: bun audit
 
+      - name: Check Code Formatting
+        run: bun run fmt:check
+
       - name: Lint
         run: bun run lint
 

@@ -53,12 +53,12 @@ Running Nova with `bun dev` instead? Start only SearXNG with `docker compose --p
 
 Configure one or more in `.env` (or `.env.local`, which takes precedence). Only configured providers show up in the model picker and in `/api/v1/models`. Model ids use the form `provider:model`, for example `anthropic:claude-sonnet-5-5`.
 
-| Provider | Required | Optional |
-|---|---|---|
-| Google Gemini | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) | `GEMINI_MODEL` |
-| Anthropic Claude | `ANTHROPIC_API_KEY` | `ANTHROPIC_MODEL` (default `claude-sonnet-5-5`) |
-| OpenAI / OpenAI-compatible | `OPENAI_API_KEY` | `OPENAI_BASE_URL` (for OpenRouter, Groq, etc.), `OPENAI_MODEL` |
-| Ollama (local) | Ollama running at `OLLAMA_BASE_URL` (default `http://localhost:11434`) | `OLLAMA_MODEL` |
+| Provider                   | Required                                                               | Optional                                                       |
+| -------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Google Gemini              | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`)                                 | `GEMINI_MODEL`                                                 |
+| Anthropic Claude           | `ANTHROPIC_API_KEY`                                                    | `ANTHROPIC_MODEL` (default `claude-sonnet-5-5`)                |
+| OpenAI / OpenAI-compatible | `OPENAI_API_KEY`                                                       | `OPENAI_BASE_URL` (for OpenRouter, Groq, etc.), `OPENAI_MODEL` |
+| Ollama (local)             | Ollama running at `OLLAMA_BASE_URL` (default `http://localhost:11434`) | `OLLAMA_MODEL`                                                 |
 
 Ollama only counts as configured when the server is reachable.
 
@@ -69,22 +69,22 @@ Saved memories (Memory, ⌘J) live in your browser. **Memory Search** in the sid
 - With an embeddings provider it embeds the memories and query and ranks by cosine similarity. Providers are tried in the order OpenAI, Gemini, Ollama. Anthropic has no embeddings API.
 - Without one, or if the embeddings call fails, it falls back to keyword (BM25) search. The result always says which method was used, which embedding model was used, and why it fell back if it did.
 
-| Provider | Embedding model (override) | Default |
-|---|---|---|
-| OpenAI / OpenAI-compatible | `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` |
-| Gemini | `GEMINI_EMBEDDING_MODEL` | `gemini-embedding-001` |
-| Ollama | `OLLAMA_EMBEDDING_MODEL` | first installed model whose name looks like an embedding model (e.g. `nomic-embed-text`) |
+| Provider                   | Embedding model (override) | Default                                                                                  |
+| -------------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
+| OpenAI / OpenAI-compatible | `OPENAI_EMBEDDING_MODEL`   | `text-embedding-3-small`                                                                 |
+| Gemini                     | `GEMINI_EMBEDDING_MODEL`   | `gemini-embedding-001`                                                                   |
+| Ollama                     | `OLLAMA_EMBEDDING_MODEL`   | first installed model whose name looks like an embedding model (e.g. `nomic-embed-text`) |
 
 ## Search providers
 
 Providers are tried in this order; the first configured one that succeeds wins, and failures fall through to the next.
 
-| Provider | Setup |
-|---|---|
-| Tavily | `TAVILY_API_KEY` |
-| Brave Search | `BRAVE_API_KEY` |
+| Provider              | Setup                                                                                                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tavily                | `TAVILY_API_KEY`                                                                                                                                                         |
+| Brave Search          | `BRAVE_API_KEY`                                                                                                                                                          |
 | SearXNG (self-hosted) | `SEARXNG_URL`. Recommended keyless option; see [Docker](#docker) for the bundled service. The instance must have `json` in `search.formats` (otherwise it answers `403`) |
-| DuckDuckGo (HTML) | No setup. Last-resort fallback; often blocks automated requests with a bot check, so configure one of the above for reliable search |
+| DuckDuckGo (HTML)     | No setup. Last-resort fallback; often blocks automated requests with a bot check, so configure one of the above for reliable search                                      |
 
 ## OpenAI-compatible API
 

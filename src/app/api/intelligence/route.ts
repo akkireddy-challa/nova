@@ -1,8 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { searchMemories } from '@/lib/memory-search';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { searchMemories } from "@/lib/memory-search";
 
-const CATEGORIES = ['preference', 'project_context', 'personal_fact', 'document'] as const;
+const CATEGORIES = [
+  "preference",
+  "project_context",
+  "personal_fact",
+  "document",
+] as const;
 
 const requestSchema = z.object({
   query: z.string().max(2_000),
@@ -29,26 +34,39 @@ export async function POST(req: NextRequest) {
   try {
     raw = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Request body must be valid JSON.' }, { status: 400 });
+    return NextResponse.json(
+      { error: "Request body must be valid JSON." },
+      { status: 400 },
+    );
   }
 
   const parsed = requestSchema.safeParse(raw);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     return NextResponse.json(
-      { error: `Invalid request: ${issue.path.join('.') || 'body'} ${issue.message}` },
+      {
+        error: `Invalid request: ${issue.path.join(".") || "body"} ${issue.message}`,
+      },
       { status: 400 },
     );
   }
   const { query, memories, topK } = parsed.data;
   if (!query.trim()) {
-    return NextResponse.json({ error: 'Query is required.' }, { status: 400 });
+    return NextResponse.json({ error: "Query is required." }, { status: 400 });
   }
 
   try {
-    return NextResponse.json(await searchMemories(query, memories, { topK, signal: req.signal }));
+    return NextResponse.json(
+      await searchMemories(query, memories, { topK, signal: req.signal }),
+    );
   } catch (error) {
-    console.error('[api/intelligence] memory search failed:', error instanceof Error ? error.name : 'unknown');
-    return NextResponse.json({ error: 'Memory search failed.' }, { status: 500 });
+    console.error(
+      "[api/intelligence] memory search failed:",
+      error instanceof Error ? error.name : "unknown",
+    );
+    return NextResponse.json(
+      { error: "Memory search failed." },
+      { status: 500 },
+    );
   }
 }
