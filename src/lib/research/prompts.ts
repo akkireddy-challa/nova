@@ -1,4 +1,4 @@
-import type { SourceCitation, StudioMode, ThinkingBudget } from '../types';
+import type { ConversationTurn, SourceCitation, StudioMode, ThinkingBudget } from '../types';
 
 export interface PromptSource {
   citation: SourceCitation;
@@ -95,12 +95,24 @@ const DEPTH: Record<ThinkingBudget, string> = {
   deep: 'Be comprehensive: examine edge cases, disagreements between sources, and limitations.',
 };
 
-export function buildSystemPrompt(mode: StudioMode, usesSources: boolean, sourceCount: number, budget: ThinkingBudget): string {
+export function buildSystemPrompt(
+  mode: StudioMode,
+  usesSources: boolean,
+  sourceCount: number,
+  budget: ThinkingBudget,
+  hasHistory = false,
+): string {
   const today = new Date().toISOString().slice(0, 10);
   const lines = [
     `You are Nova, an open-source research assistant. Today's date is ${today}.`,
     DEPTH[budget],
   ];
+  if (hasHistory) {
+    lines.push(
+      'Earlier turns of this conversation come before the current request. Use them to understand follow-ups such as "tell me more about point 2".',
+      'Citation numbers in earlier turns referred to earlier source lists; cite only the sources given with the current request.',
+    );
+  }
 
   if (usesSources) {
     if (sourceCount > 0) {
@@ -160,4 +172,19 @@ export function buildUserPrompt(input: {
 
 export function buildRetryPrompt(validationError: string): string {
   return `Your previous response could not be used because it failed validation:\n${validationError}\n\nReturn only the corrected JSON object with the required shape.`;
+}
+
+export const QUERY_REWRITE_SYSTEM_PROMPT =
+  'You turn a follow-up question into a standalone web search query. ' +
+  'Use the conversation only to resolve references such as "it", "that", or "point 2". ' +
+  'Return only the search query on a single line, with no quotes, labels, or commentary.';
+
+const REWRITE_TURN_CHARS = 1200;
+
+/** The user message for the query-rewrite call: a short transcript plus the follow-up. */
+export function buildQueryRewritePrompt(history: ConversationTurn[], followUp: string): string {
+  const transcript = history
+    .map(turn => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${turn.content.slice(0, REWRITE_TURN_CHARS)}`)
+    .join('\n\n');
+  return `Conversation so far:\n${transcript}\n\nFollow-up question: ${followUp}\n\nStandalone web search query:`;
 }

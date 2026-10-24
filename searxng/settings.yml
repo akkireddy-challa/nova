@@ -1,0 +1,22 @@
+# Minimal SearXNG settings for Nova's private, local-only search instance.
+# Used by `docker compose --profile search up`. Everything not listed here
+# falls back to SearXNG's defaults.
+use_default_settings: true
+
+general:
+  instance_name: "Nova SearXNG"
+
+server:
+  # Placeholder only. Set SEARXNG_SECRET in .env (e.g. `openssl rand -hex 32`);
+  # SearXNG uses that env var instead of this value.
+  secret_key: "change-me-set-SEARXNG_SECRET"
+  # Private instance used only by Nova: no rate limiter / bot detection.
+  limiter: false
+  public_instance: false
+  image_proxy: false
+
+search:
+  # Nova reads results through the JSON API; SearXNG returns 403 without this.
+  formats:
+    - html
+    - json

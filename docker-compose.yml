@@ -12,6 +12,8 @@ services:
         required: false
     # When using `docker compose --profile local up`, set OLLAMA_BASE_URL=http://ollama:11434 in .env
     # so Nova reaches the bundled Ollama service instead of localhost.
+    # When using `docker compose --profile search up`, set SEARXNG_URL=http://searxng:8080 in .env
+    # so Nova searches through the bundled SearXNG service (keyless, self-hosted).
     healthcheck:
       test:
         - CMD
@@ -31,6 +33,21 @@ services:
       - "11434:11434"
     volumes:
       - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+  searxng:
+    image: searxng/searxng
+    profiles: ["search"]
+    # Bound to localhost only: this private instance has its limiter disabled.
+    ports:
+      - "127.0.0.1:8888:8080"
+    environment:
+      # Set SEARXNG_SECRET in .env (e.g. `openssl rand -hex 32`); it overrides the
+      # placeholder secret_key in searxng/settings.yml.
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-}
+      SEARXNG_BASE_URL: http://localhost:8888/
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
     restart: unless-stopped
 
 volumes:

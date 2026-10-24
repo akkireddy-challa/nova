@@ -3,17 +3,15 @@ import { NoProviderConfiguredError } from './providers/types';
 import type { ProviderId } from './providers/types';
 import type {
   AgentThought,
-  Attachment,
   GenerationTelemetry,
   GenerativeArtifact,
   ModelProvider,
   SourceCitation,
-  StudioMode,
-  ThinkingBudget,
 } from './types';
-import { PipelineDeps, runPipeline } from './research/pipeline';
+import { PipelineDeps, PipelineInput, runPipeline } from './research/pipeline';
 
-export { PipelineError } from './research/pipeline';
+export { PipelineAbortedError, PipelineError } from './research/pipeline';
+export type { PipelineDeps, PipelineInput } from './research/pipeline';
 
 export interface GatewayResponse {
   content: string;
@@ -57,16 +55,9 @@ export async function enhancePrompt(prompt: string, model?: ModelProvider): Prom
 
 /**
  * Runs the research pipeline for one request. Throws NoProviderConfiguredError,
- * ProviderError, or PipelineError (INVALID_OUTPUT / BAD_REQUEST).
+ * ProviderError, PipelineError (INVALID_OUTPUT / BAD_REQUEST), or PipelineAbortedError
+ * when `deps.signal` fires. `deps.onThought` receives each step as it happens.
  */
-export async function processAgentRequest(
-  prompt: string,
-  mode: StudioMode,
-  context?: string,
-  model?: ModelProvider,
-  attachments?: Attachment[],
-  thinkingBudget: ThinkingBudget = 'analytical',
-  deps?: PipelineDeps,
-): Promise<GatewayResponse> {
-  return runPipeline({ prompt, mode, context, model, attachments, thinkingBudget }, deps);
+export async function processAgentRequest(input: PipelineInput, deps?: PipelineDeps): Promise<GatewayResponse> {
+  return runPipeline({ thinkingBudget: 'analytical', ...input }, deps);
 }
