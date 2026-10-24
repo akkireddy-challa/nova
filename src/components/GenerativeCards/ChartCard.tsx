@@ -26,6 +26,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
+import { calculateVarianceDelta, calculateStatistics } from '@/lib/data-science';
 
 interface Props {
   chart: ChartArtifact;
@@ -36,13 +37,14 @@ export function ChartCard({ chart }: Props) {
   const [showTable, setShowTable] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const total = chart.data.reduce((acc, d) => acc + d.value, 0) || 1;
+  const stats = calculateStatistics(chart.data?.map(d => d.value) || []);
+  const total = stats.sum > 0 ? stats.sum : (chart.data?.reduce((acc, d) => acc + d.value, 0) || 1);
 
   const handleExportCsv = () => {
     sound.playCheck();
     const rows = ['Label,Value,Baseline,SharePercentage'];
     chart.data.forEach(d => {
-      const share = ((d.value / total) * 100).toFixed(1) + '%';
+      const share = total > 0 ? ((d.value / total) * 100).toFixed(1) + '%' : '0.0%';
       rows.push(`"${d.label}",${d.value},${d.secondaryValue || 0},${share}`);
     });
     const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
@@ -188,15 +190,19 @@ export function ChartCard({ chart }: Props) {
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
               {chart.data.map((d, i) => {
-                const share = ((d.value / total) * 100).toFixed(1);
-                const variance = d.secondaryValue ? (((d.value - d.secondaryValue) / d.secondaryValue) * 100).toFixed(1) : '+0.0';
+                const share = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0.0';
+                const varDelta = calculateVarianceDelta(d.value, d.secondaryValue);
                 return (
                   <tr key={i} className="hover:bg-slate-800/30 transition text-slate-300">
                     <td className="p-2.5 font-sans font-medium text-slate-200">{d.label}</td>
                     <td className="p-2.5 text-right font-bold text-emerald-400">{d.value}</td>
                     <td className="p-2.5 text-right text-slate-400">{d.secondaryValue ?? '—'}</td>
                     <td className="p-2.5 text-right text-slate-400">{share}%</td>
-                    <td className="p-2.5 text-right text-teal-300">+{variance}%</td>
+                    <td className={`p-2.5 text-right ${
+                      varDelta.trend === 'up' ? 'text-teal-300' : varDelta.trend === 'down' ? 'text-rose-400' : 'text-slate-400'
+                    }`}>
+                      {varDelta.formatted}
+                    </td>
                   </tr>
                 );
               })}

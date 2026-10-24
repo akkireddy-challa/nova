@@ -109,6 +109,10 @@ class SoundEngine {
     this.playCheck();
   }
 
+  public playTap() {
+    this.playCheck();
+  }
+
   public success() {
     this.playSuccess();
   }

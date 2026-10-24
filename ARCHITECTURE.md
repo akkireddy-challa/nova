@@ -83,3 +83,23 @@ Nova natively follows the [Anthropic Model Context Protocol](https://modelcontex
 - Connects to local MCP servers via standard JSON-RPC endpoints.
 - Displays live ping latency and parameter schemas in the `McpInspector` drawer.
 - Tools can be dynamically enabled or disabled per workspace session.
+
+---
+
+## 5. MLOps Platform Infrastructure & Telemetry Hub
+
+Nova includes a production-grade MLOps platform layer (`src/lib/mlops-pipeline.ts` & `/api/v1/mlops`):
+
+- **Production Telemetry Collector**:
+  - Computes exact p50, p95, and p99 model latency percentiles across sliding request windows.
+  - Granular token cost estimation across Gemini, Claude 3.7 Sonnet, DeepSeek R1, and zero-cost local models.
+  - Tracks model throughput (tokens/second) and status code distributions (200, 429, 500, 503).
+- **High-Throughput Vector Index Cache**:
+  - In-memory LRU cache specialized for 3072-dimensional embeddings (`gemini-embedding-2`).
+  - Sub-millisecond vector lookup with automatic eviction of least recently used keys upon reaching capacity.
+  - Integrated cosine similarity search for in-memory semantic indexing.
+- **Automated Model Health & Fallback Circuit Breaker**:
+  - Detects consecutive 429 rate limit and 500 server errors per model.
+  - Automatically trips from `CLOSED` to `OPEN` when the consecutive error threshold is breached, rerouting traffic to hot standby models without downtime.
+  - Automatically tests model recovery via `HALF_OPEN` canary probes after a configurable cooldown period before restoring primary traffic.
+

@@ -43,7 +43,7 @@ export function Sidebar({
   onOpenSettings,
 }: Props) {
   // 4 Primary Workspaces - Radically simplified, zero duplication
-  const isStudioMode = ['research', 'debate', 'planner', 'canvas', 'matrix', 'coder'].includes(currentMode);
+  const isStudioMode = ['research', 'debate', 'planner', 'canvas', 'matrix', 'coder', 'data_science'].includes(currentMode);
 
   const workspaces = [
     { 
@@ -86,6 +86,11 @@ export function Sidebar({
       label: 'Build an Open-Source MCP Server in 14 Days',
       mode: 'planner' as StudioMode,
       prompt: 'Decompose a milestone execution plan to create, test, and release a high-impact Model Context Protocol server.',
+    },
+    {
+      label: 'Token & Vector Calibration Workbench',
+      mode: 'data_science' as StudioMode,
+      prompt: 'Analyze token entropy, 3072d semantic vector clusters, and Proctor confidence calibration curve.',
     },
     {
       label: 'Evaluate Local LLMs vs Closed Frontier APIs',

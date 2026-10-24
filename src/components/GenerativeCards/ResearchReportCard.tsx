@@ -19,6 +19,7 @@ import {
   Globe
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
+import { VoiceBriefingPlayer } from '../VoiceBriefingPlayer';
 
 interface Props {
   report: ResearchReport;
@@ -27,36 +28,9 @@ interface Props {
 export function ResearchReportCard({ report }: Props) {
   const [activeTab, setActiveTab] = useState<'findings' | 'sources' | 'risks'>('findings');
   const [copied, setCopied] = useState(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [showVoicePlayer, setShowVoicePlayer] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
-
-  const toggleAudioBriefing = () => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    if (isPlayingAudio) {
-      window.speechSynthesis.cancel();
-      setIsPlayingAudio(false);
-    } else {
-      window.speechSynthesis.cancel();
-      const briefingText = `${report.title}. Executive summary: ${report.executiveSummary}. Key findings: ${report.keyFindings.map(f => f.point).join('. ')}. Recommendation: ${report.recommendation}`;
-      const utterance = new SpeechSynthesisUtterance(briefingText);
-      utterance.rate = 1.05;
-      utterance.pitch = 1.0;
-      utterance.onend = () => setIsPlayingAudio(false);
-      utterance.onerror = () => setIsPlayingAudio(false);
-
-      sound.playStart();
-      window.speechSynthesis.speak(utterance);
-      setIsPlayingAudio(true);
-    }
-  };
+  const briefingText = `${report.title}. Executive summary: ${report.executiveSummary}. Key findings: ${report.keyFindings.map(f => f.point).join('. ')}. Recommendation: ${report.recommendation}`;
 
   const handleDownload = () => {
     sound.playCheck();
@@ -98,44 +72,45 @@ export function ResearchReportCard({ report }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* TTS Audio Player */}
+          {/* Voice Briefing Player Trigger */}
           <button
-            onClick={toggleAudioBriefing}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
-              isPlayingAudio
-                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+            onClick={() => {
+              sound.playTap();
+              setShowVoicePlayer(prev => !prev);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer ${
+              showVoicePlayer
+                ? 'bg-teal-500/20 text-teal-300 border-teal-500/40 shadow-sm'
                 : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
             }`}
-            title="Read report briefing aloud"
+            title="Listen to Executive Audio Briefing"
           >
-            {isPlayingAudio ? (
-              <>
-                <Square className="w-3 h-3 fill-current text-rose-400" />
-                <span>Stop Audio</span>
-                <span className="flex items-end gap-0.5 h-3 ml-1">
-                  <span className="w-0.5 h-3 bg-rose-400 animate-pulse" />
-                  <span className="w-0.5 h-2 bg-rose-400 animate-pulse delay-75" />
-                  <span className="w-0.5 h-2.5 bg-rose-400 animate-pulse delay-150" />
-                </span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 text-teal-400 fill-teal-400" />
-                <span>Audio Briefing</span>
-              </>
-            )}
+            <Volume2 className="w-3.5 h-3.5 text-teal-400" />
+            <span>{showVoicePlayer ? 'Hide Audio' : '🔊 Listen to Audio Briefing'}</span>
           </button>
 
           {/* Export Report */}
           <button
             onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
           >
             {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" /> : <Download className="w-3.5 h-3.5" />}
             <span>{copied ? 'Downloaded' : 'Export'}</span>
           </button>
         </div>
       </div>
+
+      {/* Voice Briefing Sub-Deck */}
+      {showVoicePlayer && (
+        <div className="p-4 border-b border-slate-800 bg-slate-950/40 animate-in fade-in">
+          <VoiceBriefingPlayer 
+            text={briefingText}
+            title={`${report.title} • Verbal Briefing`}
+            defaultProfile="breeze"
+            onClose={() => setShowVoicePlayer(false)}
+          />
+        </div>
+      )}
 
       {/* Executive Summary */}
       <div className="p-5 border-b border-slate-800/80 bg-slate-900/40">

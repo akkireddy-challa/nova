@@ -48,7 +48,7 @@ export function PluginsAndApiHub() {
   const [customToolName, setCustomToolName] = useState('custom_tool');
 
   // API Playground state
-  const [apiEndpoint, setApiEndpoint] = useState<'/api/v1/chat/completions' | '/api/v1/embeddings' | '/api/v1/models' | '/api/v1/tools'>('/api/v1/chat/completions');
+  const [apiEndpoint, setApiEndpoint] = useState<'/api/v1/chat/completions' | '/api/v1/embeddings' | '/api/v1/models' | '/api/v1/tools' | '/api/v1/mlops'>('/api/v1/chat/completions');
   const [apiModel, setApiModel] = useState('gemini-3-flash-preview');
   const [apiPrompt, setApiPrompt] = useState('What makes Model Context Protocol (MCP) and Embeddings v2 better than legacy proprietary plugins?');
   const [apiIsSending, setApiIsSending] = useState(false);
@@ -156,6 +156,8 @@ export function PluginsAndApiHub() {
       } else if (apiEndpoint === '/api/v1/models') {
         method = 'GET';
       } else if (apiEndpoint === '/api/v1/tools') {
+        method = 'GET';
+      } else if (apiEndpoint === '/api/v1/mlops') {
         method = 'GET';
       }
 
@@ -631,6 +633,7 @@ export const ${scaffoldName}Plugin: McpPluginDefinition = {
                     <option value="/api/v1/embeddings">POST /api/v1/embeddings (Embeddings v2 3072-dim)</option>
                     <option value="/api/v1/models">GET /api/v1/models (List Active Frontier Models)</option>
                     <option value="/api/v1/tools">GET /api/v1/tools (List Registered MCP Tools)</option>
+                    <option value="/api/v1/mlops">GET /api/v1/mlops (MLOps Platform Telemetry & Circuit Breaker)</option>
                   </select>
                 </div>
 

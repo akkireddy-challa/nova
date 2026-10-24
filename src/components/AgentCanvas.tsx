@@ -16,6 +16,9 @@ import { ChartCard } from './GenerativeCards/ChartCard';
 import { DecisionMatrixCard } from './GenerativeCards/DecisionMatrixCard';
 import { CodeSandboxCard } from './GenerativeCards/CodeSandboxCard';
 import { DebateCard } from './GenerativeCards/DebateCard';
+import { DataScienceWorkbenchCard } from './GenerativeCards/DataScienceWorkbenchCard';
+import { CriticProctorScorecardCard } from './GenerativeCards/CriticProctorScorecardCard';
+import { VoiceBriefingPlayer } from './VoiceBriefing/VoiceBriefingPlayer';
 import { VoiceInput } from './VoiceInput';
 import { SwarmHUD } from './SwarmHUD';
 import { ArtifactStage } from './ArtifactStage';
@@ -44,9 +47,12 @@ import {
   Share2,
   Image as ImageIcon,
   ShieldAlert,
+  ShieldCheck,
+  Activity,
   Cpu,
   Globe,
-  ExternalLink
+  ExternalLink,
+  Volume2
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 import { generateId } from '@/lib/utils';
@@ -192,8 +198,12 @@ export function AgentCanvas({
         return 'Ask for deep autonomous research with verified citations, literature, or upload diagrams...';
       case 'debate':
         return 'Enter a technical hypothesis or architecture to debate across dual-agent perspectives...';
+      case 'data_science':
+        return 'Enter dataset topic or query to run token entropy, PCA vector space clusters, and ECE calibration...';
       case 'planner':
         return 'Describe a project, milestone, or goal to compile an interactive hierarchical DAG...';
+      case 'proctor':
+        return 'Enter claim or system inquiry to execute adversarial factuality, hallucination, and guardrail audit...';
       case 'matrix':
         return 'Enter candidates, frameworks, or models to generate a multi-criteria decision matrix...';
       case 'coder':
@@ -205,8 +215,10 @@ export function AgentCanvas({
 
   const studioEngines: { id: StudioMode; label: string; icon: React.ReactNode }[] = [
     { id: 'research', label: 'Research', icon: <Compass className="w-3.5 h-3.5" /> },
+    { id: 'data_science', label: 'Data Science', icon: <Activity className="w-3.5 h-3.5" /> },
     { id: 'debate', label: 'Debate', icon: <Users className="w-3.5 h-3.5" /> },
     { id: 'planner', label: 'Planner', icon: <ListTodo className="w-3.5 h-3.5" /> },
+    { id: 'proctor', label: 'Proctor', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
     { id: 'canvas', label: 'Visuals', icon: <BarChart2 className="w-3.5 h-3.5" /> },
     { id: 'matrix', label: 'Matrix', icon: <Scale className="w-3.5 h-3.5" /> },
     { id: 'coder', label: 'Code', icon: <Code2 className="w-3.5 h-3.5" /> },
@@ -453,6 +465,12 @@ export function AgentCanvas({
                     )}
                     {msg.artifact.type === 'debate' && (
                       <DebateCard debate={msg.artifact.data} />
+                    )}
+                    {msg.artifact.type === 'data_science' && (
+                      <DataScienceWorkbenchCard data={msg.artifact.data} />
+                    )}
+                    {msg.artifact.type === 'proctor_scorecard' && (
+                      <CriticProctorScorecardCard artifact={msg.artifact.data} />
                     )}
                   </div>
                 )}

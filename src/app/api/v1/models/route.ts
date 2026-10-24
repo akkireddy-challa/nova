@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+import { circuitBreaker } from '@/lib/mlops-pipeline';
 
 export async function GET() {
-  const models = [
+  const baseModels = [
     {
       id: 'gemini-3-flash-preview',
       object: 'model',
@@ -81,8 +82,21 @@ export async function GET() {
     },
   ];
 
+  const modelsWithHealth = baseModels.map(m => {
+    const circuit = circuitBreaker.getCircuitInfo(m.id);
+    return {
+      ...m,
+      circuit_breaker: {
+        state: circuit.state,
+        consecutive_failures: circuit.consecutiveFailures,
+        active_standby: circuit.activeStandby || null,
+        standby_chain: circuit.standbyChain,
+      },
+    };
+  });
+
   return NextResponse.json({
     object: 'list',
-    data: models,
+    data: modelsWithHealth,
   });
 }

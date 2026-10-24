@@ -264,13 +264,15 @@ export default function Home() {
         telemetry: data.telemetry,
       };
 
-      const finalSess = {
-        ...updatedWithUser,
-        messages: [...updatedWithUser.messages, assistantMsg],
-      };
-
       setSessions(prev => {
-        const next = prev.map(s => (s.id === sessId ? finalSess : s));
+        const next = prev.map(s => {
+          if (s.id !== sessId) return s;
+          return {
+            ...s,
+            updatedAt: new Date().toISOString(),
+            messages: [...s.messages, assistantMsg],
+          };
+        });
         try {
           localStorage.setItem('nova_sessions', JSON.stringify(next));
         } catch {}

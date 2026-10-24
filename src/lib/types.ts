@@ -1,4 +1,4 @@
-export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'debate' | 'intelligence' | 'mcp' | 'evals';
+export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'debate' | 'data_science' | 'proctor' | 'intelligence' | 'mcp' | 'evals';
 
 export type ModelProvider = 
   | 'gemini-3-flash'
@@ -146,13 +146,124 @@ export interface McpTool {
   inputSchemaSummary: string;
 }
 
+// --- Voice Briefing Engine Contracts ---
+export type VoiceProfileId = 'nova-analytical' | 'nova-atlas' | 'nova-pulse' | 'nova-sol';
+
+export interface VoiceProfile {
+  id: VoiceProfileId;
+  name: string;
+  description: string;
+  gender: 'female' | 'male' | 'neutral';
+  pitch: number;
+  rate: number;
+  accentHint?: string;
+}
+
+export interface VoiceBriefingState {
+  isPlaying: boolean;
+  isPaused: boolean;
+  selectedVoice: VoiceProfileId;
+  playbackSpeed: number; // 0.75, 1.0, 1.25, 1.5, 2.0
+  progressPercent: number; // 0 - 100
+  durationSeconds: number;
+  currentSeconds: number;
+}
+
+// --- Data Science & Analytics Workbench Contracts ---
+export interface TokenAnalysisData {
+  totalTokens: number;
+  uniqueTokens: number;
+  averageEntropy: number; // e.g. 2.45 bits
+  perplexityEstimate: number; // e.g. 5.4
+  lexicalDiversity: number; // Type-Token Ratio (0.0 - 1.0)
+  tokenTypeDistribution: {
+    naturalLanguage: number;
+    codeSyntax: number;
+    numericData: number;
+    punctuation: number;
+  };
+  topTokensByEntropy: { token: string; entropy: number; probability: number }[];
+}
+
+export interface VectorClusterPoint {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  clusterId: number;
+  clusterName: string;
+  relevance: number;
+}
+
+export interface VectorClusteringData {
+  algorithm: 'PCA-2D' | 't-SNE' | 'UMAP';
+  clusterCount: number;
+  silhouetteScore: number; // -1.0 to 1.0
+  points: VectorClusterPoint[];
+  centroids: { clusterId: number; name: string; x: number; y: number }[];
+}
+
+export interface CalibrationBin {
+  binRange: string;
+  averageConfidence: number;
+  empiricalAccuracy: number;
+  sampleCount: number;
+}
+
+export interface ConfidenceCalibrationData {
+  expectedCalibrationError: number; // ECE (e.g. 0.042)
+  brierScore: number; // (e.g. 0.089)
+  reliabilityCurve: CalibrationBin[];
+  status: 'well-calibrated' | 'overconfident' | 'underconfident';
+}
+
+export interface DataScienceArtifact {
+  title: string;
+  overview: string;
+  tokenAnalysis: TokenAnalysisData;
+  vectorClustering: VectorClusteringData;
+  confidenceCalibration: ConfidenceCalibrationData;
+  statisticalVerdict: string;
+}
+
+// --- Continuous Critic & Proctor Scorecard Contracts ---
+export interface ProctorRuleAudit {
+  id: string;
+  rule: string;
+  category: 'factuality' | 'hallucination' | 'safety' | 'coherence';
+  passed: boolean;
+  severity: 'info' | 'warn' | 'critical';
+  explanation: string;
+}
+
+export interface ProctorScorecard {
+  overallScore: number; // 0 - 100
+  verdict: 'APPROVED' | 'FLAGGED' | 'QUARANTINED';
+  factualityIndex: number; // 0 - 100
+  hallucinationRisk: 'low' | 'medium' | 'high' | 'critical';
+  hallucinationRiskScore: number; // 0 - 100
+  safetyGuardrailScore: number; // 0 - 100
+  coherenceScore: number; // 0 - 100
+  audits: ProctorRuleAudit[];
+  adversarialCritique: string;
+  remediationSteps?: string[];
+  timestamp: string;
+}
+
+export interface ProctorScorecardArtifact {
+  title: string;
+  scorecard: ProctorScorecard;
+}
+
 export type GenerativeArtifact = 
   | { type: 'research'; data: ResearchReport }
   | { type: 'plan'; data: GoalPlan }
   | { type: 'chart'; data: ChartArtifact }
   | { type: 'matrix'; data: DecisionMatrix }
   | { type: 'code'; data: CodeArtifact }
-  | { type: 'debate'; data: DebateArtifact };
+  | { type: 'debate'; data: DebateArtifact }
+  | { type: 'data_science'; data: DataScienceArtifact }
+  | { type: 'proctor_scorecard'; data: ProctorScorecardArtifact };
 
 export interface AgentThought {
   id: string;
@@ -189,6 +300,8 @@ export interface ChatMessage {
   artifact?: GenerativeArtifact;
   telemetry?: GenerationTelemetry;
   attachments?: Attachment[];
+  proctorScorecard?: ProctorScorecard;
+  voiceBriefingText?: string;
 }
 
 export interface KnowledgeMemoryItem {

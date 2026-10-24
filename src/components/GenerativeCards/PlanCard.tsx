@@ -1,0 +1,275 @@
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { GoalPlan, MilestonePhase } from '@/lib/types';
+import { 
+  CheckCircle2, 
+  Circle, 
+  Clock, 
+  Flame, 
+  ChevronRight, 
+  ChevronDown, 
+  Target,
+  Sparkles,
+  Volume2
+} from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { sound } from '@/lib/sound';
+import { VoiceBriefingPlayer } from '../VoiceBriefingPlayer';
+
+interface Props {
+  plan: GoalPlan;
+  className?: string;
+}
+
+export function PlanCard({ plan, className = '' }: Props) {
+  const [phases, setPhases] = useState<MilestonePhase[]>(plan.phases);
+  const [expandedPhase, setExpandedPhase] = useState<string>(phases[0]?.id || '');
+  const [showVoicePlayer, setShowVoicePlayer] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  // Calculate completion percentage
+  const allTasks = phases.flatMap(p => p.tasks);
+  const completedCount = allTasks.filter(t => t.status === 'completed').length;
+  const progressPercent = allTasks.length > 0 ? Math.round((completedCount / allTasks.length) * 100) : 0;
+
+  const planBriefing = useMemo(() => {
+    const parts: string[] = [];
+    parts.push(`Milestone Execution Plan for ${plan.goal}.`);
+    parts.push(`Target timeframe: ${plan.timeframe}.`);
+    if (plan.overview) {
+      parts.push(`Executive overview: ${plan.overview}`);
+    }
+    plan.phases.forEach(p => {
+      parts.push(`Phase ${p.phaseNumber}, ${p.phaseName}: ${p.summary}. Key tasks include: ${p.tasks.map(t => t.title).join(', ')}.`);
+    });
+    if (plan.keySuccessMetrics && plan.keySuccessMetrics.length > 0) {
+      parts.push(`Key success metrics: ${plan.keySuccessMetrics.join('. ')}.`);
+    }
+    return parts.join(' ');
+  }, [plan]);
+
+  const toggleTask = (phaseId: string, taskId: string) => {
+    sound.playCheck();
+    setPhases(prev =>
+      prev.map(phase => {
+        if (phase.id !== phaseId) return phase;
+        return {
+          ...phase,
+          tasks: phase.tasks.map(t => {
+            if (t.id !== taskId) return t;
+            const newStatus = t.status === 'completed' ? 'todo' : 'completed';
+            if (newStatus === 'completed') {
+              try {
+                confetti({
+                  particleCount: 25,
+                  spread: 40,
+                  origin: { y: 0.8 },
+                });
+              } catch {}
+            }
+            return { ...t, status: newStatus };
+          }),
+        };
+      })
+    );
+  };
+
+  return (
+    <div className={`w-full my-4 rounded-xl border border-slate-700/80 bg-slate-900/90 backdrop-blur-md overflow-hidden shadow-2xl transition-all ${className}`}>
+      {/* Header */}
+      <div className="p-5 border-b border-slate-800 bg-slate-950/60 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <Target className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-100 text-base leading-tight">
+              {plan.goal}
+            </h3>
+            <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
+              <span className="flex items-center gap-1 text-amber-400">
+                <Clock className="w-3.5 h-3.5" />
+                {plan.timeframe}
+              </span>
+              <span>•</span>
+              <span>{phases.length} Execution Phases</span>
+              <span>•</span>
+              <span>{allTasks.length} Milestones</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Voice Briefing Button */}
+          <button
+            type="button"
+            onClick={() => {
+              sound.playTap();
+              setShowVoicePlayer(prev => !prev);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer ${
+              showVoicePlayer
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+            }`}
+            title="Listen to Executive Milestone Audio Briefing"
+          >
+            <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+            <span>{showVoicePlayer ? 'Hide Audio' : '🔊 Listen to Audio Briefing'}</span>
+          </button>
+
+          {/* Progress pill */}
+          <div className="flex items-center gap-3 bg-slate-900 px-3.5 py-1.5 rounded-full border border-slate-800">
+            <div className="w-20 bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-amber-500 h-full transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className="text-xs font-bold text-amber-300 font-mono">
+              {progressPercent}% Done
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Voice Briefing Sub-Deck */}
+      {showVoicePlayer && (
+        <div className="p-4 border-b border-slate-800 bg-slate-950/40 animate-in fade-in">
+          <VoiceBriefingPlayer
+            title="Executive Milestone Briefing"
+            subtitle={plan.goal}
+            text={planBriefing}
+            defaultProfile="ember"
+            onClose={() => setShowVoicePlayer(false)}
+          />
+        </div>
+      )}
+
+      {/* Overview text */}
+      <div className="px-5 py-3.5 bg-slate-900/30 border-b border-slate-800/80 text-xs text-slate-300 leading-relaxed">
+        {plan.overview}
+      </div>
+
+      {/* Phases Accordion */}
+      <div className="divide-y divide-slate-800">
+        {phases.map(phase => {
+          const isExpanded = expandedPhase === phase.id;
+          const phaseTasks = phase.tasks;
+          const phaseDone = phaseTasks.filter(t => t.status === 'completed').length;
+          const isAllDone = phaseTasks.length > 0 && phaseDone === phaseTasks.length;
+
+          return (
+            <div key={phase.id} className="transition">
+              <button
+                type="button"
+                onClick={() => setExpandedPhase(isExpanded ? '' : phase.id)}
+                className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-slate-800/40 text-left transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold ${
+                    isAllDone 
+                      ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' 
+                      : 'bg-slate-800 text-slate-300 border border-slate-700'
+                  }`}>
+                    {phase.phaseNumber}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                      {phase.phaseName}
+                      {isAllDone && (
+                        <span className="text-[10px] bg-teal-500/10 text-teal-300 px-2 py-0.5 rounded border border-teal-500/30">
+                          Complete
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-xs text-slate-400 line-clamp-1">{phase.summary}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-400 font-mono">
+                    {phaseDone}/{phaseTasks.length}
+                  </span>
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  )}
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div className="px-5 pb-4 pt-1 bg-slate-950/30 space-y-2.5">
+                  {phaseTasks.map(task => {
+                    const isDone = task.status === 'completed';
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => toggleTask(phase.id, task.id)}
+                        className={`p-3 rounded-lg border transition cursor-pointer flex items-start gap-3 ${
+                          isDone 
+                            ? 'bg-slate-900/40 border-slate-800 text-slate-400' 
+                            : 'bg-slate-900/80 border-slate-800/80 hover:border-amber-500/40 text-slate-200'
+                        }`}
+                      >
+                        <button type="button" className="mt-0.5 flex-shrink-0 text-slate-400 hover:text-amber-400 transition">
+                          {isDone ? (
+                            <CheckCircle2 className="w-4 h-4 text-teal-400" />
+                          ) : (
+                            <Circle className="w-4 h-4 text-slate-500" />
+                          )}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-medium leading-snug ${isDone ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                            {task.title}
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                            {task.description}
+                          </p>
+                          {task.actionableOutput && (
+                            <div className="mt-2 text-[10px] text-amber-300/80 bg-amber-950/40 px-2 py-1 rounded border border-amber-900/50 flex items-center gap-1.5 font-mono">
+                              <Sparkles className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                              <span className="truncate">{task.actionableOutput}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Key Success Metrics Footer */}
+      {plan.keySuccessMetrics && plan.keySuccessMetrics.length > 0 && (
+        <div className="p-4 bg-slate-950/70 border-t border-slate-800">
+          <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <Flame className="w-3.5 h-3.5 text-amber-400" />
+            Key Success Criteria
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {plan.keySuccessMetrics.map((metric, i) => (
+              <div key={i} className="text-[11px] text-slate-300 bg-slate-900/80 p-2 rounded border border-slate-800">
+                • {metric}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export { PlanCard as TaskDagCard };

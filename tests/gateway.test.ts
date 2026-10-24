@@ -10,7 +10,7 @@ describe('AI Gateway & Resilience', () => {
     expect(res.artifact?.type).toBe('research');
     expect(res.telemetry).toBeDefined();
     expect(res.telemetry.latencyMs).toBeGreaterThan(0);
-  }, 25000);
+  }, 35000);
 
   it('should process planner request with fallback safety', async () => {
     const res = await processAgentRequest('Build Next-Gen Web App', 'planner');

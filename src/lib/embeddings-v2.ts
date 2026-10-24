@@ -1,5 +1,6 @@
 // Nova: Embeddings v2 Engine with Sliding Chunk Overlap & Dense Vector Cosine Similarity
 // Powered by Gemini Embedding v2 (3072-dimensional dense vectors) with resilient mathematical fallback
+import { vectorCache, mlopsCollector } from './mlops-pipeline';
 
 export interface ChunkWithEmbedding {
   id: string;
@@ -61,9 +62,17 @@ export function computeCosineSimilarity(vecA: number[], vecB: number[]): number 
   return dotProduct / denominator;
 }
 
-// Generate high-dimensional vector embeddings using gemini-embedding-2 (3072-dim)
+// Generate high-dimensional vector embeddings using gemini-embedding-2 (3072-dim) with LRU vector caching
 export async function generateEmbeddingV2(text: string): Promise<number[]> {
+  const cached = vectorCache.get(text);
+  if (cached) {
+    return cached;
+  }
+
+  const startTime = Date.now();
   const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  let vector: number[] | null = null;
+  const promptTokens = Math.max(1, Math.round(text.split(/\s+/).length * 1.3));
 
   if (geminiApiKey && !geminiApiKey.startsWith('${')) {
     try {
@@ -81,18 +90,58 @@ export async function generateEmbeddingV2(text: string): Promise<number[]> {
 
       if (response.ok) {
         const data = await response.json();
-        const vector = data?.embedding?.values;
-        if (vector && Array.isArray(vector) && vector.length > 0) {
-          return vector;
+        const liveVector = data?.embedding?.values;
+        if (liveVector && Array.isArray(liveVector) && liveVector.length > 0) {
+          vector = liveVector;
+          mlopsCollector.recordRequest({
+            model: 'gemini-embedding-2',
+            latencyMs: Date.now() - startTime,
+            promptTokens,
+            completionTokens: 0,
+            success: true,
+            statusCode: 200,
+          });
         }
+      } else {
+        mlopsCollector.recordRequest({
+          model: 'gemini-embedding-2',
+          latencyMs: Date.now() - startTime,
+          promptTokens,
+          completionTokens: 0,
+          success: false,
+          statusCode: response.status,
+        });
       }
     } catch (err) {
       console.warn('[Embeddings v2] Gemini Embedding 2 live call failed, using client fallback:', err);
+      mlopsCollector.recordRequest({
+        model: 'gemini-embedding-2',
+        latencyMs: Date.now() - startTime,
+        promptTokens,
+        completionTokens: 0,
+        success: false,
+        statusCode: 500,
+        error: err as Error,
+      });
     }
   }
 
   // Resilient 128-dimensional deterministic semantic projection fallback (100% offline)
-  return generateDeterministicSemanticVector(text, 128);
+  if (!vector) {
+    vector = generateDeterministicSemanticVector(text, 128);
+    mlopsCollector.recordRequest({
+      model: 'deterministic-128',
+      latencyMs: Date.now() - startTime,
+      promptTokens,
+      completionTokens: 0,
+      success: true,
+      statusCode: 200,
+    });
+  }
+
+  // Cache normalized vector in LRU cache
+  vectorCache.set(text, vector);
+  return vector;
 }
 
 // Deterministic fallback vectorizer: produces normalized semantic hashes

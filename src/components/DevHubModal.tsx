@@ -17,7 +17,10 @@ import {
   Play,
   RefreshCw,
   Zap,
-  Check
+  Check,
+  Activity,
+  Database,
+  AlertTriangle
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 
@@ -27,13 +30,76 @@ interface Props {
 }
 
 export function DevHubModal({ isOpen, onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<'guide' | 'components' | 'architecture' | 'evolution'>('guide');
+  const [activeTab, setActiveTab] = useState<'guide' | 'components' | 'architecture' | 'evolution' | 'mlops'>('guide');
   const [testOutput, setTestOutput] = useState<string | null>(null);
   const [isRunningTests, setIsRunningTests] = useState(false);
 
   // Self-Evolution state
   const [isEvolving, setIsEvolving] = useState(false);
   const [evolutionReport, setEvolutionReport] = useState<any | null>(null);
+
+  // MLOps Telemetry Platform state
+  const [mlopsSnapshot, setMlopsSnapshot] = useState<any | null>(null);
+  const [loadingMlops, setLoadingMlops] = useState(false);
+
+  const fetchMlopsSnapshot = async () => {
+    try {
+      setLoadingMlops(true);
+      const res = await fetch('/api/v1/mlops');
+      if (res.ok) {
+        const data = await res.json();
+        setMlopsSnapshot(data);
+      }
+    } catch (err) {
+      console.error('Failed to load MLOps snapshot:', err);
+    } finally {
+      setLoadingMlops(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    sound.tap();
+    try {
+      await fetch('/api/v1/mlops', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear_cache' }),
+      });
+      await fetchMlopsSnapshot();
+      sound.playSuccess();
+    } catch {}
+  };
+
+  const handleResetCircuits = async () => {
+    sound.tap();
+    try {
+      await fetch('/api/v1/mlops', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset_circuit' }),
+      });
+      await fetchMlopsSnapshot();
+      sound.playSuccess();
+    } catch {}
+  };
+
+  const handleSimulateFailure = async () => {
+    sound.tap();
+    try {
+      await fetch('/api/v1/mlops', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'simulate_failure',
+          model: 'gemini-3.5-flash-lite',
+          statusCode: 429,
+          error: 'Rate Limit 429: Exceeded token quota',
+        }),
+      });
+      await fetchMlopsSnapshot();
+      sound.playSuccess();
+    } catch {}
+  };
 
   if (!isOpen) return null;
 
@@ -137,6 +203,17 @@ export function DevHubModal({ isOpen, onClose }: Props) {
             }`}
           >
             Component Registry
+          </button>
+          <button
+            onClick={() => { setActiveTab('mlops'); fetchMlopsSnapshot(); }}
+            className={`py-3 px-3.5 border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'mlops'
+                ? 'border-teal-400 text-teal-300 font-semibold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5 text-teal-400" />
+            MLOps Telemetry Hub
           </button>
         </div>
 
@@ -297,6 +374,160 @@ export function DevHubModal({ isOpen, onClose }: Props) {
                   <p className="text-slate-400 text-[11px] leading-relaxed">{c.desc}</p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* MLOps Platform Telemetry & Circuit Breaker Tab */}
+          {activeTab === 'mlops' && (
+            <div className="space-y-4">
+              {/* Header and Controls */}
+              <div className="p-4 rounded-xl border border-teal-500/30 bg-teal-950/20 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-teal-400" />
+                      <h4 className="text-sm font-semibold text-white">
+                        Production MLOps Telemetry & Circuit Breaker Hub
+                      </h4>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Monitors model latency percentiles (p50/p95/p99), token costs, LRU vector cache hit ratios, and hot standby failovers.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={fetchMlopsSnapshot}
+                      disabled={loadingMlops}
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${loadingMlops ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </button>
+                    <button
+                      onClick={handleClearCache}
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium transition cursor-pointer"
+                    >
+                      Clear Cache
+                    </button>
+                    <button
+                      onClick={handleResetCircuits}
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium transition cursor-pointer"
+                    >
+                      Reset Circuits
+                    </button>
+                    <button
+                      onClick={handleSimulateFailure}
+                      className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-[11px] font-medium transition cursor-pointer flex items-center gap-1"
+                    >
+                      <AlertTriangle className="w-3 h-3" />
+                      Trip 429 Breaker
+                    </button>
+                  </div>
+                </div>
+
+                {/* Metrics Highlights Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                  <div className="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+                    <div className="text-[10px] text-slate-400">Latency Percentiles</div>
+                    <div className="text-sm font-bold text-teal-400 font-mono mt-0.5">
+                      p50: {mlopsSnapshot?.globalLatency?.p50 || 0}ms
+                    </div>
+                    <div className="text-[10.5px] text-slate-400 font-mono mt-0.5">
+                      p95: {mlopsSnapshot?.globalLatency?.p95 || 0}ms • p99: {mlopsSnapshot?.globalLatency?.p99 || 0}ms
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+                    <div className="text-[10px] text-slate-400">Token Cost Spend</div>
+                    <div className="text-sm font-bold text-emerald-400 font-mono mt-0.5">
+                      ${mlopsSnapshot?.globalTokens?.estimatedCostUsd?.toFixed(6) || '0.000000'}
+                    </div>
+                    <div className="text-[10.5px] text-slate-400 font-mono mt-0.5">
+                      Tokens: {(mlopsSnapshot?.globalTokens?.totalTokens || 0).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+                    <div className="text-[10px] text-slate-400">Vector Cache (3072-dim)</div>
+                    <div className="text-sm font-bold text-purple-400 font-mono mt-0.5">
+                      {mlopsSnapshot?.vectorCache?.hitRatioPercent || 0}% Hit Rate
+                    </div>
+                    <div className="text-[10.5px] text-slate-400 font-mono mt-0.5">
+                      {mlopsSnapshot?.vectorCache?.size || 0} cached • {mlopsSnapshot?.vectorCache?.hits || 0} hits
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+                    <div className="text-[10px] text-slate-400">Total Requests & Error Rate</div>
+                    <div className="text-sm font-bold text-amber-400 font-mono mt-0.5">
+                      {mlopsSnapshot?.totalRequests || 0} requests
+                    </div>
+                    <div className="text-[10.5px] text-slate-400 font-mono mt-0.5">
+                      Error Rate: {mlopsSnapshot?.globalErrorRatePercent || 0}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Model Circuit Breaker & Health Table */}
+              <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    Automated Circuit Breaker States & Hot Standby Routes
+                  </h4>
+                  <span className="text-[10px] font-mono text-slate-400">Zero-Crash Failover</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    'gemini-3.5-flash-lite',
+                    'gemini-3.8-flash',
+                    'gemini-3-flash-preview',
+                    'gemini-2.5-flash',
+                    'claude-3-7-sonnet',
+                    'deepseek-r1',
+                  ].map(modelName => {
+                    const circuit = mlopsSnapshot?.circuitBreakers?.[modelName];
+                    const isTripped = circuit?.state === 'OPEN';
+                    const isCanary = circuit?.state === 'HALF_OPEN';
+
+                    return (
+                      <div
+                        key={modelName}
+                        className={`p-3 rounded-lg border font-mono text-[11px] ${
+                          isTripped
+                            ? 'bg-rose-950/20 border-rose-500/40 text-rose-200'
+                            : isCanary
+                            ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
+                            : 'bg-slate-950 border-slate-800 text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-semibold text-slate-200">{modelName}</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              isTripped
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                : isCanary
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            }`}
+                          >
+                            {circuit?.state || 'CLOSED'}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 flex items-center justify-between">
+                          <span>Failures: {circuit?.consecutiveFailures || 0} / 3</span>
+                          {isTripped && circuit?.activeStandby && (
+                            <span className="text-teal-300">➔ Hot Standby: {circuit.activeStandby}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { GoalPlan, MilestonePhase, TaskSubItem } from '@/lib/types';
 import { 
   CheckCircle2, 
@@ -10,10 +10,12 @@ import {
   ChevronRight, 
   ChevronDown, 
   Target,
-  Sparkles
+  Sparkles,
+  Volume2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sound } from '@/lib/sound';
+import { VoiceBriefingPlayer } from '../VoiceBriefingPlayer';
 
 interface Props {
   plan: GoalPlan;
@@ -22,11 +24,36 @@ interface Props {
 export function TaskDagCard({ plan }: Props) {
   const [phases, setPhases] = useState<MilestonePhase[]>(plan.phases);
   const [expandedPhase, setExpandedPhase] = useState<string>(phases[0]?.id || '');
+  const [showVoicePlayer, setShowVoicePlayer] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   // Calculate completion percentage
   const allTasks = phases.flatMap(p => p.tasks);
   const completedCount = allTasks.filter(t => t.status === 'completed').length;
   const progressPercent = allTasks.length > 0 ? Math.round((completedCount / allTasks.length) * 100) : 0;
+
+  const planBriefing = useMemo(() => {
+    const parts: string[] = [];
+    parts.push(`Milestone Execution Plan for ${plan.goal}.`);
+    parts.push(`Projected timeframe: ${plan.timeframe}.`);
+    if (plan.overview) {
+      parts.push(`Overview: ${plan.overview}`);
+    }
+    plan.phases.forEach(p => {
+      parts.push(`Phase ${p.phaseNumber}, ${p.phaseName}: ${p.summary}. Tasks include ${p.tasks.map(t => t.title).join(', ')}.`);
+    });
+    if (plan.keySuccessMetrics && plan.keySuccessMetrics.length > 0) {
+      parts.push(`Key success criteria: ${plan.keySuccessMetrics.join('. ')}.`);
+    }
+    return parts.join(' ');
+  }, [plan]);
 
   const toggleTask = (phaseId: string, taskId: string) => {
     sound.playCheck();
@@ -80,19 +107,52 @@ export function TaskDagCard({ plan }: Props) {
           </div>
         </div>
 
-        {/* Progress pill */}
-        <div className="flex items-center gap-3 bg-slate-900 px-3.5 py-1.5 rounded-full border border-slate-800">
-          <div className="w-20 bg-slate-800 h-2 rounded-full overflow-hidden">
-            <div
-              className="bg-indigo-500 h-full transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
+        <div className="flex items-center gap-2">
+          {/* Voice Briefing Button */}
+          <button
+            type="button"
+            onClick={() => {
+              sound.playTap();
+              setShowVoicePlayer(prev => !prev);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition cursor-pointer ${
+              showVoicePlayer
+                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-sm'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+            }`}
+            title="Listen to Executive Milestone Audio Briefing"
+          >
+            <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
+            <span>{showVoicePlayer ? 'Hide Audio' : '🔊 Listen to Audio Briefing'}</span>
+          </button>
+
+          {/* Progress pill */}
+          <div className="flex items-center gap-3 bg-slate-900 px-3.5 py-1.5 rounded-full border border-slate-800">
+            <div className="w-20 bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-indigo-500 h-full transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className="text-xs font-bold text-indigo-300 font-mono">
+              {progressPercent}% Done
+            </span>
           </div>
-          <span className="text-xs font-bold text-indigo-300 font-mono">
-            {progressPercent}% Done
-          </span>
         </div>
       </div>
+
+      {/* Voice Briefing Sub-Deck */}
+      {showVoicePlayer && (
+        <div className="p-4 border-b border-slate-800 bg-slate-950/40 animate-in fade-in">
+          <VoiceBriefingPlayer
+            title="Executive Milestone Briefing"
+            subtitle={plan.goal}
+            text={planBriefing}
+            defaultProfile="ember"
+            onClose={() => setShowVoicePlayer(false)}
+          />
+        </div>
+      )}
 
       {/* Overview text */}
       <div className="px-5 py-3.5 bg-slate-900/30 border-b border-slate-800/80 text-xs text-slate-300 leading-relaxed">
@@ -210,3 +270,5 @@ export function TaskDagCard({ plan }: Props) {
     </div>
   );
 }
+
+export { TaskDagCard as PlanCard };

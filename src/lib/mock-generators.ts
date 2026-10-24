@@ -5,7 +5,9 @@ import {
   DecisionMatrix, 
   CodeArtifact, 
   AgentThought,
-  SourceCitation 
+  SourceCitation,
+  DataScienceArtifact,
+  ProctorScorecard 
 } from './types';
 
 export function generateMockThoughts(mode: string, query: string): AgentThought[] {
@@ -35,6 +37,18 @@ export function generateMockThoughts(mode: string, query: string): AgentThought[
         { id: '1', timestamp: ts, agentName: 'System Architect', action: 'Analyzed interface constraints and idiomatic design patterns', status: 'success' },
         { id: '2', timestamp: ts, agentName: 'Core Synthesizer', action: 'Constructed zero-dependency TypeScript implementation with strong typing', status: 'success' },
         { id: '3', timestamp: ts, agentName: 'Security & Quality Linter', action: 'Passed type-check, verified edge cases and zero crash safety', status: 'success' },
+      ];
+    case 'data_science':
+      return [
+        { id: '1', timestamp: ts, agentName: 'Lead Architect', action: 'Partitioned corpus into token sequences and high-dimensional semantic vectors', status: 'success' },
+        { id: '2', timestamp: ts, agentName: 'Data Scientist', action: 'Computed per-token Shannon entropy, perplexity, and 2D PCA cluster projections', status: 'success' },
+        { id: '3', timestamp: ts, agentName: 'Calibration Proctor', action: 'Evaluated Expected Calibration Error (ECE) and plotted reliability curve', status: 'success' },
+      ];
+    case 'proctor':
+      return [
+        { id: '1', timestamp: ts, agentName: 'Adversarial Critic', action: 'Scrutinized candidate claims against live ground-truth web indices', status: 'success' },
+        { id: '2', timestamp: ts, agentName: 'Safety Proctor', action: 'Tested prompt injection boundaries and inspected canary tokens', status: 'success' },
+        { id: '3', timestamp: ts, agentName: 'Executive Auditor', action: 'Generated multi-dimensional Proctor Scorecard and quarantine verdict', status: 'success' },
       ];
     default:
       return [
@@ -348,3 +362,119 @@ export class NovaOrchestrator {
     explanation: 'A clean, strongly typed TypeScript orchestrator implementing the autonomous Planner-Researcher-Synthesizer pipeline with zero third-party framework overhead.',
   };
 }
+
+export function generateMockDataScience(query: string): DataScienceArtifact {
+  const cleanQ = query.trim().replace(/^["']|["']$/g, '');
+  return {
+    title: `Empirical Token & Vector Workbench: ${cleanQ.slice(0, 40)}`,
+    overview: `Statistical analysis of token probability distributions, PCA vector clustering, and confidence calibration for "${cleanQ}".`,
+    tokenAnalysis: {
+      totalTokens: 1420,
+      uniqueTokens: 580,
+      averageEntropy: 2.34,
+      perplexityEstimate: 5.18,
+      lexicalDiversity: 0.408,
+      tokenTypeDistribution: {
+        naturalLanguage: 62,
+        codeSyntax: 24,
+        numericData: 9,
+        punctuation: 5,
+      },
+      topTokensByEntropy: [
+        { token: 'architecture', entropy: 3.42, probability: 0.12 },
+        { token: 'probabilistic', entropy: 3.18, probability: 0.14 },
+        { token: 'calibration', entropy: 2.95, probability: 0.18 },
+        { token: 'adversarial', entropy: 2.84, probability: 0.21 },
+        { token: 'vector', entropy: 2.65, probability: 0.26 },
+        { token: 'synthesis', entropy: 2.41, probability: 0.31 },
+        { token: 'latency', entropy: 2.18, probability: 0.38 },
+      ],
+    },
+    vectorClustering: {
+      algorithm: 'PCA-2D',
+      clusterCount: 3,
+      silhouetteScore: 0.74,
+      centroids: [
+        { clusterId: 1, name: 'Core Architecture', x: -1.8, y: 1.2 },
+        { clusterId: 2, name: 'Vector Memory & Evals', x: 2.1, y: 0.8 },
+        { clusterId: 3, name: 'Runtime Orchestration', x: 0.2, y: -2.3 },
+      ],
+      points: [
+        { id: 'p1', label: 'Sliding Overlap Chunking', x: -1.9, y: 1.4, clusterId: 1, clusterName: 'Core Architecture', relevance: 94 },
+        { id: 'p2', label: 'Dense Vector Embeddings', x: -1.7, y: 1.0, clusterId: 1, clusterName: 'Core Architecture', relevance: 88 },
+        { id: 'p3', label: 'Cosine Similarity Centroid', x: 2.0, y: 0.9, clusterId: 2, clusterName: 'Vector Memory & Evals', relevance: 91 },
+        { id: 'p4', label: 'Expected Calibration Error', x: 2.3, y: 0.7, clusterId: 2, clusterName: 'Vector Memory & Evals', relevance: 85 },
+        { id: 'p5', label: 'Brier Reliability Score', x: 2.1, y: 0.6, clusterId: 2, clusterName: 'Vector Memory & Evals', relevance: 82 },
+        { id: 'p6', label: 'Reactive Wakeup Task Bus', x: 0.1, y: -2.2, clusterId: 3, clusterName: 'Runtime Orchestration', relevance: 90 },
+        { id: 'p7', label: 'Zero Demo Crash Circuit', x: 0.3, y: -2.4, clusterId: 3, clusterName: 'Runtime Orchestration', relevance: 96 },
+      ],
+    },
+    confidenceCalibration: {
+      expectedCalibrationError: 0.041,
+      brierScore: 0.088,
+      status: 'well-calibrated',
+      reliabilityCurve: [
+        { binRange: '0.0 - 0.2', averageConfidence: 0.14, empiricalAccuracy: 0.16, sampleCount: 24 },
+        { binRange: '0.2 - 0.4', averageConfidence: 0.32, empiricalAccuracy: 0.35, sampleCount: 42 },
+        { binRange: '0.4 - 0.6', averageConfidence: 0.51, empiricalAccuracy: 0.49, sampleCount: 88 },
+        { binRange: '0.6 - 0.8', averageConfidence: 0.72, empiricalAccuracy: 0.74, sampleCount: 160 },
+        { binRange: '0.8 - 1.0', averageConfidence: 0.93, empiricalAccuracy: 0.91, sampleCount: 220 },
+      ],
+    },
+    statisticalVerdict: 'Well-calibrated predictive distribution with high silhouette cluster separation (0.74) and low ECE (4.1%), indicating high empirical confidence in model output.',
+  };
+}
+
+export function generateMockProctorScorecard(query: string, artifactType = 'research'): ProctorScorecard {
+  const ts = new Date().toLocaleTimeString();
+  return {
+    overallScore: 94,
+    verdict: 'APPROVED',
+    factualityIndex: 96,
+    hallucinationRisk: 'low',
+    hallucinationRiskScore: 6,
+    safetyGuardrailScore: 99,
+    coherenceScore: 95,
+    timestamp: ts,
+    adversarialCritique: `The synthesized ${artifactType} exhibits rigorous factual alignment against live retrieved indices. Claims are triangulated with primary academic papers and official API documentation. No prompt injection canary leaks or ungrounded entity fabrications were observed.`,
+    remediationSteps: [
+      'Maintain continuous regression coverage over compositional K-depth tool invocations.',
+      'Enforce citation URL reachability checks on crawler-grounded endpoints.',
+    ],
+    audits: [
+      {
+        id: 'aud-1',
+        rule: 'Cross-Source Factuality Triangulation',
+        category: 'factuality',
+        passed: true,
+        severity: 'info',
+        explanation: 'All 4 primary factual assertions match verified web retrieval snippets.',
+      },
+      {
+        id: 'aud-2',
+        rule: 'Anti-Hallucination Entity Verifier',
+        category: 'hallucination',
+        passed: true,
+        severity: 'info',
+        explanation: 'Zero fabricated author names or unverified software libraries detected.',
+      },
+      {
+        id: 'aud-3',
+        rule: 'System Prompt Canary & Leakage Defense',
+        category: 'safety',
+        passed: true,
+        severity: 'info',
+        explanation: 'Developer safety instructions and internal API credentials remained fully shielded.',
+      },
+      {
+        id: 'aud-4',
+        rule: 'Cross-Modal Metric Coherence',
+        category: 'coherence',
+        passed: true,
+        severity: 'info',
+        explanation: 'Quantitative latency figures in text align with underlying chart telemetry.',
+      },
+    ],
+  };
+}
+
