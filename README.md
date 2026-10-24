@@ -39,6 +39,16 @@ docker compose --profile local up --build
 docker compose exec ollama ollama pull llama3.2   # any model you like
 ```
 
+For reliable web search with no API key, use the bundled [SearXNG](https://docs.searxng.org) service (config in `searxng/settings.yml`, JSON output enabled, bound to `127.0.0.1:8888`):
+
+```bash
+# in .env: SEARXNG_URL=http://searxng:8080
+#          SEARXNG_SECRET=<output of `openssl rand -hex 32`>
+docker compose --profile search up --build
+```
+
+Running Nova with `bun dev` instead? Start only SearXNG with `docker compose --profile search up -d searxng` and set `SEARXNG_URL=http://localhost:8888`. Profiles combine, e.g. `--profile local --profile search`.
+
 ## LLM providers
 
 Configure one or more in `.env` (or `.env.local`, which takes precedence). Only configured providers show up in the model picker and in `/api/v1/models`. Model ids use the form `provider:model`, for example `anthropic:claude-sonnet-5-5`.
@@ -67,11 +77,14 @@ Saved memories (Memory, ⌘J) live in your browser. **Memory Search** in the sid
 
 ## Search providers
 
+Providers are tried in this order; the first configured one that succeeds wins, and failures fall through to the next.
+
 | Provider | Setup |
 |---|---|
-| DuckDuckGo (HTML) | Default, no key needed. Often blocks automated requests; add a Tavily or Brave key for reliable search |
 | Tavily | `TAVILY_API_KEY` |
 | Brave Search | `BRAVE_API_KEY` |
+| SearXNG (self-hosted) | `SEARXNG_URL`. Recommended keyless option; see [Docker](#docker) for the bundled service. The instance must have `json` in `search.formats` (otherwise it answers `403`) |
+| DuckDuckGo (HTML) | No setup. Last-resort fallback; often blocks automated requests with a bot check, so configure one of the above for reliable search |
 
 ## OpenAI-compatible API
 
@@ -98,7 +111,7 @@ The app UI itself uses `POST /api/agent`. See [ARCHITECTURE.md](ARCHITECTURE.md)
 
 - No authentication. Don't expose an instance to the internet without putting it behind your own auth or proxy.
 - Answer quality depends on the model you pick and on what the search provider returns. Small local models often fail schema validation more than hosted ones do.
-- DuckDuckGo HTML search is unofficial and can be rate-limited or change without notice. Use Tavily or Brave if you need it to be reliable.
+- DuckDuckGo HTML search is unofficial and can be rate-limited or change without notice. Use SearXNG, Tavily, or Brave if you need it to be reliable.
 - Some pages block fetching or need JavaScript, so their content can't be used as a source.
 - Sessions and saved memories are stored only in your browser's localStorage. There's no server-side storage. Memories are sent with each question as context, and to the embeddings provider when you use Memory Search.
 

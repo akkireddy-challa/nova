@@ -4,6 +4,7 @@ import type { LLMImage, LLMMessage, LLMResult, ModelSelection, ProviderId } from
 import type {
   AgentThought,
   Attachment,
+  ConversationTurn,
   GenerationTelemetry,
   GenerativeArtifact,
   SourceCitation,
@@ -26,7 +27,15 @@ import {
   validateOutput,
 } from '../schemas/artifacts';
 import { fetchPageText, HostLookup, isSafePublicUrl } from './fetch-page';
-import { buildRetryPrompt, buildSystemPrompt, buildUserPrompt, PromptSource, TextAttachment } from './prompts';
+import {
+  buildQueryRewritePrompt,
+  buildRetryPrompt,
+  buildSystemPrompt,
+  buildUserPrompt,
+  PromptSource,
+  QUERY_REWRITE_SYSTEM_PROMPT,
+  TextAttachment,
+} from './prompts';
 import { SEARCH_PROVIDER_LABELS, searchWeb } from './search';
 
 export type PipelineErrorCode = 'INVALID_OUTPUT' | 'BAD_REQUEST';
@@ -38,6 +47,14 @@ export class PipelineError extends Error {
   }
 }
 
+/** Thrown when the caller's AbortSignal fires; the route turns it into "no result" rather than an error. */
+export class PipelineAbortedError extends Error {
+  constructor() {
+    super('The request was stopped.');
+    this.name = 'AbortError';
+  }
+}
+
 export interface PipelineInput {
   prompt: string;
   mode: StudioMode;
@@ -46,6 +63,8 @@ export interface PipelineInput {
   model?: string;
   attachments?: Attachment[];
   thinkingBudget?: ThinkingBudget;
+  /** Earlier turns of the conversation, oldest first. Capped to MAX_HISTORY_TURNS x MAX_HISTORY_CHARS. */
+  history?: ConversationTurn[];
 }
 
 export interface PipelineDeps {
@@ -54,6 +73,13 @@ export interface PipelineDeps {
   /** Model resolution and generation (injectable for tests). */
   resolveModel?: typeof resolveModel;
   generate?: typeof generate;
+  /**
+   * Called with every step the moment it is recorded. A step that changes later (a running LLM call
+   * that finishes) is reported again with the same `id`; consumers should replace by id.
+   */
+  onThought?: (thought: AgentThought) => void;
+  /** Cancels search, page fetches and model calls; the pipeline then throws PipelineAbortedError. */
+  signal?: AbortSignal;
 }
 
 export interface PipelineResult {
@@ -78,20 +104,102 @@ const BUDGETS: Record<ThinkingBudget, { results: number; pages: number; maxToken
 };
 
 const MAX_TEXT_ATTACHMENT_CHARS = 20000;
+export const MAX_HISTORY_TURNS = 10;
+export const MAX_HISTORY_CHARS = 4000;
+const REWRITE_MAX_TOKENS = 200;
+const MAX_QUERY_CHARS = 400;
 
 class ThoughtLog {
   readonly thoughts: AgentThought[] = [];
 
-  add(agentName: string, action: string, status: AgentThought['status'] = 'success', details?: string): void {
-    this.thoughts.push({
+  constructor(private readonly onThought?: (thought: AgentThought) => void) {}
+
+  /** Records a step and returns its id. */
+  add(agentName: string, action: string, status: AgentThought['status'] = 'success', details?: string): string {
+    const thought: AgentThought = {
       id: `th-${this.thoughts.length + 1}`,
       timestamp: new Date().toISOString(),
       agentName,
       action,
       status,
       ...(details ? { details } : {}),
-    });
+    };
+    this.thoughts.push(thought);
+    this.onThought?.({ ...thought });
+    return thought.id;
   }
+
+  /** Replaces a recorded step's action/status/details (e.g. a running LLM call that finished). */
+  update(id: string, patch: { action: string; status: AgentThought['status']; details?: string }): void {
+    const index = this.thoughts.findIndex(t => t.id === id);
+    if (index === -1) return;
+    const { id: stepId, timestamp, agentName } = this.thoughts[index];
+    const thought: AgentThought = {
+      id: stepId,
+      timestamp,
+      agentName,
+      action: patch.action,
+      status: patch.status,
+      ...(patch.details ? { details: patch.details } : {}),
+    };
+    this.thoughts[index] = thought;
+    this.onThought?.({ ...thought });
+  }
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new PipelineAbortedError();
+}
+
+/**
+ * Settles with `promise`, or rejects with PipelineAbortedError as soon as `signal` fires.
+ * Used for work that does not accept a signal itself (web search).
+ */
+function raceAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) {
+    promise.catch(() => undefined);
+    return Promise.reject(new PipelineAbortedError());
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new PipelineAbortedError());
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      value => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      err => {
+        signal.removeEventListener('abort', onAbort);
+        reject(err);
+      },
+    );
+  });
+}
+
+/**
+ * Keeps the last MAX_HISTORY_TURNS non-empty turns, caps each one, merges consecutive turns
+ * from the same role, and makes the history start with a user turn and end with an assistant
+ * turn so every provider accepts it before the current user message.
+ */
+export function normalizeHistory(history: ConversationTurn[] | undefined): LLMMessage[] {
+  const merged: LLMMessage[] = [];
+  for (const turn of history ?? []) {
+    if (turn.role !== 'user' && turn.role !== 'assistant') continue;
+    const content = typeof turn.content === 'string' ? turn.content.trim().slice(0, MAX_HISTORY_CHARS) : '';
+    if (!content) continue;
+    const last = merged[merged.length - 1];
+    if (last && last.role === turn.role) {
+      last.content = `${last.content}\n\n${content}`.slice(0, MAX_HISTORY_CHARS);
+    } else {
+      merged.push({ role: turn.role, content });
+    }
+  }
+  // A trailing user turn never got an answer (failed or stopped); the current prompt replaces it.
+  while (merged.length > 0 && merged[merged.length - 1].role === 'user') merged.pop();
+  const recent = merged.slice(-MAX_HISTORY_TURNS);
+  while (recent.length > 0 && recent[0].role === 'assistant') recent.shift();
+  return recent;
 }
 
 function seconds(ms: number): string {
@@ -147,7 +255,10 @@ function splitAttachments(attachments: Attachment[], log: ThoughtLog): { images:
 
 async function gatherSources(query: string, budget: ThinkingBudget, log: ThoughtLog, deps: PipelineDeps): Promise<PromptSource[]> {
   const limits = BUDGETS[budget];
-  const outcome = await searchWeb(query.slice(0, 400), limits.results);
+  const { signal } = deps;
+  throwIfAborted(signal);
+  // searchWeb has no signal parameter yet, so cancellation stops waiting for it rather than the request itself.
+  const outcome = await raceAbort(searchWeb(query.slice(0, MAX_QUERY_CHARS), limits.results), signal);
 
   for (const failure of outcome.errors) {
     log.add('Web search', `${SEARCH_PROVIDER_LABELS[failure.provider]} search failed: ${failure.message}`, 'warn');
@@ -179,7 +290,10 @@ async function gatherSources(query: string, budget: ThinkingBudget, log: Thought
   if (candidates.length === 0) return sources;
 
   const fetchStart = Date.now();
-  const settled = await Promise.allSettled(candidates.map(s => fetchPageText(s.citation.url, { lookup: deps.lookup })));
+  const settled = await Promise.allSettled(
+    candidates.map(s => fetchPageText(s.citation.url, { lookup: deps.lookup, signal })),
+  );
+  throwIfAborted(signal);
   const failures: string[] = [];
   let fetched = 0;
   let chars = 0;
@@ -216,22 +330,55 @@ interface RunContext {
   log: ThoughtLog;
   totals: LlmUsageTotals;
   generate: typeof generate;
+  signal?: AbortSignal;
+}
+
+/** How a model call appears in the step list: a running step that is updated when the call returns. */
+interface CallLabels {
+  agentName: string;
+  running: string;
+  failed: string;
+  done: (result: LLMResult) => { action: string; status: AgentThought['status'] };
+}
+
+function answerLabels(selection: ModelSelection): CallLabels {
+  const id = `${selection.provider}:${selection.model}`;
+  return {
+    agentName: 'LLM',
+    running: `Generating with ${id}…`,
+    failed: `${id} failed`,
+    done: result => ({ action: `${result.provider}:${result.model} responded in ${seconds(result.latencyMs)}`, status: 'success' }),
+  };
 }
 
 async function callModel(
   selection: ModelSelection,
-  request: { system: string; messages: LLMMessage[]; images: LLMImage[]; json: boolean; maxTokens: number },
+  request: { system: string; messages: LLMMessage[]; images: LLMImage[]; json: boolean; maxTokens: number; temperature?: number },
   ctx: RunContext,
+  labels: CallLabels = answerLabels(selection),
 ): Promise<LLMResult> {
-  const { log, totals } = ctx;
-  const result = await ctx.generate(selection, {
-    system: request.system,
-    messages: request.messages,
-    images: request.images.length > 0 ? request.images : undefined,
-    json: request.json,
-    maxTokens: request.maxTokens,
-    temperature: 0.2,
-  });
+  const { log, totals, signal } = ctx;
+  throwIfAborted(signal);
+  const stepId = log.add(labels.agentName, labels.running, 'running');
+  let result: LLMResult;
+  try {
+    result = await ctx.generate(selection, {
+      system: request.system,
+      messages: request.messages,
+      images: request.images.length > 0 ? request.images : undefined,
+      json: request.json,
+      maxTokens: request.maxTokens,
+      temperature: request.temperature ?? 0.2,
+      ...(signal ? { signal } : {}),
+    });
+  } catch (err) {
+    if (signal?.aborted) {
+      log.update(stepId, { action: `${labels.failed}: stopped`, status: 'warn' });
+      throw new PipelineAbortedError();
+    }
+    log.update(stepId, { action: `${labels.failed}: ${describeFailure(err)}`, status: 'warn' });
+    throw err;
+  }
   totals.calls += 1;
   totals.latencyMs += result.latencyMs;
   if (result.usage) {
@@ -241,19 +388,74 @@ async function callModel(
     totals.usageComplete = false;
   }
   const usage = result.usage ? `${result.usage.inputTokens} input / ${result.usage.outputTokens} output tokens` : undefined;
-  log.add('LLM', `${result.provider}:${result.model} responded in ${seconds(result.latencyMs)}`, 'success', usage);
+  log.update(stepId, { ...labels.done(result), details: usage });
+  throwIfAborted(signal);
   return result;
+}
+
+/** Cleans a model-written search query: first non-empty line, no quotes or "Query:" label, capped. */
+function cleanQuery(text: string): string {
+  const line = text.split('\n').map(l => l.trim()).find(Boolean) ?? '';
+  return line
+    .replace(/^(?:standalone\s+)?(?:web\s+)?(?:search\s+)?query\s*:\s*/i, '')
+    .replace(/^["'`“”]+|["'`“”]+$/g, '')
+    .trim()
+    .slice(0, MAX_QUERY_CHARS);
+}
+
+/**
+ * Turns a follow-up ("tell me more about point 2") into a standalone web search query with one
+ * short model call. Falls back to the raw prompt, with a warn step, when the call fails.
+ */
+async function rewriteSearchQuery(
+  selection: ModelSelection,
+  prompt: string,
+  history: LLMMessage[],
+  ctx: RunContext,
+): Promise<string> {
+  let query = '';
+  const labels: CallLabels = {
+    agentName: 'Query',
+    running: `Rewriting the follow-up as a standalone search query with ${selection.provider}:${selection.model}…`,
+    failed: 'Query rewrite failed',
+    done: result => {
+      query = cleanQuery(result.text);
+      return query
+        ? { action: `Rewrote follow-up as "${query}"`, status: 'success' }
+        : { action: 'Query rewrite returned nothing; searching with the original prompt', status: 'warn' };
+    },
+  };
+  try {
+    await callModel(
+      selection,
+      {
+        system: QUERY_REWRITE_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: buildQueryRewritePrompt(history, prompt) }],
+        images: [],
+        json: false,
+        maxTokens: REWRITE_MAX_TOKENS,
+        temperature: 0,
+      },
+      ctx,
+      labels,
+    );
+  } catch (err) {
+    if (err instanceof PipelineAbortedError) throw err;
+    ctx.log.add('Query', 'Searching with the original prompt instead', 'warn');
+    return prompt;
+  }
+  return query || prompt;
 }
 
 /** Calls the model, validates its JSON against `schema`, and retries once with the validation error. */
 async function generateValidated<T>(
   schema: z.ZodType<T>,
   selection: ModelSelection,
-  base: { system: string; userPrompt: string; images: LLMImage[]; maxTokens: number },
+  base: { system: string; userPrompt: string; history: LLMMessage[]; images: LLMImage[]; maxTokens: number },
   ctx: RunContext,
 ): Promise<T> {
   const { log } = ctx;
-  const messages: LLMMessage[] = [{ role: 'user', content: base.userPrompt }];
+  const messages: LLMMessage[] = [...base.history, { role: 'user', content: base.userPrompt }];
   const first = await callModel(selection, { ...base, messages, json: true }, ctx);
   const firstCheck = validateOutput(schema, first.text);
   if (firstCheck.ok) return firstCheck.data;
@@ -295,19 +497,31 @@ export async function runPipeline(input: PipelineInput, deps: PipelineDeps = {})
   const prompt = input.prompt.trim();
   if (!prompt) throw new PipelineError('Prompt is required.', 'BAD_REQUEST');
 
+  const { signal } = deps;
+  throwIfAborted(signal);
   const selection = await (deps.resolveModel ?? resolveModel)(input.model);
-  const log = new ThoughtLog();
+  throwIfAborted(signal);
+  const log = new ThoughtLog(deps.onThought);
+  const totals: LlmUsageTotals = { calls: 0, latencyMs: 0, inputTokens: 0, outputTokens: 0, usageComplete: true };
+  const ctx: RunContext = { log, totals, generate: deps.generate ?? generate, signal };
   const { images, texts } = splitAttachments(input.attachments ?? [], log);
 
+  const history = normalizeHistory(input.history);
+  if (history.length > 0) {
+    log.add('Conversation', `Included ${history.length} earlier message${history.length === 1 ? '' : 's'} as context`);
+  }
+
   const usesSources = SEARCH_MODES.has(input.mode);
-  const promptSources = usesSources ? await gatherSources(prompt, budget, log, deps) : [];
+  let promptSources: PromptSource[] = [];
+  if (usesSources) {
+    const query = history.length > 0 ? await rewriteSearchQuery(selection, prompt, history, ctx) : prompt;
+    promptSources = await gatherSources(query, budget, log, deps);
+  }
   const sources = promptSources.map(s => s.citation);
 
-  const system = buildSystemPrompt(input.mode, usesSources, sources.length, budget);
+  const system = buildSystemPrompt(input.mode, usesSources, sources.length, budget, history.length > 0);
   const userPrompt = buildUserPrompt({ prompt, context: input.context, sources: promptSources, usesSources, attachments: texts });
-  const base = { system, userPrompt, images, maxTokens: BUDGETS[budget].maxTokens };
-  const totals: LlmUsageTotals = { calls: 0, latencyMs: 0, inputTokens: 0, outputTokens: 0, usageComplete: true };
-  const ctx: RunContext = { log, totals, generate: deps.generate ?? generate };
+  const base = { system, userPrompt, history, images, maxTokens: BUDGETS[budget].maxTokens };
 
   const finish = (content: string, artifact?: GenerativeArtifact): PipelineResult => ({
     content,
@@ -321,7 +535,7 @@ export async function runPipeline(input: PipelineInput, deps: PipelineDeps = {})
   if (PLAIN_MODES.has(input.mode)) {
     const result = await callModel(
       selection,
-      { ...base, messages: [{ role: 'user', content: userPrompt }], json: false },
+      { ...base, messages: [...history, { role: 'user', content: userPrompt }], json: false },
       ctx,
     );
     const content = result.text.trim();

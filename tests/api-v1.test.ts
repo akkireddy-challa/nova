@@ -26,6 +26,7 @@ describe('Open API Gateway & MCP Plugin Registry', () => {
     globalThis.fetch = realFetch;
     delete process.env.TAVILY_API_KEY;
     delete process.env.BRAVE_API_KEY;
+    delete process.env.SEARXNG_URL;
   });
 
   function mockFetch(handler: (url: string) => Response | Promise<Response>) {
@@ -41,6 +42,7 @@ describe('Open API Gateway & MCP Plugin Registry', () => {
   it('should execute web search tool and return real parsed sources', async () => {
     delete process.env.TAVILY_API_KEY;
     delete process.env.BRAVE_API_KEY;
+    delete process.env.SEARXNG_URL;
     mockFetch(() => new Response(ddgHtml, { status: 200, headers: { 'content-type': 'text/html' } }));
     const result = await mcpRegistry.executeTool('web_search', {
       query: 'Model Context Protocol specification',
@@ -62,6 +64,7 @@ describe('Open API Gateway & MCP Plugin Registry', () => {
   it('should return an empty list with an error when web search fails', async () => {
     delete process.env.TAVILY_API_KEY;
     delete process.env.BRAVE_API_KEY;
+    delete process.env.SEARXNG_URL;
     mockFetch(() => new Response('unavailable', { status: 503 }));
     const result = await mcpRegistry.executeTool('web_search', { query: 'anything' });
 

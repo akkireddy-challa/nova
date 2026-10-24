@@ -41,9 +41,10 @@ bun run build     # production build
 
 ## Adding a search provider
 
-1. Add a module under `src/lib/research/` that takes a query and returns real results (title, URL, snippet) from the provider's API.
-2. Gate it on its own API key env var, document the variable, and keep DuckDuckGo as the keyless fallback.
-3. Add tests with a mocked `fetch`.
+1. Add a function in `src/lib/research/search.ts` (or a module under `src/lib/research/`) that takes a query and returns real results (title, URL, snippet) from the provider's API. Only map `score` and `publishedDate` when the provider actually reports them (and `score` only if it is a relevance in [0, 1]).
+2. Gate it on its own env var (API key or instance URL like `SEARXNG_URL`), add its id to `SearchProviderId` and `SEARCH_PROVIDER_LABELS`, and register it in `searchWeb`. The current order is Tavily, Brave, SearXNG, then DuckDuckGo as the keyless last resort. Pass `searchWeb`'s optional `signal` through to `fetch` together with the per-provider timeout.
+3. Document the variable in `.env.example` and the README search providers table.
+4. Add tests with a mocked `fetch` (see `tests/search.test.ts`).
 
 ## Rule: no fake data
 

@@ -186,6 +186,8 @@ export interface FetchPageOptions {
   timeoutMs?: number;
   maxBytes?: number;
   maxChars?: number;
+  /** Caller cancellation, combined with the per-page timeout. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -196,7 +198,8 @@ export async function fetchPageText(rawUrl: string, options: FetchPageOptions = 
   const lookup = options.lookup ?? defaultLookup;
   const maxBytes = options.maxBytes ?? PAGE_MAX_BYTES;
   const maxChars = options.maxChars ?? PAGE_MAX_CHARS;
-  const signal = AbortSignal.timeout(options.timeoutMs ?? PAGE_TIMEOUT_MS);
+  const timeout = AbortSignal.timeout(options.timeoutMs ?? PAGE_TIMEOUT_MS);
+  const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
 
   let current = rawUrl;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {

@@ -1,7 +1,8 @@
 /**
- * Keyless web search via the DuckDuckGo HTML endpoint. Used as the fallback search
- * provider when no Tavily/Brave key is configured. Returns only what the results
- * page actually contains; nothing is synthesized.
+ * Keyless web search via the DuckDuckGo HTML endpoint. Used as the last-resort
+ * fallback when no Tavily/Brave key or SearXNG instance is configured, or when
+ * they fail. Returns only what the results page actually contains; nothing is
+ * synthesized.
  */
 
 export interface WebSearchResult {
@@ -89,7 +90,7 @@ export async function searchDuckDuckGo(query: string, maxResults: number, signal
   const html = await res.text();
   // DuckDuckGo answers automated traffic with a 202 bot-check page instead of results.
   if (res.status === 202 || html.includes('anomaly-modal')) {
-    throw new Error('DuckDuckGo blocked the request with a bot check; set TAVILY_API_KEY or BRAVE_API_KEY for reliable search');
+    throw new Error('DuckDuckGo blocked the request with a bot check; set SEARXNG_URL (self-hosted, keyless), TAVILY_API_KEY or BRAVE_API_KEY for reliable search');
   }
   return parseDuckDuckGoHtml(html, maxResults);
 }

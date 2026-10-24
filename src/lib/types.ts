@@ -166,6 +166,12 @@ export interface AgentThought {
   status: 'running' | 'success' | 'warn';
 }
 
+/** One earlier turn of the conversation, sent with follow-up questions (text only, no artifacts). */
+export interface ConversationTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface Attachment {
   id: string;
   name: string;
