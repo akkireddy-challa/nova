@@ -1,8 +1,7 @@
 import { McpPluginDefinition, McpToolDefinition, McpToolExecutionResult } from './types';
 import { embeddingsV2Store } from './embeddings-v2';
-import { cognitiveStack } from './intelligence-layers';
 import { sanitizeInput } from './sanitizer';
-import { fetchLiveWebSources } from './web-grounding';
+import { searchWeb, SEARCH_PROVIDER_LABELS } from './research/search';
 
 // Each built-in tool declares its own argument shape, so the registry stores handlers loosely.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,7 +26,7 @@ class McpRegistry {
       author: 'Nova Open Community',
       icon: 'Globe',
       enabled: true,
-      stats: { totalCalls: 42, avgLatencyMs: 310, lastExecuted: new Date().toISOString() },
+      stats: { totalCalls: 0, avgLatencyMs: 0 },
       tools: [
         {
           name: 'web_search',
@@ -54,7 +53,7 @@ class McpRegistry {
       author: 'Nova Cognitive Lab',
       icon: 'Database',
       enabled: true,
-      stats: { totalCalls: 89, avgLatencyMs: 140, lastExecuted: new Date().toISOString() },
+      stats: { totalCalls: 0, avgLatencyMs: 0 },
       tools: [
         {
           name: 'vector_semantic_search',
@@ -81,7 +80,7 @@ class McpRegistry {
       author: 'Nova Cognitive Lab',
       icon: 'Network',
       enabled: true,
-      stats: { totalCalls: 27, avgLatencyMs: 25, lastExecuted: new Date().toISOString() },
+      stats: { totalCalls: 0, avgLatencyMs: 0 },
       tools: [
         {
           name: 'query_associative_graph',
@@ -107,7 +106,7 @@ class McpRegistry {
       author: 'Nova Open Community',
       icon: 'Github',
       enabled: true,
-      stats: { totalCalls: 14, avgLatencyMs: 290, lastExecuted: new Date().toISOString() },
+      stats: { totalCalls: 0, avgLatencyMs: 0 },
       tools: [
         {
           name: 'inspect_github_repo',
@@ -127,38 +126,19 @@ class McpRegistry {
     this.registerPlugin(webSearchPlugin, {
       web_search: async (args: { query: string; maxResults?: number }) => {
         const cleanQuery = sanitizeInput(args.query || '');
-        const limit = Math.min(args.maxResults || 5, 10);
-        
-        try {
-          const liveSources = await fetchLiveWebSources(cleanQuery, limit);
-          if (liveSources.length > 0) {
-            const summaryText = liveSources.map((s, idx) => `• [${s.domain}] ${s.snippet}`).join('\n');
-            return {
-              query: cleanQuery,
-              status: 'verified_live',
-              summary: summaryText,
-              sources: liveSources.map(s => ({
-                title: s.title,
-                url: s.url,
-                snippet: s.snippet,
-                domain: s.domain,
-              })),
-            };
-          }
-        } catch {
-          // Fall through to resilient fallback
-        }
-
-        // Deterministic high-quality fallback synthesis
+        const limit = Math.max(1, Math.min(args.maxResults || 5, 10));
+        const outcome = await searchWeb(cleanQuery, limit);
         return {
           query: cleanQuery,
-          status: 'verified_index',
-          summary: `Synthesized findings for "${cleanQuery}": High-confidence convergence around local-first agent runtimes, standard Model Context Protocol (MCP) tool integration, and 4-layer cognitive memory architectures.`,
-          sources: [
-            { title: 'Model Context Protocol Specification v1.0', url: 'https://modelcontextprotocol.io', snippet: 'Open protocol for secure tool connection across multi-agent swarms.' },
-            { title: 'Local Agent Runtimes & Embedding Indexing (2026)', url: 'https://arxiv.org/abs/2602.agents', snippet: 'Benchmarking 3072-dimensional vector search with sliding chunk overlap.' },
-            { title: 'Autonomous Swarm Cognitive Execution', url: 'https://github.com/nova-autonomous/nova', snippet: '4-layer cognitive stack outperforming zero-shot single prompt LLMs.' },
-          ].slice(0, limit),
+          provider: outcome.provider ? SEARCH_PROVIDER_LABELS[outcome.provider] : null,
+          sources: outcome.results.map(r => ({
+            title: r.title,
+            url: r.url,
+            snippet: r.snippet,
+          })),
+          ...(outcome.provider
+            ? {}
+            : { error: `Web search failed: ${outcome.errors.map(e => `${SEARCH_PROVIDER_LABELS[e.provider]}: ${e.message}`).join('; ')}` }),
         };
       }
     });
@@ -185,7 +165,6 @@ class McpRegistry {
     this.registerPlugin(graphPlugin, {
       query_associative_graph: async (args: { concept: string }) => {
         const concept = (args.concept || '').toLowerCase();
-        const graph = cognitiveStack.getKnowledgeGraphLayer();
         const nodes = [
           { id: 'mcp', label: 'Model Context Protocol', category: 'Standard', connections: ['Agent Swarms', 'Tool Registry', 'Open APIs'] },
           { id: 'embeddings-v2', label: '3072-dim Vector Index', category: 'Memory', connections: ['Sliding Overlap', 'Cosine Ranking', 'Working Buffer'] },
@@ -197,7 +176,7 @@ class McpRegistry {
         return {
           searchedConcept: args.concept,
           totalNodesInGraph: nodes.length,
-          matchingClusters: matched.length > 0 ? matched : nodes.slice(0, 2),
+          matchingClusters: matched,
         };
       }
     });
@@ -205,37 +184,26 @@ class McpRegistry {
     this.registerPlugin(githubPlugin, {
       inspect_github_repo: async (args: { repo: string }) => {
         const repo = (args.repo || '').trim();
-        try {
-          const resp = await fetch(`https://api.github.com/repos/${repo}`, {
-            headers: { 'User-Agent': 'Nova-Autonomous-Studio' },
-            signal: AbortSignal.timeout(4000),
-          });
-          if (resp.ok) {
-            const data = await resp.json();
-            return {
-              repo: data.full_name,
-              description: data.description,
-              stars: data.stargazers_count,
-              forks: data.forks_count,
-              openIssues: data.open_issues_count,
-              license: data.license?.spdx_id || 'Not specified',
-              primaryLanguage: data.language,
-              defaultBranch: data.default_branch,
-            };
-          }
-        } catch {
-          // Fallback to simulated repo data
+        if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) {
+          throw new Error('Repository must be in owner/repo format.');
         }
-
+        const resp = await fetch(`https://api.github.com/repos/${repo}`, {
+          headers: { 'User-Agent': 'Nova-Research-Assistant', Accept: 'application/vnd.github+json' },
+          signal: AbortSignal.timeout(6000),
+        });
+        if (!resp.ok) {
+          throw new Error(`GitHub API returned HTTP ${resp.status} for ${repo}.`);
+        }
+        const data = await resp.json();
         return {
-          repo: repo || 'nova-autonomous/nova',
-          description: 'Next-Generation Autonomous Multi-Agent AI Studio with Embeddings v2, MCP Plugins & Open Developer APIs.',
-          stars: 1240,
-          forks: 185,
-          openIssues: 3,
-          license: 'Apache-2.0',
-          primaryLanguage: 'TypeScript',
-          defaultBranch: 'main',
+          repo: data.full_name,
+          description: data.description,
+          stars: data.stargazers_count,
+          forks: data.forks_count,
+          openIssues: data.open_issues_count,
+          license: data.license?.spdx_id || 'Not specified',
+          primaryLanguage: data.language,
+          defaultBranch: data.default_branch,
         };
       }
     });
@@ -275,7 +243,7 @@ class McpRegistry {
 
   public registerCustomPlugin(plugin: McpPluginDefinition): void {
     plugin.isCustom = true;
-    plugin.stats = { totalCalls: 0, avgLatencyMs: 0, lastExecuted: new Date().toISOString() };
+    plugin.stats = { totalCalls: 0, avgLatencyMs: 0 };
     
     // Register tool handlers for custom plugin
     for (const tool of plugin.tools) {
@@ -283,22 +251,19 @@ class McpRegistry {
         pluginId: plugin.id,
         tool,
         handler: async (args: Record<string, unknown>) => {
-          if (plugin.endpoint) {
-            try {
-              const resp = await fetch(plugin.endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tool: tool.name, arguments: args }),
-                signal: AbortSignal.timeout(5000),
-              });
-              if (resp.ok) {
-                return await resp.json();
-              }
-            } catch (err) {
-              return { error: `Failed to connect to custom MCP endpoint: ${err instanceof Error ? err.message : String(err)}` };
-            }
+          if (!plugin.endpoint) {
+            throw new Error(`Custom plugin "${plugin.name}" has no endpoint configured.`);
           }
-          return { status: 'mock_custom_executed', tool: tool.name, args };
+          const resp = await fetch(plugin.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tool: tool.name, arguments: args }),
+            signal: AbortSignal.timeout(5000),
+          });
+          if (!resp.ok) {
+            throw new Error(`Custom MCP endpoint returned HTTP ${resp.status}.`);
+          }
+          return await resp.json();
         }
       });
     }
@@ -348,7 +313,8 @@ class McpRegistry {
       // Update telemetry
       if (plugin?.stats) {
         plugin.stats.totalCalls += 1;
-        plugin.stats.avgLatencyMs = Math.round((plugin.stats.avgLatencyMs + executionTimeMs) / 2);
+        const n = plugin.stats.totalCalls;
+        plugin.stats.avgLatencyMs = Math.round((plugin.stats.avgLatencyMs * (n - 1) + executionTimeMs) / n);
         plugin.stats.lastExecuted = new Date().toISOString();
       }
 

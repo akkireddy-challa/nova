@@ -77,10 +77,10 @@ export async function generateEmbeddingV2(text: string): Promise<number[]> {
   if (geminiApiKey && !geminiApiKey.startsWith('${')) {
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent?key=${geminiApiKey}`,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey },
           body: JSON.stringify({
             content: { parts: [{ text: text.slice(0, 2048) }] },
           }),
