@@ -42,7 +42,7 @@ docker compose exec ollama ollama pull llama3.2   # any model you like
 
 ## LLM providers
 
-Configure one or more in `.env`. Only configured providers show up in the model picker and in `/api/v1/models`. Model ids use the form `provider:model`, for example `anthropic:claude-sonnet-5-5`.
+Configure one or more in `.env` (or `.env.local`, which takes precedence). Only configured providers show up in the model picker and in `/api/v1/models`. Model ids use the form `provider:model`, for example `anthropic:claude-sonnet-5-5`.
 
 | Provider | Required | Optional |
 |---|---|---|
