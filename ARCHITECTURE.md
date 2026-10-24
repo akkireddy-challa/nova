@@ -1,105 +1,52 @@
-# Nova Architecture & Engineering Specification
+# Architecture
 
-This document provides a technical deep-dive into **Nova's** architecture, state lifecycle, multi-agent coordination, and Model Context Protocol (MCP) tool integration.
+Nova is a single Next.js 16 (App Router) app. The server routes do the searching and LLM calls, and the browser renders the result as a card.
 
----
-
-## 1. System Overview
-
-Nova is built as a **hybrid local-first Autonomous Intelligence Studio**. It separates client-side rendering from autonomous orchestration loops to ensure sub-second UI responsiveness, acoustic feedback, and uninterrupted offline capability.
+## Request flow
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                       Client Layer                          │
-│  Next.js 15 App Router • Tailwind 4 • Turbopack • Web Audio │
-│                                                             │
-│   ┌──────────────┐   ┌──────────────┐   ┌───────────────┐   │
-│   │  Swarm HUD   │   │ Canvas Dock  │   │  Command ⌘K   │   │
-│   └──────┬───────┘   └──────┬───────┘   └───────┬───────┘   │
-└──────────┼──────────────────┼───────────────────┼───────────┘
-           │                  │                   │
-           ▼                  ▼                   ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 Nova Autonomous Orchestrator                │
-│                     (/api/agent Route)                      │
-│                                                             │
-│    ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   │
-│    │  Strategist  │──▶│  Crawler/MCP │──▶│   Verifier   │   │
-│    └──────────────┘   └──────────────┘   └──────┬───────┘   │
-│                                                 │           │
-│                                                 ▼           │
-│                                          ┌──────────────┐   │
-│                                          │ UI Synthesizer│  │
-│                                          └──────────────┘   │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-          ┌───────────────────┴───────────────────┐
-          ▼                                       ▼
-┌───────────────────────────┐           ┌───────────────────┐
-│     Multi-Model Gateway   │           │   MCP Tool Bus    │
-│ Gemini 2.0 • Claude 3.7   │           │ Filesystem • Web  │
-│ DeepSeek • Local Ollama   │           │ Vector Store • Git│
-└───────────────────────────┘           └───────────────────┘
+UI -> POST /api/agent -> search -> fetch pages -> LLM via provider layer -> zod validation (one retry) -> artifact card
 ```
 
----
+```mermaid
+flowchart LR
+    UI["Browser UI"] -->|"POST /api/agent<br/>{ prompt, mode, model? }"| Agent["/api/agent route"]
+    Agent --> Search["Web search<br/>DuckDuckGo / Tavily / Brave"]
+    Search --> Fetch["Fetch result pages<br/>extract text"]
+    Fetch --> LLM["Provider layer<br/>Gemini / Anthropic / OpenAI-compatible / Ollama"]
+    LLM --> Validate{"zod schema<br/>valid?"}
+    Validate -->|"no, retry once"| LLM
+    Validate -->|yes| Card["Artifact card<br/>+ sources, thoughts, telemetry"]
+    Validate -->|"still invalid"| Err["502 INVALID_OUTPUT"]
+    Card --> UI
+```
 
-## 2. Multi-Agent Swarm Pipeline
+1. **UI** sends `{ prompt, mode, model?, attachments?, context? }`. `model` is a `provider:model` id. If it's omitted, the server uses the first available default.
+2. **Search** goes to Tavily or Brave when a key is set and falls back to DuckDuckGo HTML otherwise.
+3. **Fetch** downloads the top result pages and extracts readable text to use as sources.
+4. **LLM** is called through `src/lib/providers`, which hides the differences between vendors behind one `LLMProvider` interface.
+5. **Validation** parses the model's JSON against the zod schema for the requested card type. If it fails, the model gets one retry. If it still fails, the request returns `INVALID_OUTPUT`.
+6. **Response** contains `content`, an optional `artifact`, the `thoughts` (the steps that actually ran), the `provider`, and `telemetry` (measured latency, plus token counts when the provider reports them).
 
-Every incoming user task passes through a 4-stage pipeline:
+Errors use `{ error, code }`: `NO_PROVIDER` (503), `PROVIDER_ERROR` (502), `INVALID_OUTPUT` (502), and `BAD_REQUEST` (400). Error messages never include API keys or request URLs.
 
-1. **Lead Strategist (Inquiry Planner)**:
-   - Deconstructs broad goals into specific, testable sub-hypotheses.
-   - Computes the critical path and orders execution milestones.
-2. **Crawler & MCP Tool Dispatcher**:
-   - Executes parallel multi-domain queries across academic and web repositories.
-   - Invokes local MCP tools (filesystem, vector memory, git inspector).
-3. **Fact Verifier & Anti-Hallucination Critic**:
-   - Triangulates factual claims across disparate sources.
-   - Calculates relevance confidence scores and flags contradictions or safety risks.
-4. **Generative UI Synthesizer**:
-   - Converts structured JSON deliverables into interactive visual cards:
-     - `ResearchReportCard`: Citation links, relevance badges, TTS audio briefing.
-     - `TaskDagCard`: Interactive checklist, percentage tracker, confetti burst.
-     - `ChartCard`: Dynamic Recharts data models.
-     - `DecisionMatrixCard`: Weighted scoring with real-time recalculation sliders.
-     - `CodeSandboxCard`: Syntax-styled runnable code with copy and download.
+`/api/v1/models` and `/api/v1/chat/completions` provide an OpenAI-style API on top of the same provider layer.
 
----
+## Folder map
 
-## 3. Resilience & Defensive "Zero Demo Crash" Pattern
+| Path | Contents |
+|---|---|
+| `src/app/api` | Route handlers: `agent` (main research endpoint), `v1/models`, `v1/chat/completions` |
+| `src/lib/providers` | LLM provider layer: `types.ts` (the `LLMProvider` interface), one file per provider, and `index.ts` (registry, `resolveModel`, `generate`) |
+| `src/lib/research` | Web search providers, page fetching and text extraction |
+| `src/lib/schemas` | zod schemas for each card type and the validation/retry logic |
+| `src/components` | React UI, including the card renderers in `GenerativeCards/` |
 
-In mission-critical hackathons and live production use, external LLM endpoints frequently hit HTTP 429 (rate limits) or network latency drops. Nova guarantees 100% continuous operation:
+## Principle: no fake data
 
-- **Strict AbortSignal Timeouts**: All external network calls abort at 8,000ms.
-- **Dynamic Contextual Fallbacks**: If an API key is missing or an endpoint times out, Nova switches automatically to high-fidelity simulated outputs tagged with an explicit telemetry badge.
-- **Client Error Boundary**: A top-level React Error Boundary intercepts any runtime exceptions, preventing blank-screen crashes.
+Nothing shown to the user is invented to look real:
 
----
-
-## 4. Model Context Protocol (MCP) Integration
-
-Nova natively follows the [Anthropic Model Context Protocol](https://modelcontextprotocol.io/) specification:
-- Connects to local MCP servers via standard JSON-RPC endpoints.
-- Displays live ping latency and parameter schemas in the `McpInspector` drawer.
-- Tools can be dynamically enabled or disabled per workspace session.
-
----
-
-## 5. MLOps Platform Infrastructure & Telemetry Hub
-
-Nova includes a production-grade MLOps platform layer (`src/lib/mlops-pipeline.ts` & `/api/v1/mlops`):
-
-- **Production Telemetry Collector**:
-  - Computes exact p50, p95, and p99 model latency percentiles across sliding request windows.
-  - Granular token cost estimation across Gemini, Claude 3.7 Sonnet, DeepSeek R1, and zero-cost local models.
-  - Tracks model throughput (tokens/second) and status code distributions (200, 429, 500, 503).
-- **High-Throughput Vector Index Cache**:
-  - In-memory LRU cache specialized for 3072-dimensional embeddings (`gemini-embedding-2`).
-  - Sub-millisecond vector lookup with automatic eviction of least recently used keys upon reaching capacity.
-  - Integrated cosine similarity search for in-memory semantic indexing.
-- **Automated Model Health & Fallback Circuit Breaker**:
-  - Detects consecutive 429 rate limit and 500 server errors per model.
-  - Automatically trips from `CLOSED` to `OPEN` when the consecutive error threshold is breached, rerouting traffic to hot standby models without downtime.
-  - Automatically tests model recovery via `HALF_OPEN` canary probes after a configurable cooldown period before restoring primary traffic.
-
+- Cards are built only from validated LLM output and sources that were actually fetched.
+- `thoughts` list only steps that actually happened, such as "Found 6 results via DuckDuckGo".
+- Telemetry is measured. If a provider doesn't report token usage, Nova reports `0`. It never estimates.
+- When no provider is configured, Nova says so. There's no offline simulation or canned fallback answer.

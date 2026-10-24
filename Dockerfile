@@ -1,30 +1,35 @@
-# Multi-stage production Dockerfile for Nova Studio
-FROM oven/bun:1.2-alpine AS base
+# syntax=docker/dockerfile:1
 
-# 1. Install dependencies
-FROM base AS deps
+# ---- deps: install node_modules with Bun ----
+FROM oven/bun:1 AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
-# 2. Build the application
-FROM base AS builder
+# ---- build: produce .next/standalone ----
+FROM oven/bun:1 AS build
 WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_OUTPUT=standalone
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ENV NODE_ENV=production
 RUN bun run build
 
-# 3. Production runner
-FROM base AS runner
+# ---- runtime: minimal Node server from Next.js standalone output ----
+FROM node:22-slim AS runtime
 WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3000
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+RUN groupadd --system --gid 1001 nova \
+ && useradd --system --uid 1001 --gid nova --no-create-home nova
 
+COPY --from=build --chown=nova:nova /app/.next/standalone ./
+COPY --from=build --chown=nova:nova /app/.next/static ./.next/static
+COPY --from=build --chown=nova:nova /app/public ./public
+
+USER nova
 EXPOSE 3000
-CMD ["bun", "run", "start"]
+CMD ["node", "server.js"]
