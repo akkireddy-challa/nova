@@ -18,3 +18,4 @@ This is a small volunteer project, so responses are best-effort. We'll acknowled
 - Nova has no built-in authentication. Don't expose an instance publicly without your own auth layer or reverse proxy.
 - API keys are read from server-side environment variables and never sent to the browser.
 - Your prompts go to the search provider and the LLM provider you configure. If you use a local Ollama model, the LLM step stays on your machine, but web search still goes out to the internet.
+- The Docker image runs on a distroless Node base (no shell, no npm) as a non-root user. CI fails if the image has a fixable critical or high vulnerability (Trivy) or a dependency has a known advisory (`bun audit`). Remaining low/medium findings are in core Debian libraries with no upstream fix yet; rebuild the image to pick up fixes as Debian publishes them.
