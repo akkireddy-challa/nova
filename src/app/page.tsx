@@ -8,6 +8,7 @@ import { MemoryModal } from '@/components/MemoryModal';
 import { CommandPalette } from '@/components/CommandPalette';
 import { McpInspector } from '@/components/McpInspector';
 import { DevHubModal } from '@/components/DevHubModal';
+import { SettingsModal } from '@/components/SettingsModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { 
   StudioMode, 
@@ -15,15 +16,28 @@ import {
   ChatMessage, 
   KnowledgeMemoryItem,
   ModelProvider,
-  Attachment 
+  Attachment,
+  UserSettings
 } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { sound } from '@/lib/sound';
 import { sanitizeUserInput } from '@/lib/sanitizer';
 
+const DEFAULT_SETTINGS: UserSettings = {
+  geminiKey: '',
+  anthropicKey: '',
+  openAiKey: '',
+  groqKey: '',
+  ollamaBaseUrl: 'http://localhost:11434',
+  customEndpointUrl: '',
+  customModelName: 'llama3.3:latest',
+  activeProvider: 'gemini',
+  enabledTools: ['web_search', 'filesystem', 'python_sandbox', 'vector_memory'],
+};
+
 export default function Home() {
   const [currentMode, setCurrentMode] = useState<StudioMode>('research');
-  const [currentModel, setCurrentModel] = useState<ModelProvider>('gemini-2.0-flash');
+  const [currentModel, setCurrentModel] = useState<ModelProvider>('gemini-2.5-flash');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -33,10 +47,12 @@ export default function Home() {
   const [isPaletteOpen, setIsPaletteOpen] = useState<boolean>(false);
   const [isMcpOpen, setIsMcpOpen] = useState<boolean>(false);
   const [isDevHubOpen, setIsDevHubOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   
   const [memoryItems, setMemoryItems] = useState<KnowledgeMemoryItem[]>([]);
+  const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
 
-  // Keyboard shortcut listener (⌘K for palette, ⌘J for context memory, ⌘D for dev hub)
+  // Keyboard shortcut listener (⌘K for palette, ⌘J for context memory, ⌘D for dev hub, ⌘, for settings)
   useEffect(() => {
     const handleGlobalKeys = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -48,15 +64,23 @@ export default function Home() {
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
         e.preventDefault();
         setIsDevHubOpen(prev => !prev);
+      } else if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+        e.preventDefault();
+        setIsSettingsOpen(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
   }, []);
 
-  // Load saved memory and sessions from localStorage on mount
+  // Load saved memory, sessions, and settings from localStorage on mount
   useEffect(() => {
     try {
+      const savedSettings = localStorage.getItem('nova_settings');
+      if (savedSettings) {
+        setUserSettings(JSON.parse(savedSettings));
+      }
+
       const savedMem = localStorage.getItem('nova_memory');
       if (savedMem) {
         setMemoryItems(JSON.parse(savedMem));
@@ -93,6 +117,26 @@ export default function Home() {
       console.warn('LocalStorage error:', e);
     }
   }, []);
+
+  // Save settings changes
+  const handleSaveSettings = (newSettings: UserSettings) => {
+    setUserSettings(newSettings);
+    try {
+      localStorage.setItem('nova_settings', JSON.stringify(newSettings));
+    } catch {}
+  };
+
+  // Delete session / workspace
+  const handleDeleteSession = (id: string) => {
+    const updated = sessions.filter(s => s.id !== id);
+    setSessions(updated);
+    if (activeSessionId === id) {
+      setActiveSessionId(updated[0]?.id || '');
+    }
+    try {
+      localStorage.setItem('nova_sessions', JSON.stringify(updated));
+    } catch {}
+  };
 
   // Save memory changes
   const handleSaveMemoryItem = (item: KnowledgeMemoryItem) => {
@@ -145,14 +189,12 @@ export default function Home() {
   };
 
   const handlePromptSubmit = async (promptText: string, attachments?: Attachment[]) => {
-    // Security sanitization & hardening
     const sanitized = sanitizeUserInput(promptText);
     const cleanPrompt = sanitized.text;
 
     let sessId = activeSessionId;
     let currentSess = sessions.find(s => s.id === sessId);
 
-    // Create session if none exists
     if (!currentSess) {
       const newSession: Session = {
         id: generateId(),
@@ -278,8 +320,10 @@ export default function Home() {
             sessions={sessions}
             activeSessionId={activeSessionId}
             onSelectSession={handleSelectSession}
+            onDeleteSession={handleDeleteSession}
             onApplyPrompt={handleApplyPreset}
             onOpenDevHub={() => setIsDevHubOpen(true)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
 
           <AgentCanvas
@@ -299,6 +343,14 @@ export default function Home() {
           onOpenMemory={() => setIsMemoryOpen(true)}
           onOpenMcp={() => setIsMcpOpen(true)}
           onNewSession={handleNewSession}
+        />
+
+        {/* Settings & BYOM Engine Modal (⌘,) */}
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          settings={userSettings}
+          onSaveSettings={handleSaveSettings}
         />
 
         {/* Model Context Protocol (MCP) Tools Registry Modal */}

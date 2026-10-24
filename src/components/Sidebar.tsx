@@ -11,10 +11,11 @@ import {
   Clock, 
   Sparkles, 
   FolderGit2, 
-  ChevronRight,
+  ChevronRight, 
   Lightbulb,
   GitBranch,
-  BookOpen
+  Trash2,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 
@@ -24,8 +25,10 @@ interface Props {
   sessions: Session[];
   activeSessionId: string;
   onSelectSession: (id: string) => void;
+  onDeleteSession?: (id: string) => void;
   onApplyPrompt: (prompt: string, mode: StudioMode) => void;
   onOpenDevHub?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export function Sidebar({
@@ -34,8 +37,10 @@ export function Sidebar({
   sessions,
   activeSessionId,
   onSelectSession,
+  onDeleteSession,
   onApplyPrompt,
   onOpenDevHub,
+  onOpenSettings,
 }: Props) {
   const modes: { id: StudioMode; label: string; icon: React.ReactNode }[] = [
     { id: 'research', label: 'Deep Research', icon: <Compass className="w-4 h-4" /> },
@@ -47,9 +52,9 @@ export function Sidebar({
 
   const presets = [
     {
-      label: 'Deep Research on Local AI Runtimes (2026)',
+      label: 'Is the Agent Harness Dead?',
       mode: 'research' as StudioMode,
-      prompt: 'Autonomous investigation on on-device SLMs, local runtimes (Ollama/MLX), and hardware requirements.',
+      prompt: 'Is the Agent Harness Dead? Analyze lightweight code loops, MCP, and evaluation-driven design.',
     },
     {
       label: 'Build an Open-Source MCP Server in 14 Days',
@@ -62,6 +67,12 @@ export function Sidebar({
       prompt: 'Compare self-hosted open-weight models against cloud APIs for privacy, latency, and cost.',
     },
   ];
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    sound.playCheck();
+    onDeleteSession?.(id);
+  };
 
   return (
     <aside className="w-72 border-r border-slate-800 bg-slate-950/60 hidden md:flex flex-col h-[calc(100vh-4rem)]">
@@ -117,12 +128,15 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Saved Sessions History */}
+      {/* Saved Sessions History with 1-Click Workspace Deletion */}
       <div className="p-4 flex-1 overflow-y-auto">
-        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-slate-400" />
-          Recent Workspaces
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            Recent Workspaces ({sessions.length})
+          </p>
+        </div>
+
         {sessions.length === 0 ? (
           <div className="text-center py-6 text-xs text-slate-500">
             No active sessions yet. Enter any goal or question to begin.
@@ -132,42 +146,58 @@ export function Sidebar({
             {sessions.map(s => {
               const isSelected = s.id === activeSessionId;
               return (
-                <button
+                <div
                   key={s.id}
                   onClick={() => onSelectSession(s.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition truncate ${
+                  className={`group w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition cursor-pointer ${
                     isSelected
                       ? 'bg-slate-900 text-teal-300 border border-slate-700/80 font-medium'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
                   }`}
                 >
-                  <p className="truncate">{s.title}</p>
-                </button>
+                  <p className="truncate flex-1 mr-2">{s.title}</p>
+                  
+                  {/* Delete button */}
+                  <button
+                    onClick={(e) => handleDelete(e, s.id)}
+                    className="p-1 rounded text-slate-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition"
+                    title="Delete workspace"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               );
             })}
           </div>
         )}
       </div>
 
-      {/* Architecture & Open Source Dev Hub footer */}
+      {/* Settings & Architecture Footer */}
       <div className="p-3 border-t border-slate-800 bg-slate-950/80 text-[11px] space-y-2">
-        <button
-          onClick={() => { sound.playStart(); onOpenDevHub?.(); }}
-          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 transition text-xs font-medium"
-        >
-          <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => { sound.playStart(); onOpenSettings?.(); }}
+            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition text-[11px] font-medium"
+          >
+            <SettingsIcon className="w-3.5 h-3.5 text-teal-400" />
+            <span>Settings</span>
+          </button>
+
+          <button
+            onClick={() => { sound.playStart(); onOpenDevHub?.(); }}
+            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition text-[11px] font-medium"
+          >
             <GitBranch className="w-3.5 h-3.5 text-teal-400" />
-            <span>Developer & Contributor Hub</span>
-          </div>
-          <span className="text-[9px] font-mono bg-teal-950/60 px-1 rounded border border-teal-800">⌘D</span>
-        </button>
+            <span>Dev Hub</span>
+          </button>
+        </div>
 
         <div className="flex items-center justify-between text-slate-500 px-1 text-[10px]">
           <span className="flex items-center gap-1">
             <FolderGit2 className="w-3 h-3 text-slate-400" />
             MIT Open Source
           </span>
-          <span>100% Local-First</span>
+          <span>BYOM & Local</span>
         </div>
       </div>
     </aside>

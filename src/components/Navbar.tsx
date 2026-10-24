@@ -55,7 +55,7 @@ export function Navbar({
   ];
 
   const models: { id: ModelProvider; name: string; tag: string }[] = [
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', tag: 'Thinking' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', tag: 'Fast Reasoning' },
     { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet', tag: 'Hybrid' },
     { id: 'deepseek-r1', name: 'DeepSeek R1', tag: 'Reasoning' },
     { id: 'llama-3-3-local', name: 'Llama 3.3 70B', tag: 'Local Ollama' },

@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     const prompt = body.prompt?.trim();
     const mode = (body.mode || 'research') as StudioMode;
     const context = body.context || '';
-    const model = (body.model || 'gemini-2.0-flash') as ModelProvider;
+    const model = (body.model || 'gemini-2.5-flash') as ModelProvider;
     const attachments = (body.attachments || []) as Attachment[];
 
     if (!prompt && attachments.length === 0) {

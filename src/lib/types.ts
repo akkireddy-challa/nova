@@ -1,6 +1,12 @@
 export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'mcp';
 
-export type ModelProvider = 'gemini-2.0-flash' | 'claude-3-7-sonnet' | 'deepseek-r1' | 'llama-3-3-local';
+export type ModelProvider = 
+  | 'gemini-2.5-flash'
+  | 'gemini-2.5-pro'
+  | 'claude-3-7-sonnet' 
+  | 'deepseek-r1' 
+  | 'llama-3-3-local'
+  | 'custom-byom';
 
 export interface SourceCitation {
   id: string;
@@ -69,6 +75,7 @@ export interface ChartDatum {
   value: number;
   secondaryValue?: number;
   category?: string;
+  deltaPercent?: string;
 }
 
 export interface ChartArtifact {
@@ -77,6 +84,8 @@ export interface ChartArtifact {
   xAxisKey: string;
   data: ChartDatum[];
   insight: string;
+  takeaways?: string[];
+  followUpQuestions?: string[];
 }
 
 export interface MatrixCriterion {
@@ -128,7 +137,7 @@ export type GenerativeArtifact =
 export interface AgentThought {
   id: string;
   timestamp: string;
-  agentName: string; // e.g., 'Lead Strategist', 'Web Crawler', 'Synthesizer', 'Verifier'
+  agentName: string;
   action: string;
   details?: string;
   status: 'running' | 'success' | 'warn';
@@ -176,6 +185,18 @@ export interface Session {
   createdAt: string;
   updatedAt: string;
   messages: ChatMessage[];
+}
+
+export interface UserSettings {
+  geminiKey: string;
+  anthropicKey: string;
+  openAiKey: string;
+  groqKey: string;
+  ollamaBaseUrl: string;
+  customEndpointUrl: string;
+  customModelName: string;
+  activeProvider: 'gemini' | 'anthropic' | 'openai' | 'groq' | 'ollama' | 'custom';
+  enabledTools: string[];
 }
 
 export interface SwarmAgentState {

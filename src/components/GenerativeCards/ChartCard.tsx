@@ -14,7 +14,18 @@ import {
   CartesianGrid, 
   Legend 
 } from 'recharts';
-import { BarChart3, LineChart as LineIcon, TrendingUp, Sparkles } from 'lucide-react';
+import { 
+  BarChart3, 
+  LineChart as LineIcon, 
+  TrendingUp, 
+  Sparkles, 
+  Table, 
+  Download, 
+  ArrowUpRight,
+  ArrowRight,
+  CheckCircle2
+} from 'lucide-react';
+import { sound } from '@/lib/sound';
 
 interface Props {
   chart: ChartArtifact;
@@ -22,6 +33,28 @@ interface Props {
 
 export function ChartCard({ chart }: Props) {
   const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
+  const [showTable, setShowTable] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const total = chart.data.reduce((acc, d) => acc + d.value, 0) || 1;
+
+  const handleExportCsv = () => {
+    sound.playCheck();
+    const rows = ['Label,Value,Baseline,SharePercentage'];
+    chart.data.forEach(d => {
+      const share = ((d.value / total) * 100).toFixed(1) + '%';
+      rows.push(`"${d.label}",${d.value},${d.secondaryValue || 0},${share}`);
+    });
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${chart.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="w-full my-4 rounded-xl border border-slate-700/80 bg-slate-900/90 backdrop-blur-md overflow-hidden shadow-2xl transition-all">
@@ -36,31 +69,41 @@ export function ChartCard({ chart }: Props) {
               {chart.title}
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Generative Visual Data Model
+              Interactive Telemetry & Data Model
             </p>
           </div>
         </div>
 
-        {/* View toggle */}
-        <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700 text-xs">
+        {/* View toggle & CSV Export */}
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setChartType('bar')}
-            className={`p-1.5 rounded flex items-center gap-1 transition ${
-              chartType === 'bar' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-200'
-            }`}
+            onClick={handleExportCsv}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
           >
-            <BarChart3 className="w-3.5 h-3.5" />
-            <span>Bar</span>
+            {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" /> : <Download className="w-3.5 h-3.5" />}
+            <span>{copied ? 'Exported' : 'Export CSV'}</span>
           </button>
-          <button
-            onClick={() => setChartType('line')}
-            className={`p-1.5 rounded flex items-center gap-1 transition ${
-              chartType === 'line' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <LineIcon className="w-3.5 h-3.5" />
-            <span>Line</span>
-          </button>
+
+          <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700 text-xs">
+            <button
+              onClick={() => { sound.playCheck(); setChartType('bar'); }}
+              className={`p-1.5 rounded flex items-center gap-1 transition ${
+                chartType === 'bar' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Bar</span>
+            </button>
+            <button
+              onClick={() => { sound.playCheck(); setChartType('line'); }}
+              className={`p-1.5 rounded flex items-center gap-1 transition ${
+                chartType === 'line' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <LineIcon className="w-3.5 h-3.5" />
+              <span>Line</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -82,7 +125,7 @@ export function ChartCard({ chart }: Props) {
                 }}
               />
               <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-              <Bar dataKey="value" name="Adoption Index / Volume" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" name="Observed Volume / Adoption" fill="#10b981" radius={[4, 4, 0, 0]} />
               {chart.data[0]?.secondaryValue !== undefined && (
                 <Bar dataKey="secondaryValue" name="Legacy Baseline" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               )}
@@ -115,9 +158,72 @@ export function ChartCard({ chart }: Props) {
       <div className="p-3.5 bg-slate-950/70 border-t border-slate-800 flex items-start gap-2.5">
         <Sparkles className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-slate-300 leading-relaxed">
-          <span className="font-semibold text-emerald-400">Key Projection: </span>
+          <span className="font-semibold text-emerald-400">Analytical Projection: </span>
           {chart.insight}
         </p>
+      </div>
+
+      {/* Statistical Data Table Breakdown */}
+      <div className="border-t border-slate-800 bg-slate-950/40 p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] uppercase font-semibold text-slate-400 tracking-wider flex items-center gap-1.5">
+            <Table className="w-3.5 h-3.5 text-teal-400" />
+            Detailed Segment Breakdown
+          </span>
+          <span className="text-[10px] text-slate-500 font-mono">
+            Total Aggregate: {total} Units
+          </span>
+        </div>
+
+        <div className="overflow-x-auto border border-slate-800/80 rounded-lg">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-950 text-slate-400 font-mono text-[10px] border-b border-slate-800">
+              <tr>
+                <th className="p-2.5">Category / Cohort</th>
+                <th className="p-2.5 text-right">Volume</th>
+                <th className="p-2.5 text-right">Baseline</th>
+                <th className="p-2.5 text-right">Share</th>
+                <th className="p-2.5 text-right">Variance</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
+              {chart.data.map((d, i) => {
+                const share = ((d.value / total) * 100).toFixed(1);
+                const variance = d.secondaryValue ? (((d.value - d.secondaryValue) / d.secondaryValue) * 100).toFixed(1) : '+0.0';
+                return (
+                  <tr key={i} className="hover:bg-slate-800/30 transition text-slate-300">
+                    <td className="p-2.5 font-sans font-medium text-slate-200">{d.label}</td>
+                    <td className="p-2.5 text-right font-bold text-emerald-400">{d.value}</td>
+                    <td className="p-2.5 text-right text-slate-400">{d.secondaryValue ?? '—'}</td>
+                    <td className="p-2.5 text-right text-slate-400">{share}%</td>
+                    <td className="p-2.5 text-right text-teal-300">+{variance}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Strategic Takeaways & Recommended Next Actions */}
+      <div className="p-4 bg-slate-950/80 border-t border-slate-800 space-y-2">
+        <span className="text-[11px] uppercase font-semibold text-slate-400 tracking-wider block">
+          Strategic Action Items & Next Inquiries
+        </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className="p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 flex items-start gap-2">
+            <ArrowRight className="w-3.5 h-3.5 text-teal-400 flex-shrink-0 mt-0.5" />
+            <p className="text-slate-300 text-[11px]">
+              Reallocate compute infrastructure toward top-performing segments to capitalize on high-velocity adoption.
+            </p>
+          </div>
+          <div className="p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 flex items-start gap-2">
+            <ArrowRight className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
+            <p className="text-slate-300 text-[11px]">
+              Run sensitivity analysis across legacy baseline to model cost containment thresholds.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
