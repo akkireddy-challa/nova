@@ -16,7 +16,8 @@ import {
   Volume2,
   VolumeX,
   Command,
-  ChevronDown
+  ChevronDown,
+  Users
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 
@@ -48,16 +49,19 @@ export function Navbar({
 
   const modes: { id: StudioMode; label: string; icon: React.ReactNode; desc: string }[] = [
     { id: 'research', label: 'Deep Research', icon: <Compass className="w-3.5 h-3.5" />, desc: 'Autonomous crawling & citations' },
+    { id: 'debate', label: 'Dual-Agent Debate', icon: <Users className="w-3.5 h-3.5" />, desc: 'Side-by-side consensus analysis' },
     { id: 'planner', label: 'Goal Planner', icon: <ListTodo className="w-3.5 h-3.5" />, desc: 'Interactive DAG & execution' },
-    { id: 'canvas', label: 'Generative Visuals', icon: <BarChart2 className="w-3.5 h-3.5" />, desc: 'Interactive charts & telemetry' },
+    { id: 'canvas', label: 'Visuals', icon: <BarChart2 className="w-3.5 h-3.5" />, desc: 'Interactive charts & telemetry' },
     { id: 'matrix', label: 'Decision Matrix', icon: <Scale className="w-3.5 h-3.5" />, desc: 'Multi-criteria dynamic scoring' },
-    { id: 'coder', label: 'Synthesizer', icon: <Code2 className="w-3.5 h-3.5" />, desc: 'Modular architecture & code' },
+    { id: 'coder', label: 'Synthesizer', icon: <Code2 className="w-3.5 h-3.5" />, desc: 'Modular architecture & preview' },
   ];
 
   const models: { id: ModelProvider; name: string; tag: string }[] = [
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', tag: 'Fast Reasoning' },
-    { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet', tag: 'Hybrid' },
-    { id: 'deepseek-r1', name: 'DeepSeek R1', tag: 'Reasoning' },
+    { id: 'gemini-3-flash', name: 'Gemini 3.0 Flash', tag: 'Next-Gen ⚡' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', tag: 'Stable Workhorse' },
+    { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet', tag: 'Hybrid Thinking' },
+    { id: 'deepseek-r1', name: 'DeepSeek R1', tag: 'Open Reasoning' },
+    { id: 'o3-mini', name: 'OpenAI o3-mini', tag: 'Math / Logic' },
     { id: 'llama-3-3-local', name: 'Llama 3.3 70B', tag: 'Local Ollama' },
   ];
 
@@ -84,7 +88,7 @@ export function Navbar({
               NOVA
             </span>
             <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20">
-              v1.2 Bleeding Edge
+              v1.5 Frontier
             </span>
           </div>
           <p className="text-[11px] text-slate-400 hidden sm:block">
@@ -116,7 +120,6 @@ export function Navbar({
 
       {/* Right actions: Command Palette, Model Selector, MCP, Memory, Sound, New Session */}
       <div className="flex items-center gap-2 sm:gap-2.5">
-        {/* Command Palette Button */}
         <button
           onClick={onOpenPalette}
           className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 text-xs transition font-mono"
@@ -141,9 +144,9 @@ export function Navbar({
           </button>
 
           {modelDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl p-1.5 z-50 animate-in fade-in">
+            <div className="absolute right-0 mt-2 w-64 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl p-1.5 z-50 animate-in fade-in">
               <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                Select LLM Runtime
+                Select Active Frontier Model
               </div>
               {models.map(m => (
                 <button
@@ -159,7 +162,7 @@ export function Navbar({
                       : 'text-slate-300 hover:bg-slate-800/60'
                   }`}
                 >
-                  <span>{m.name}</span>
+                  <span className="font-medium">{m.name}</span>
                   <span className="text-[10px] font-mono text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
                     {m.tag}
                   </span>
@@ -198,7 +201,7 @@ export function Navbar({
         <button
           onClick={toggleSound}
           className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition"
-          title={isMuted ? 'Audio muted (click to unmute)' : 'Audio active (click to mute)'}
+          title={isMuted ? 'Audio muted' : 'Audio active'}
         >
           {isMuted ? <VolumeX className="w-3.5 h-3.5 text-slate-500" /> : <Volume2 className="w-3.5 h-3.5 text-teal-400" />}
         </button>

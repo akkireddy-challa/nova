@@ -1,12 +1,15 @@
-export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'mcp';
+export type StudioMode = 'research' | 'planner' | 'canvas' | 'coder' | 'matrix' | 'debate' | 'mcp';
 
 export type ModelProvider = 
+  | 'gemini-3-flash'
   | 'gemini-2.5-flash'
-  | 'gemini-2.5-pro'
   | 'claude-3-7-sonnet' 
-  | 'deepseek-r1' 
+  | 'deepseek-r1'
+  | 'o3-mini'
   | 'llama-3-3-local'
   | 'custom-byom';
+
+export type ThinkingBudget = 'quick' | 'analytical' | 'deep';
 
 export interface SourceCitation {
   id: string;
@@ -14,7 +17,7 @@ export interface SourceCitation {
   url: string;
   domain: string;
   snippet: string;
-  relevanceScore: number; // 0 - 100
+  relevanceScore: number;
   publishedDate?: string;
   contradictionFlag?: boolean;
 }
@@ -91,13 +94,13 @@ export interface ChartArtifact {
 export interface MatrixCriterion {
   id: string;
   name: string;
-  weight: number; // 1-10
+  weight: number;
 }
 
 export interface MatrixOption {
   id: string;
   name: string;
-  scores: Record<string, number>; // criterionId -> score (1-10)
+  scores: Record<string, number>;
   pros: string[];
   cons: string[];
   totalWeightedScore: number;
@@ -115,6 +118,22 @@ export interface CodeArtifact {
   filename: string;
   code: string;
   explanation: string;
+  previewHtml?: string;
+}
+
+export interface DebatePerspective {
+  agentName: string;
+  stance: 'Advocate' | 'Critic' | 'Neutral Arbiter';
+  avatarColor: string;
+  arguments: string[];
+  caveats: string[];
+}
+
+export interface DebateArtifact {
+  topic: string;
+  consensusSummary: string;
+  perspectives: DebatePerspective[];
+  synthesisVerdict: string;
 }
 
 export interface McpTool {
@@ -132,7 +151,8 @@ export type GenerativeArtifact =
   | { type: 'plan'; data: GoalPlan }
   | { type: 'chart'; data: ChartArtifact }
   | { type: 'matrix'; data: DecisionMatrix }
-  | { type: 'code'; data: CodeArtifact };
+  | { type: 'code'; data: CodeArtifact }
+  | { type: 'debate'; data: DebateArtifact };
 
 export interface AgentThought {
   id: string;
@@ -156,6 +176,7 @@ export interface GenerationTelemetry {
   tokenCount: number;
   tokensPerSec: number;
   model: string;
+  thinkingBudget?: ThinkingBudget;
 }
 
 export interface ChatMessage {
@@ -197,6 +218,7 @@ export interface UserSettings {
   customModelName: string;
   activeProvider: 'gemini' | 'anthropic' | 'openai' | 'groq' | 'ollama' | 'custom';
   enabledTools: string[];
+  defaultThinkingBudget: ThinkingBudget;
 }
 
 export interface SwarmAgentState {

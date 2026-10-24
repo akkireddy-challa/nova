@@ -6,13 +6,15 @@ import {
   StudioMode, 
   AgentThought, 
   GenerativeArtifact,
-  Attachment
+  Attachment,
+  ThinkingBudget
 } from '@/lib/types';
 import { ResearchReportCard } from './GenerativeCards/ResearchReportCard';
 import { TaskDagCard } from './GenerativeCards/TaskDagCard';
 import { ChartCard } from './GenerativeCards/ChartCard';
 import { DecisionMatrixCard } from './GenerativeCards/DecisionMatrixCard';
 import { CodeSandboxCard } from './GenerativeCards/CodeSandboxCard';
+import { DebateCard } from './GenerativeCards/DebateCard';
 import { VoiceInput } from './VoiceInput';
 import { SwarmHUD } from './SwarmHUD';
 import { 
@@ -31,7 +33,8 @@ import {
   X,
   FileText,
   Zap,
-  Cpu
+  Wand2,
+  Users
 } from 'lucide-react';
 import { sound } from '@/lib/sound';
 import { generateId } from '@/lib/utils';
@@ -40,7 +43,7 @@ interface Props {
   messages: ChatMessage[];
   currentMode: StudioMode;
   isLoading: boolean;
-  onSubmitPrompt: (text: string, attachments?: Attachment[]) => void;
+  onSubmitPrompt: (text: string, attachments?: Attachment[], thinkingBudget?: ThinkingBudget) => void;
   onSelectMode: (mode: StudioMode) => void;
 }
 
@@ -53,7 +56,9 @@ export function AgentCanvas({
 }: Props) {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [thinkingBudget, setThinkingBudget] = useState<ThinkingBudget>('analytical');
   const [isDragging, setIsDragging] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -90,6 +95,27 @@ export function AgentCanvas({
     setAttachments(prev => prev.filter(a => a.id !== id));
   };
 
+  const handleEnhancePrompt = async () => {
+    if (!input.trim() || isEnhancing) return;
+    setIsEnhancing(true);
+    sound.playStart();
+    try {
+      const res = await fetch('/api/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: input.trim() }),
+      });
+      const data = await res.json();
+      if (data.enhancedPrompt) {
+        setInput(data.enhancedPrompt);
+        sound.playSuccess();
+      }
+    } catch {
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
@@ -98,13 +124,15 @@ export function AgentCanvas({
     setInput('');
     setAttachments([]);
     sound.playStart();
-    onSubmitPrompt(text, currentAtts);
+    onSubmitPrompt(text, currentAtts, thinkingBudget);
   };
 
   const getPlaceholder = (mode: StudioMode) => {
     switch (mode) {
       case 'research':
-        return 'Enter a topic for autonomous deep research (or attach documents)...';
+        return 'Enter a research thesis (or attach files)...';
+      case 'debate':
+        return 'Enter a controversial claim or architecture to trigger Dual-Agent Deliberation...';
       case 'planner':
         return 'Enter any high-level objective to generate an interactive milestone DAG...';
       case 'canvas':
@@ -114,7 +142,7 @@ export function AgentCanvas({
       case 'coder':
         return 'Describe a component, architecture, or script to synthesize...';
       case 'mcp':
-        return 'Enter MCP tool parameters or query to dispatch to connected servers...';
+        return 'Enter query to dispatch across registered Model Context Protocol tools...';
     }
   };
 
@@ -166,7 +194,7 @@ export function AgentCanvas({
             {/* Quick Action Mode Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-3 text-left">
               <button
-                onClick={() => { onSelectMode('research'); setInput('Deep research on local SLM quantization (4-bit vs 8-bit) and inference throughput in 2026'); }}
+                onClick={() => { onSelectMode('research'); setInput('Is the Agent Harness Dead? Analyze lightweight code loops, MCP, and evaluation-driven design.'); }}
                 className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-teal-500/40 transition group"
               >
                 <div className="flex items-center gap-2 text-teal-400 mb-1.5 font-semibold text-xs">
@@ -179,28 +207,28 @@ export function AgentCanvas({
               </button>
 
               <button
-                onClick={() => { onSelectMode('planner'); setInput('Plan a 14-day execution sprint to build an open-source MCP tool server'); }}
+                onClick={() => { onSelectMode('debate'); setInput('Should production AI agents use LangGraph vs raw TypeScript code loops?'); }}
                 className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-indigo-500/40 transition group"
               >
                 <div className="flex items-center gap-2 text-indigo-400 mb-1.5 font-semibold text-xs">
+                  <Users className="w-4 h-4" />
+                  <span>Dual-Agent Debate</span>
+                </div>
+                <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                  Side-by-side advocate vs critic deliberation with neutral equilibrium consensus.
+                </p>
+              </button>
+
+              <button
+                onClick={() => { onSelectMode('planner'); setInput('Plan a 14-day execution sprint to build an open-source MCP tool server'); }}
+                className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-purple-500/40 transition group"
+              >
+                <div className="flex items-center gap-2 text-purple-400 mb-1.5 font-semibold text-xs">
                   <ListTodo className="w-4 h-4" />
                   <span>Goal-to-DAG Planner</span>
                 </div>
                 <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
                   Dependency-ordered milestone roadmap with live checkbox tracking and confetti.
-                </p>
-              </button>
-
-              <button
-                onClick={() => { onSelectMode('matrix'); setInput('Evaluate PostgreSQL + pgvector vs DuckDB vs Milvus for local personal memory'); }}
-                className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-purple-500/40 transition group"
-              >
-                <div className="flex items-center gap-2 text-purple-400 mb-1.5 font-semibold text-xs">
-                  <Scale className="w-4 h-4" />
-                  <span>Decision Matrix</span>
-                </div>
-                <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                  Multi-variable criteria comparison with real-time recalculation sliders.
                 </p>
               </button>
             </div>
@@ -275,6 +303,9 @@ export function AgentCanvas({
                       {msg.artifact.type === 'research' && (
                         <ResearchReportCard report={msg.artifact.data} />
                       )}
+                      {msg.artifact.type === 'debate' && (
+                        <DebateCard debate={msg.artifact.data} />
+                      )}
                       {msg.artifact.type === 'plan' && (
                         <TaskDagCard plan={msg.artifact.data} />
                       )}
@@ -311,7 +342,7 @@ export function AgentCanvas({
           ))
         )}
 
-        {/* Loading indicator with agent steps */}
+        {/* Loading indicator */}
         {isLoading && (
           <div className="flex items-start gap-3 p-4 rounded-xl border border-teal-500/20 bg-teal-500/5 animate-pulse">
             <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center">
@@ -319,7 +350,7 @@ export function AgentCanvas({
             </div>
             <div className="space-y-1">
               <p className="text-xs font-semibold text-teal-300">
-                Autonomous Agents Collaborating...
+                Autonomous Agents Collaborating ({thinkingBudget} mode)...
               </p>
               <p className="text-[11px] text-slate-400">
                 Planning queries, analyzing knowledge sources, and generating visual artifacts.
@@ -334,6 +365,55 @@ export function AgentCanvas({
       {/* Input Dock */}
       <div className="p-4 bg-slate-950/80 border-t border-slate-800 backdrop-blur-md">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-2">
+          {/* Controls bar: Thinking Depth & Prompt Enhancer */}
+          <div className="flex items-center justify-between text-xs px-1">
+            {/* Thinking Depth Selector */}
+            <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-[11px]">
+              <span className="text-[10px] text-slate-500 uppercase px-2 font-mono">Thinking:</span>
+              <button
+                type="button"
+                onClick={() => { sound.playCheck(); setThinkingBudget('quick'); }}
+                className={`px-2 py-0.5 rounded transition ${
+                  thinkingBudget === 'quick' ? 'bg-slate-800 text-teal-300 font-semibold' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                ⚡ Quick
+              </button>
+              <button
+                type="button"
+                onClick={() => { sound.playCheck(); setThinkingBudget('analytical'); }}
+                className={`px-2 py-0.5 rounded transition ${
+                  thinkingBudget === 'analytical' ? 'bg-slate-800 text-teal-300 font-semibold' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                🧠 Analytical
+              </button>
+              <button
+                type="button"
+                onClick={() => { sound.playCheck(); setThinkingBudget('deep'); }}
+                className={`px-2 py-0.5 rounded transition ${
+                  thinkingBudget === 'deep' ? 'bg-slate-800 text-teal-300 font-semibold' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                🔬 Deep
+              </button>
+            </div>
+
+            {/* Prompt Enhancer Button */}
+            {input.trim() && (
+              <button
+                type="button"
+                onClick={handleEnhancePrompt}
+                disabled={isEnhancing}
+                className="flex items-center gap-1 text-[11px] text-teal-400 hover:text-teal-300 bg-teal-500/10 hover:bg-teal-500/20 px-2 py-0.5 rounded-md border border-teal-500/30 transition disabled:opacity-40"
+                title="Automatically upgrade prompt into a high-agency inquiry"
+              >
+                {isEnhancing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                <span>{isEnhancing ? 'Enhancing...' : 'Enhance Prompt ✨'}</span>
+              </button>
+            )}
+          </div>
+
           {/* Pending attachments pill bar */}
           {attachments.length > 0 && (
             <div className="flex flex-wrap gap-2 pb-1">
@@ -354,7 +434,6 @@ export function AgentCanvas({
           )}
 
           <div className="flex items-center gap-2">
-            {/* File attachment button */}
             <input
               type="file"
               ref={fileInputRef}
@@ -371,10 +450,8 @@ export function AgentCanvas({
               <Paperclip className="w-4 h-4" />
             </button>
 
-            {/* Voice Input Button */}
             <VoiceInput onTranscription={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} />
 
-            {/* Main prompt input */}
             <div className="flex-1 relative">
               <input
                 type="text"
@@ -386,7 +463,6 @@ export function AgentCanvas({
               />
             </div>
 
-            {/* Submit button */}
             <button
               type="submit"
               disabled={(!input.trim() && attachments.length === 0) || isLoading}

@@ -64,6 +64,13 @@ export function CommandPalette({
       run: () => { onSelectMode('research'); onClose(); },
     },
     {
+      id: 'mode-debate',
+      label: 'Dual-Agent Debate Engine',
+      category: 'Autonomous Engines',
+      icon: <Scale className="w-4 h-4 text-indigo-400" />,
+      run: () => { onSelectMode('debate'); onClose(); },
+    },
+    {
       id: 'mode-planner',
       label: 'Goal-to-DAG Planner',
       category: 'Autonomous Engines',

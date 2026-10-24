@@ -17,7 +17,8 @@ import {
   KnowledgeMemoryItem,
   ModelProvider,
   Attachment,
-  UserSettings
+  UserSettings,
+  ThinkingBudget
 } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 import { sound } from '@/lib/sound';
@@ -33,11 +34,12 @@ const DEFAULT_SETTINGS: UserSettings = {
   customModelName: 'llama3.3:latest',
   activeProvider: 'gemini',
   enabledTools: ['web_search', 'filesystem', 'python_sandbox', 'vector_memory'],
+  defaultThinkingBudget: 'analytical',
 };
 
 export default function Home() {
   const [currentMode, setCurrentMode] = useState<StudioMode>('research');
-  const [currentModel, setCurrentModel] = useState<ModelProvider>('gemini-2.5-flash');
+  const [currentModel, setCurrentModel] = useState<ModelProvider>('gemini-3-flash');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -188,7 +190,7 @@ export default function Home() {
     }
   };
 
-  const handlePromptSubmit = async (promptText: string, attachments?: Attachment[]) => {
+  const handlePromptSubmit = async (promptText: string, attachments?: Attachment[], thinkingBudget?: ThinkingBudget) => {
     const sanitized = sanitizeUserInput(promptText);
     const cleanPrompt = sanitized.text;
 
@@ -241,6 +243,7 @@ export default function Home() {
           context: contextStr,
           model: currentModel,
           attachments,
+          thinkingBudget: thinkingBudget || userSettings.defaultThinkingBudget,
         }),
       });
 
