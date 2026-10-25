@@ -4,10 +4,12 @@ import {
   WebSearchResult,
 } from "../web-grounding";
 
-export type SearchProviderId = "tavily" | "brave" | "searxng" | "duckduckgo";
+export type SearchProviderId =
+  "tavily" | "exa" | "brave" | "searxng" | "duckduckgo";
 
 export const SEARCH_PROVIDER_LABELS: Record<SearchProviderId, string> = {
   tavily: "Tavily",
+  exa: "Exa",
   brave: "Brave Search",
   searxng: "SearXNG",
   duckduckgo: "DuckDuckGo",
@@ -36,6 +38,16 @@ interface TavilyResponse {
     content?: string;
     score?: number;
     published_date?: string;
+  }[];
+}
+
+interface ExaResponse {
+  results?: {
+    title?: string;
+    url?: string;
+    text?: string;
+    score?: number;
+    publishedDate?: string;
   }[];
 }
 
@@ -102,6 +114,39 @@ async function searchTavily(
       snippet: stripTags(r.content ?? "").slice(0, 500),
       score: typeof r.score === "number" ? r.score : undefined,
       publishedDate: r.published_date || undefined,
+    }));
+}
+
+export async function searchExa(
+  query: string,
+  maxResults: number,
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<WebSearchResult[]> {
+  const res = await fetch("https://api.exa.ai/search", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      query,
+      numResults: maxResults,
+      contents: { text: { maxCharacters: 500 } },
+    }),
+    signal: requestSignal(signal),
+  });
+  if (!res.ok) throw new Error(`Exa returned HTTP ${res.status}`);
+  const data = (await res.json()) as ExaResponse;
+  return (data.results ?? [])
+    .filter((r) => r.url && r.title)
+    .slice(0, maxResults)
+    .map((r) => ({
+      title: stripTags(r.title ?? ""),
+      url: r.url ?? "",
+      snippet: stripTags(r.text ?? "").slice(0, 500),
+      score: typeof r.score === "number" ? r.score : undefined,
+      publishedDate: r.publishedDate,
     }));
 }
 
@@ -184,7 +229,7 @@ function describeError(err: unknown): string {
 
 /**
  * Searches the web with the configured providers in order of preference
- * (Tavily, Brave, self-hosted SearXNG, then keyless DuckDuckGo), falling
+ * (Tavily, Exa, Brave, self-hosted SearXNG, then keyless DuckDuckGo), falling
  * through on failure. Never invents results: if all providers fail the result
  * list is empty. Aborting `signal` cancels the in-flight request and skips the
  * remaining providers.
@@ -200,12 +245,18 @@ export async function searchWeb(
     run: () => Promise<WebSearchResult[]>;
   }[] = [];
   const tavilyKey = process.env.TAVILY_API_KEY?.trim();
+  const exaKey = process.env.EXA_API_KEY?.trim();
   const braveKey = process.env.BRAVE_API_KEY?.trim();
   const searxngUrl = process.env.SEARXNG_URL?.trim();
   if (tavilyKey)
     attempts.push({
       provider: "tavily",
       run: () => searchTavily(query, maxResults, tavilyKey, signal),
+    });
+  if (exaKey)
+    attempts.push({
+      provider: "exa",
+      run: () => searchExa(query, maxResults, exaKey, signal),
     });
   if (braveKey)
     attempts.push({

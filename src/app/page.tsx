@@ -178,6 +178,48 @@ export default function Home() {
     } catch {}
   };
 
+  // Rename session
+  const handleRenameSession = (id: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    const finalTitle = trimmed || "Untitled Session";
+    const updated = sessions.map((s) =>
+      s.id === id
+        ? {
+            ...s,
+            title: finalTitle,
+            updatedAt: new Date().toISOString(),
+          }
+        : s,
+    );
+    setSessions(updated);
+    try {
+      localStorage.setItem("nova_sessions", JSON.stringify(updated));
+    } catch {}
+  };
+
+  // Duplicate session
+  const handleDuplicateSession = (id: string) => {
+    const original = sessions.find((s) => s.id === id);
+    if (!original) return;
+    const originalTitle = original.title || "Untitled Session";
+    const now = new Date().toISOString();
+    const clonedSession: Session = {
+      ...original,
+      id: generateId(),
+      title: `${originalTitle} (Copy)`,
+      createdAt: now,
+      updatedAt: now,
+      messages: original.messages.map((m) => ({ ...m })),
+    };
+    const updated = [clonedSession, ...sessions];
+    setSessions(updated);
+    setActiveSessionId(clonedSession.id);
+    setCurrentMode(clonedSession.mode);
+    try {
+      localStorage.setItem("nova_sessions", JSON.stringify(updated));
+    } catch {}
+  };
+
   // Save memory changes
   const handleSaveMemoryItem = (item: KnowledgeMemoryItem) => {
     sound.playCheck();
@@ -454,6 +496,8 @@ export default function Home() {
             activeSessionId={activeSessionId}
             onSelectSession={handleSelectSession}
             onDeleteSession={handleDeleteSession}
+            onRenameSession={handleRenameSession}
+            onDuplicateSession={handleDuplicateSession}
             onApplyPrompt={handleApplyPreset}
             onOpenDevHub={() => setIsDevHubOpen(true)}
             onOpenSettings={() => setIsSettingsOpen(true)}

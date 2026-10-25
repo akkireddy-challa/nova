@@ -45,5 +45,6 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
 - [frontend] [done] Passed multi-turn conversation history (`buildHistory`) to `/api/agent` for context-aware follow-up research.
 - [backend] [done] Added custom MCP plugin registration (`POST /api/v1/tools`) with SSRF guard blocking private/loopback endpoints.
 - [devops] [done] Adopted Bun v1.4.4 with `bun fmt` Prettier-compatible formatting and `bun pm fetch` layer caching in Dockerfile.
+- [search/docs] [done] Added Exa search provider (`EXA_API_KEY`, priority Tavily -> Exa -> Brave -> SearXNG -> DuckDuckGo) with keyless header auth, error redacting, and signal timeout/cancellation support in `src/lib/research/search.ts` and `tests/search.test.ts`. Documented in `.env.example`, updated `README.md` search providers table, and marked streaming answers as completed in the roadmap.
 - RESOLVED from Sprint 3: Custom MCP endpoints guarded against SSRF (`POST /api/v1/tools` validates target URLs against private/loopback ranges).
-- STILL OPEN: DuckDuckGo intermittently blocked (Tavily/Brave recommended); Docker image build unverified (requires Docker daemon).
+- STILL OPEN: DuckDuckGo intermittently blocked (Tavily/Exa/Brave recommended); Docker image build unverified (requires Docker daemon).

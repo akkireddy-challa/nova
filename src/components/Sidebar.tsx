@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { StudioMode, Session } from "@/lib/types";
 import {
   Brain,
@@ -11,6 +11,10 @@ import {
   FolderGit2,
   Settings as SettingsIcon,
   MessageSquare,
+  Search,
+  X,
+  Pencil,
+  Copy,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 
@@ -21,6 +25,8 @@ interface Props {
   activeSessionId: string;
   onSelectSession: (id: string) => void;
   onDeleteSession?: (id: string) => void;
+  onRenameSession?: (id: string, newTitle: string) => void;
+  onDuplicateSession?: (id: string) => void;
   onApplyPrompt: (prompt: string, mode: StudioMode) => void;
   onOpenDevHub?: () => void;
   onOpenSettings?: () => void;
@@ -33,10 +39,30 @@ export function Sidebar({
   activeSessionId,
   onSelectSession,
   onDeleteSession,
+  onRenameSession,
+  onDuplicateSession,
   onApplyPrompt,
   onOpenDevHub,
   onOpenSettings,
 }: Props) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const isSavingRef = useRef(false);
+
+  useEffect(() => {
+    if (editingSessionId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingSessionId]);
+
+  const filteredSessions = sessions.filter((s) => {
+    if (!searchQuery.trim()) return true;
+    const title = s.title || "Untitled Session";
+    return title.toLowerCase().includes(searchQuery.trim().toLowerCase());
+  });
   const isStudioMode = [
     "research",
     "debate",
@@ -95,6 +121,33 @@ export function Sidebar({
     onDeleteSession?.(id);
   };
 
+  const handleDuplicate = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    sound.playCheck();
+    onDuplicateSession?.(id);
+  };
+
+  const handleStartRename = (e: React.MouseEvent, session: Session) => {
+    e.stopPropagation();
+    sound.playCheck();
+    isSavingRef.current = false;
+    setEditingSessionId(session.id);
+    setEditTitle(session.title || "Untitled Session");
+  };
+
+  const handleSaveRename = (id: string) => {
+    if (isSavingRef.current || editingSessionId !== id) return;
+    isSavingRef.current = true;
+    setEditingSessionId(null);
+    const trimmed = editTitle.trim();
+    if (onRenameSession) {
+      onRenameSession(id, trimmed || "Untitled Session");
+    }
+    setTimeout(() => {
+      isSavingRef.current = false;
+    }, 50);
+  };
+
   return (
     <aside className="w-64 border-r border-slate-800/80 bg-slate-950/70 hidden md:flex flex-col h-[calc(100vh-3.5rem)] select-none">
       {/* Primary Workspaces Navigation */}
@@ -143,17 +196,79 @@ export function Sidebar({
             Recent Sessions
           </p>
           <span className="text-[10px] font-mono text-slate-500">
-            {sessions.length}
+            {searchQuery.trim()
+              ? `${filteredSessions.length}/${sessions.length}`
+              : sessions.length}
           </span>
+        </div>
+
+        {/* Search / Filter Input */}
+        <div className="relative my-1">
+          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search sessions..."
+            className="w-full bg-slate-900/60 border border-slate-800/80 focus:border-teal-500/50 focus:bg-slate-900 focus:outline-none rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder-slate-500 transition"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              title="Clear search"
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
         {sessions.length === 0 ? (
           <div className="p-4 text-center text-xs text-slate-500">
             No sessions yet. Ask a question to start one.
           </div>
+        ) : filteredSessions.length === 0 ? (
+          <div className="p-4 text-center text-xs text-slate-500">
+            No sessions found matching &quot;{searchQuery}&quot;
+          </div>
         ) : (
-          sessions.map((s) => {
+          filteredSessions.map((s) => {
             const isActive = s.id === activeSessionId;
+            const isEditing = editingSessionId === s.id;
+
+            if (isEditing) {
+              return (
+                <div
+                  key={s.id}
+                  onClick={(e) => e.stopPropagation()}
+                  className="px-2 py-1.5 rounded-lg bg-slate-900 border border-teal-500/60 shadow-sm"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-teal-400 flex-shrink-0" />
+                    <input
+                      ref={editInputRef}
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSaveRename(s.id);
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          setEditingSessionId(null);
+                        }
+                      }}
+                      onBlur={() => handleSaveRename(s.id)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-teal-400 rounded px-1.5 py-0.5 text-xs text-slate-100 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div
                 key={s.id}
@@ -167,21 +282,47 @@ export function Sidebar({
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40"
                 }`}
               >
-                <div className="flex items-center gap-2 truncate">
+                <div className="flex items-center gap-2 truncate min-w-0 flex-1 mr-1">
                   <Clock className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                  <span className="truncate max-w-[150px]">
+                  <span className="truncate">
                     {s.title || "Untitled Session"}
                   </span>
                 </div>
-                {onDeleteSession && (
-                  <button
-                    onClick={(e) => handleDelete(e, s.id)}
-                    title="Delete session"
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-red-400 transition"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                  {onRenameSession && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleStartRename(e, s)}
+                      title="Rename session"
+                      aria-label="Rename session"
+                      className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-200 transition"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  )}
+                  {onDuplicateSession && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleDuplicate(e, s.id)}
+                      title="Duplicate session"
+                      aria-label="Duplicate session"
+                      className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-teal-300 transition"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  )}
+                  {onDeleteSession && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleDelete(e, s.id)}
+                      title="Delete session"
+                      aria-label="Delete session"
+                      className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-red-400 transition"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })

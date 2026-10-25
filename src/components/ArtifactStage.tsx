@@ -14,6 +14,7 @@ import {
   Sliders,
   CheckCircle2,
   AlertTriangle,
+  Globe,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 
@@ -24,7 +25,9 @@ interface Props {
 }
 
 export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
-  const [activeTab, setActiveTab] = useState<"preview" | "raw">("preview");
+  const [activeTab, setActiveTab] = useState<"preview" | "raw" | "sources">(
+    "preview",
+  );
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -176,6 +179,30 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
           >
             Preview
           </button>
+
+          {artifact.type === "research" && (
+            <button
+              type="button"
+              onClick={() => {
+                sound.playCheck();
+                setActiveTab("sources");
+              }}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "sources"
+                  ? "bg-teal-500/15 text-teal-300 border border-teal-500/30 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>
+                Sources
+                {artifact.data.sources && artifact.data.sources.length > 0
+                  ? ` (${artifact.data.sources.length})`
+                  : ""}
+              </span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => {
@@ -219,6 +246,116 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                 ? artifact.data.code
                 : JSON.stringify(artifact.data, null, 2)}
             </pre>
+          </div>
+        ) : activeTab === "sources" && artifact.type === "research" ? (
+          <div className="space-y-3.5">
+            {/* Grounded Sources Overview Header */}
+            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0">
+                  <Globe className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-200">
+                    Grounded Sources
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    {artifact.data.sources?.length ?? 0} verified references for
+                    this research synthesis
+                  </p>
+                </div>
+              </div>
+              {artifact.data.metrics &&
+                artifact.data.metrics.sourcesCrawled > 0 && (
+                  <span className="text-[10.5px] font-mono text-slate-400">
+                    {artifact.data.metrics.sourcesCrawled} crawled
+                  </span>
+                )}
+            </div>
+
+            {/* List of cited sources */}
+            {!artifact.data.sources || artifact.data.sources.length === 0 ? (
+              <div className="p-8 text-center rounded-xl bg-slate-950 border border-slate-800 text-slate-400 text-xs">
+                No sources reported for this research artifact.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {artifact.data.sources.map((src, idx) => (
+                  <div
+                    key={src.id || idx}
+                    className="p-4 rounded-xl bg-slate-950 border border-slate-800/90 hover:border-slate-700 transition space-y-2.5"
+                  >
+                    {/* Top row: Number, full page title, external link */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <span className="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-teal-500/15 text-teal-300 border border-teal-500/30 flex-shrink-0 mt-0.5">
+                          [{idx + 1}]
+                        </span>
+                        <h5 className="text-xs font-semibold text-slate-100 leading-snug">
+                          {src.title}
+                        </h5>
+                      </div>
+                      <a
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Open source URL"
+                        className="p-1 rounded-md text-slate-400 hover:text-teal-300 hover:bg-slate-800 transition flex-shrink-0 cursor-pointer"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+
+                    {/* Domain badge, relevance score (if reported), published date */}
+                    <div className="flex flex-wrap items-center gap-2 text-[10.5px] font-mono">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-900 text-teal-300 border border-slate-800 font-medium flex items-center gap-1">
+                        <Globe className="w-3 h-3 text-teal-400" />
+                        {src.domain}
+                      </span>
+
+                      {src.relevanceScore !== undefined && (
+                        <span className="px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-300 border border-teal-500/20 font-medium">
+                          {src.relevanceScore}% Relevance
+                        </span>
+                      )}
+
+                      {src.publishedDate && (
+                        <span className="text-slate-500">
+                          {src.publishedDate}
+                        </span>
+                      )}
+
+                      {src.contradictionFlag && (
+                        <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-amber-400" />
+                          Contradiction
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Snippet text block */}
+                    <div className="p-3 rounded-lg bg-slate-900/70 border border-slate-800/80 text-xs text-slate-300 leading-relaxed font-sans">
+                      <p className="text-[11.5px] text-slate-300 leading-relaxed italic">
+                        &ldquo;{src.snippet}&rdquo;
+                      </p>
+                    </div>
+
+                    {/* Direct URL */}
+                    <div className="pt-1 flex items-center justify-between text-[11px] font-mono">
+                      <a
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-teal-400 hover:text-teal-300 hover:underline truncate max-w-[85%] flex items-center gap-1"
+                      >
+                        <span className="truncate">{src.url}</span>
+                        <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div>
@@ -274,19 +411,32 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                   <div className="space-y-2">
                     <h4 className="text-xs font-semibold text-teal-300 uppercase font-mono flex items-center justify-between">
                       <span>Sources ({artifact.data.sources.length})</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          sound.playCheck();
+                          setActiveTab("sources");
+                        }}
+                        className="text-[10px] text-teal-400 hover:underline font-sans cursor-pointer font-normal"
+                      >
+                        View all sources &rarr;
+                      </button>
                     </h4>
                     <div className="space-y-2">
-                      {artifact.data.sources.map((src) => (
+                      {artifact.data.sources.map((src, srcIdx) => (
                         <a
-                          key={src.id}
+                          key={src.id || srcIdx}
                           href={src.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-teal-500/40 hover:bg-slate-900/60 transition group block"
                         >
                           <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="text-xs font-semibold text-slate-200 group-hover:text-teal-300 truncate">
-                              {src.title}
+                            <span className="text-xs font-semibold text-slate-200 group-hover:text-teal-300 truncate flex items-center gap-1.5">
+                              <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-teal-500/15 text-teal-300 border border-teal-500/20 font-bold flex-shrink-0">
+                                [{srcIdx + 1}]
+                              </span>
+                              <span className="truncate">{src.title}</span>
                             </span>
                             <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-teal-400 flex-shrink-0" />
                           </div>
@@ -318,12 +468,37 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                       key={idx}
                       className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-200">
-                          {finding.point}
-                        </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                          <span className="text-xs font-semibold text-slate-200">
+                            {finding.point}
+                          </span>
+                          {finding.citationIds &&
+                            finding.citationIds.length > 0 && (
+                              <span className="inline-flex items-center gap-1">
+                                {finding.citationIds.map((cId, cIdx) => {
+                                  const matchIdx =
+                                    artifact.data.sources?.findIndex(
+                                      (s) => s.id === cId,
+                                    ) ?? -1;
+                                  const displayNum =
+                                    matchIdx !== -1
+                                      ? matchIdx + 1
+                                      : cId.replace(/\D/g, "") || cIdx + 1;
+                                  return (
+                                    <span
+                                      key={cIdx}
+                                      className="text-[9.5px] font-mono px-1 py-0.2 rounded bg-teal-500/15 text-teal-300 border border-teal-500/30 font-semibold"
+                                    >
+                                      [{displayNum}]
+                                    </span>
+                                  );
+                                })}
+                              </span>
+                            )}
+                        </div>
                         <span
-                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded uppercase ${
+                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded uppercase flex-shrink-0 ${
                             finding.confidence === "high"
                               ? "bg-teal-500/10 text-teal-300 border border-teal-500/20"
                               : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
