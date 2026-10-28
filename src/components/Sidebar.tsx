@@ -15,8 +15,10 @@ import {
   X,
   Pencil,
   Copy,
+  FolderArchive,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
+import { SessionExportModal } from "./SessionExportModal";
 
 interface Props {
   currentMode: StudioMode;
@@ -30,6 +32,8 @@ interface Props {
   onApplyPrompt: (prompt: string, mode: StudioMode) => void;
   onOpenDevHub?: () => void;
   onOpenSettings?: () => void;
+  onOpenExportModal?: () => void;
+  onImportSessions?: (sessions: Session[]) => void;
 }
 
 export function Sidebar({
@@ -44,12 +48,24 @@ export function Sidebar({
   onApplyPrompt,
   onOpenDevHub,
   onOpenSettings,
+  onOpenExportModal,
+  onImportSessions,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const isSavingRef = useRef(false);
+
+  const handleOpenExport = () => {
+    sound.playCheck();
+    if (onOpenExportModal) {
+      onOpenExportModal();
+    } else {
+      setIsExportModalOpen(true);
+    }
+  };
 
   useEffect(() => {
     if (editingSessionId && editInputRef.current) {
@@ -195,11 +211,22 @@ export function Sidebar({
           <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
             Recent Sessions
           </p>
-          <span className="text-[10px] font-mono text-slate-500">
-            {searchQuery.trim()
-              ? `${filteredSessions.length}/${sessions.length}`
-              : sessions.length}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono text-slate-500">
+              {searchQuery.trim()
+                ? `${filteredSessions.length}/${sessions.length}`
+                : sessions.length}
+            </span>
+            <button
+              type="button"
+              onClick={handleOpenExport}
+              title="Export & Backup Sessions"
+              aria-label="Export & Backup Sessions"
+              className="p-1 rounded text-slate-500 hover:text-teal-400 hover:bg-slate-800 transition cursor-pointer"
+            >
+              <FolderArchive className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Search / Filter Input */}
@@ -355,6 +382,15 @@ export function Sidebar({
       {/* Pinned Bottom Footer */}
       <div className="p-3 border-t border-slate-800/80 bg-slate-950/80 space-y-1">
         <button
+          type="button"
+          onClick={handleOpenExport}
+          className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition cursor-pointer"
+        >
+          <FolderArchive className="w-4 h-4 text-teal-400" />
+          <span>Export & Backup</span>
+        </button>
+
+        <button
           onClick={() => {
             sound.playCheck();
             onOpenSettings?.();
@@ -376,6 +412,17 @@ export function Sidebar({
           <span>Developer Hub</span>
         </button>
       </div>
+
+      {/* Internal Export & Backup Modal fallback when not controlled externally */}
+      {!onOpenExportModal && (
+        <SessionExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          session={sessions.find((s) => s.id === activeSessionId)}
+          sessions={sessions}
+          onImportSessions={onImportSessions}
+        />
+      )}
     </aside>
   );
 }

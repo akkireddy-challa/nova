@@ -48,3 +48,15 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
 - [search/docs] [done] Added Exa search provider (`EXA_API_KEY`, priority Tavily -> Exa -> Brave -> SearXNG -> DuckDuckGo) with keyless header auth, error redacting, and signal timeout/cancellation support in `src/lib/research/search.ts` and `tests/search.test.ts`. Documented in `.env.example`, updated `README.md` search providers table, and marked streaming answers as completed in the roadmap.
 - RESOLVED from Sprint 3: Custom MCP endpoints guarded against SSRF (`POST /api/v1/tools` validates target URLs against private/loopback ranges).
 - STILL OPEN: DuckDuckGo intermittently blocked (Tavily/Exa/Brave recommended); Docker image build unverified (requires Docker daemon).
+
+## Sprint 4 — Local Agent Station: Provider Hub, Session Backup & Document RAG
+
+- [providers] [done] Built `GET /api/v1/providers/status` endpoint querying real health, latency (via `performance.now()`), model count, and configuration status for LLM providers (Anthropic, Gemini, OpenAI, Ollama) and search providers (Tavily, Exa, Brave, SearXNG, DuckDuckGo). Supports targeted individual provider pings via `?provider=`. Zero fake data or Math.random.
+- [frontend] [done] Upgraded `SettingsModal.tsx` to serve as the interactive Provider & Health Control Hub with live status badges (Connected / Not Configured / Error), real latency pills (e.g. `⚡ 142ms`), individual Ping/Test triggers with reactive loaders, preset guidance for local LLM engines (Ollama, LM Studio, vLLM) with 1-click clipboard copy, and search grounding status badges. Retained thinking budget preferences.
+- [sessions] [done] Created `src/lib/session-export.ts` with `exportSessionAsJson`, `exportAllSessionsAsJson`, `exportSessionAsMarkdown`, `downloadSessionMarkdown`, `copySessionMarkdownToClipboard`, and `validateSessionBackup` with strict schema validation and prototype pollution defense.
+- [frontend] [done] Created `src/components/SessionExportModal.tsx` offering active session export (.md, .json, clipboard copy with live markdown preview) and full session backup & restore dropzone. Added `FolderArchive` export triggers to `Sidebar.tsx` and wired `onImportSessions` into `page.tsx`.
+- [rag/documents] [done] Created `src/lib/document-parser.ts` parsing text, code, and structured files (.txt, .md, .json, .csv, .py, .ts, etc.) with 256 KB safety limit, control character sanitization, and size formatting.
+- [frontend] [done] Added drag-and-drop file dropzone and paperclip file attachment support to `AgentCanvas.tsx` displaying formatted file chips and error alerts, passing attachments into `/api/agent`.
+- [desktop] [done] Added Tauri v2 desktop application scaffolding in `src-tauri/` (`tauri.conf.json`, `Cargo.toml`, `main.rs`, `capabilities/default.json`) with `desktop:dev` and `desktop:build` scripts in `package.json`.
+- [tests] [done] Added `tests/provider-status.test.ts` (5 tests), `tests/session-export.test.ts` (23 tests), and `tests/document-parser.test.ts` (7 tests). Total repo test suite: 163 tests passing across 11 test suites.
+- All tests, lint, and build passing cleanly. Zero fake data.

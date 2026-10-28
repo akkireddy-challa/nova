@@ -9,7 +9,9 @@
     "lint": "eslint",
     "fmt": "bun fmt",
     "fmt:check": "bun fmt --check",
-    "test": "bun test"
+    "test": "bun test",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

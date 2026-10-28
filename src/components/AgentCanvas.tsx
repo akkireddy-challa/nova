@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import { generateId } from "@/lib/utils";
+import { parseAttachedFile, formatFileSize } from "@/lib/document-parser";
 
 interface Props {
   messages: ChatMessage[];
@@ -60,10 +61,15 @@ interface Props {
   isLoading: boolean;
   streamingThoughts?: AgentThought[];
   onStop?: () => void;
-  onSubmitPrompt: (
+  onSubmitPrompt?: (
     text: string,
     attachments?: Attachment[],
     thinkingBudget?: ThinkingBudget,
+  ) => void;
+  onSendMessage?: (
+    input: string,
+    budget?: ThinkingBudget,
+    attachments?: Attachment[],
   ) => void;
   onSelectMode: (mode: StudioMode) => void;
   sessionTitle?: string;
@@ -83,6 +89,7 @@ export function AgentCanvas({
   streamingThoughts = [],
   onStop,
   onSubmitPrompt,
+  onSendMessage,
   onSelectMode,
   sessionTitle,
   defaultThinkingBudget,
@@ -93,6 +100,7 @@ export function AgentCanvas({
 }: Props) {
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
   // null = follow the default from Settings until the user picks one here.
   const [budgetOverride, setThinkingBudget] = useState<ThinkingBudget | null>(
     null,
@@ -115,29 +123,45 @@ export function AgentCanvas({
     scrollToBottom();
   }, [messages, isLoading, streamingThoughts]);
 
-  const handleFileUpload = (files: FileList | null) => {
+  const handleFileUpload = async (files: FileList | null) => {
     if (!files) return;
-    Array.from(files).forEach((file) => {
+    setFileError(null);
+    for (const file of Array.from(files)) {
       const isImage = file.type.startsWith("image/");
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = (e.target?.result as string) || "";
-        const newAtt: Attachment = {
-          id: generateId(),
-          name: file.name,
-          size: file.size,
-          type: file.type || "text/plain",
-          content,
-        };
-        sound.playCheck();
-        setAttachments((prev) => [...prev, newAtt]);
-      };
       if (isImage) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = (e.target?.result as string) || "";
+          const newAtt: Attachment = {
+            id: generateId(),
+            name: file.name,
+            size: file.size,
+            type: file.type || "image/png",
+            content,
+          };
+          sound.playCheck();
+          setAttachments((prev) => [...prev, newAtt]);
+        };
         reader.readAsDataURL(file);
       } else {
-        reader.readAsText(file);
+        try {
+          const parsed = await parseAttachedFile(file);
+          const newAtt: Attachment = {
+            id: generateId(),
+            name: parsed.name,
+            size: parsed.size,
+            type: parsed.type,
+            content: parsed.content,
+          };
+          sound.playCheck();
+          setAttachments((prev) => [...prev, newAtt]);
+        } catch (err: unknown) {
+          const msg =
+            err instanceof Error ? err.message : "Failed to parse document";
+          setFileError(msg);
+        }
       }
-    });
+    }
   };
 
   // Clipboard paste listener to allow instant screenshot capture (⌘V)
@@ -205,7 +229,11 @@ export function AgentCanvas({
     setInput("");
     setAttachments([]);
     sound.playStart();
-    onSubmitPrompt(text, currentAtts, thinkingBudget);
+    if (onSendMessage) {
+      onSendMessage(text, thinkingBudget, currentAtts);
+    } else if (onSubmitPrompt) {
+      onSubmitPrompt(text, currentAtts, thinkingBudget);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -273,11 +301,19 @@ export function AgentCanvas({
   return (
     <div
       className="flex-1 min-h-0 flex overflow-hidden relative bg-slate-950"
+      onDragEnter={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
       onDragOver={(e) => {
         e.preventDefault();
         setIsDragging(true);
       }}
-      onDragLeave={() => setIsDragging(false)}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setIsDragging(false);
+        }
+      }}
       onDrop={(e) => {
         e.preventDefault();
         setIsDragging(false);
@@ -785,7 +821,25 @@ export function AgentCanvas({
                 </div>
               </div>
 
-              {/* Pending Attachments List (with Image Preview) */}
+              {/* File Attachment Error Notice */}
+              {fileError && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                  <span className="flex-1 text-[11px] font-mono leading-tight">
+                    {fileError}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFileError(null)}
+                    aria-label="Dismiss error"
+                    className="p-0.5 rounded text-rose-400 hover:text-rose-200 transition cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+
+              {/* Pending Attachments List (with Image Preview and Formatted File Size) */}
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pb-1">
                   {attachments.map((att) => (
@@ -807,9 +861,13 @@ export function AgentCanvas({
                       <span className="font-medium truncate max-w-[160px] text-[11px]">
                         {att.name}
                       </span>
+                      <span className="text-[10px] text-teal-400/70 font-mono">
+                        ({formatFileSize(att.size)})
+                      </span>
                       <button
                         type="button"
                         onClick={() => removeAttachment(att.id)}
+                        aria-label={`Remove ${att.name}`}
                         className="p-0.5 rounded text-slate-400 hover:text-rose-400 ml-1 transition cursor-pointer"
                       >
                         <X className="w-2.5 h-2.5" />
@@ -838,15 +896,18 @@ export function AgentCanvas({
                   <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={(e) => handleFileUpload(e.target.files)}
+                    onChange={(e) => {
+                      handleFileUpload(e.target.files);
+                      if (e.target) e.target.value = "";
+                    }}
                     className="hidden"
-                    accept="image/*,.txt,.md,.json,.ts,.js,.py,.csv"
+                    accept=".txt,.md,.json,.csv,.tsv,.py,.ts,.js,.markdown,.html,.xml,.yaml,.yml,image/*"
                     multiple
                   />
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    title="Attach images, diagrams, or code"
+                    title="Attach documents (.txt, .md, .json, .csv, .py, .ts, .js)"
                     className="p-1.5 rounded-lg text-slate-400 hover:text-teal-300 hover:bg-slate-800 transition cursor-pointer"
                   >
                     <Paperclip className="w-3.5 h-3.5" />
@@ -926,7 +987,11 @@ export function AgentCanvas({
           onClose={() => setSelectedArtifact(null)}
           onRefinePrompt={(refineText) => {
             sound.playStart();
-            onSubmitPrompt(refineText, undefined, thinkingBudget);
+            if (onSendMessage) {
+              onSendMessage(refineText, thinkingBudget, undefined);
+            } else if (onSubmitPrompt) {
+              onSubmitPrompt(refineText, undefined, thinkingBudget);
+            }
           }}
         />
       )}
