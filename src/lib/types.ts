@@ -23,6 +23,9 @@ export interface SourceCitation {
   relevanceScore?: number;
   publishedDate?: string;
   contradictionFlag?: boolean;
+  author?: string;
+  siteName?: string;
+  description?: string;
 }
 
 export interface ResearchPlanStep {
@@ -214,6 +217,8 @@ export interface KnowledgeMemoryItem {
   content: string;
   category: "preference" | "project_context" | "personal_fact" | "document";
   createdAt: string;
+  updatedAt?: string;
+  tags?: string[];
 }
 
 export interface Session {

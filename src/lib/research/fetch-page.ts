@@ -20,6 +20,10 @@ export interface FetchedPage {
   title?: string;
   text: string;
   bytes: number;
+  description?: string;
+  author?: string;
+  publishedDate?: string;
+  siteName?: string;
 }
 
 export class UnsafeUrlError extends Error {
@@ -159,12 +163,86 @@ export async function assertPublicHost(
     throw new UnsafeUrlError("host resolves to a private address");
 }
 
-/** Converts an HTML document to readable plain text. */
-export function htmlToText(html: string): { title?: string; text: string } {
+function cleanMetadataValue(raw: string): string | undefined {
+  const stripped = raw.replace(/<[^>]+>/g, "");
+  const decoded = decodeHtmlEntities(stripped)
+    .replace(/&mdash;/g, "—")
+    .replace(/&ndash;/g, "–")
+    .replace(/&hellip;/g, "…");
+  const cleaned = decoded
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || undefined;
+}
+
+function getMetaAttribute(
+  tagAttrs: string,
+  attrName: string,
+): string | undefined {
+  const regex = new RegExp(
+    `\\b${attrName}\\s*=\\s*(?:(["'])([\\s\\S]*?)\\1|([^\\s>]+))`,
+    "i",
+  );
+  const match = tagAttrs.match(regex);
+  return match ? (match[2] ?? match[3]) : undefined;
+}
+
+function extractMetaContent(html: string, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const target = key.toLowerCase();
+    const metaRegex = /<meta\b((?:[^>"']|"[^"]*"|'[^']*')*)\/?>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = metaRegex.exec(html)) !== null) {
+      const attrs = match[1];
+      const name = getMetaAttribute(attrs, "name")?.toLowerCase();
+      const prop = getMetaAttribute(attrs, "property")?.toLowerCase();
+      const itemProp = getMetaAttribute(attrs, "itemprop")?.toLowerCase();
+      if (name === target || prop === target || itemProp === target) {
+        const rawContent = getMetaAttribute(attrs, "content");
+        if (rawContent !== undefined) {
+          const cleaned = cleanMetadataValue(rawContent);
+          if (cleaned) {
+            return cleaned;
+          }
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+export interface ParsedHtml {
+  title?: string;
+  text: string;
+  description?: string;
+  author?: string;
+  publishedDate?: string;
+  siteName?: string;
+}
+
+/** Converts an HTML document to readable plain text and extracts metadata. */
+export function htmlToText(html: string): ParsedHtml {
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch
     ? decodeHtmlEntities(titleMatch[1]).replace(/\s+/g, " ").trim() || undefined
     : undefined;
+
+  const description = extractMetaContent(html, [
+    "og:description",
+    "description",
+  ]);
+  const author = extractMetaContent(html, ["author", "article:author"]);
+  const publishedDate = extractMetaContent(html, [
+    "article:published_time",
+    "date",
+    "pubdate",
+  ]);
+  const siteName = extractMetaContent(html, [
+    "og:site_name",
+    "application-name",
+  ]);
+
   const text = decodeHtmlEntities(
     html
       .replace(/<!--[\s\S]*?-->/g, " ")
@@ -183,7 +261,7 @@ export function htmlToText(html: string): { title?: string; text: string } {
     .replace(/ *\n */g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  return { title, text };
+  return { title, text, description, author, publishedDate, siteName };
 }
 
 async function readCapped(
@@ -275,8 +353,17 @@ export async function fetchPageText(
       );
     }
     const { body, bytes } = await readCapped(res, maxBytes);
-    const { title, text } = htmlToText(body);
-    return { url: url.toString(), title, text: text.slice(0, maxChars), bytes };
+    const parsed = htmlToText(body);
+    return {
+      url: url.toString(),
+      title: parsed.title,
+      text: parsed.text.slice(0, maxChars),
+      bytes,
+      description: parsed.description,
+      author: parsed.author,
+      publishedDate: parsed.publishedDate,
+      siteName: parsed.siteName,
+    };
   }
   throw new Error("too many redirects");
 }

@@ -321,7 +321,7 @@ export function AgentCanvas({
       }}
     >
       {/* Left Chat Stream Pane */}
-      <div className="flex-1 min-h-0 flex flex-col min-w-0 overflow-hidden relative">
+      <div className="flex-1 min-h-0 flex flex-col min-w-0 overflow-hidden relative print:hidden">
         {/* Export Action */}
         {messages.length > 0 && (
           <div className="flex-shrink-0 hidden sm:flex justify-end px-3 py-2 border-b border-slate-800/80">
@@ -993,6 +993,13 @@ export function AgentCanvas({
               onSubmitPrompt(refineText, undefined, thinkingBudget);
             }
           }}
+          mode={currentMode}
+          model={
+            messages
+              .slice()
+              .reverse()
+              .find((m) => m.telemetry?.model)?.telemetry?.model
+          }
         />
       )}
 

@@ -245,9 +245,30 @@ export default function Home() {
     } catch {}
   };
 
+  const handleSaveMemoryItems = (items: KnowledgeMemoryItem[]) => {
+    sound.playCheck();
+    const newIds = new Set(items.map((i) => i.id));
+    const filtered = memoryItems.filter((m) => !newIds.has(m.id));
+    const updated = [...items, ...filtered];
+    setMemoryItems(updated);
+    try {
+      localStorage.setItem("nova_memory", JSON.stringify(updated));
+    } catch {}
+  };
+
   const handleDeleteMemoryItem = (id: string) => {
     sound.playCheck();
     const updated = memoryItems.filter((m) => m.id !== id);
+    setMemoryItems(updated);
+    try {
+      localStorage.setItem("nova_memory", JSON.stringify(updated));
+    } catch {}
+  };
+
+  const handleDeleteMemoryItems = (ids: string[]) => {
+    sound.playCheck();
+    const idSet = new Set(ids);
+    const updated = memoryItems.filter((m) => !idSet.has(m.id));
     setMemoryItems(updated);
     try {
       localStorage.setItem("nova_memory", JSON.stringify(updated));
@@ -520,7 +541,11 @@ export default function Home() {
           />
 
           {currentMode === "intelligence" ? (
-            <IntelligenceCanvas memoryItems={memoryItems} />
+            <IntelligenceCanvas
+              memoryItems={memoryItems}
+              onSaveMemoryItems={handleSaveMemoryItems}
+              onDeleteMemoryItems={handleDeleteMemoryItems}
+            />
           ) : currentMode === "mcp" ? (
             <PluginsAndApiHub />
           ) : (

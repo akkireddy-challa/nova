@@ -165,7 +165,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className="w-64 border-r border-slate-800/80 bg-slate-950/70 hidden md:flex flex-col h-[calc(100vh-3.5rem)] select-none">
+    <aside className="w-64 border-r border-slate-800/80 bg-slate-950/70 hidden md:flex flex-col h-[calc(100vh-3.5rem)] select-none print:hidden">
       {/* Primary Workspaces Navigation */}
       <div className="p-3 border-b border-slate-800/80 space-y-1">
         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-2 py-1">
