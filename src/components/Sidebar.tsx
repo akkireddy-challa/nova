@@ -16,9 +16,11 @@ import {
   Pencil,
   Copy,
   FolderArchive,
+  Bot,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import { SessionExportModal } from "./SessionExportModal";
+import { PersonaStudioModal } from "./PersonaStudioModal";
 
 interface Props {
   currentMode: StudioMode;
@@ -34,6 +36,7 @@ interface Props {
   onOpenSettings?: () => void;
   onOpenExportModal?: () => void;
   onImportSessions?: (sessions: Session[]) => void;
+  onOpenPersonaStudio?: () => void;
 }
 
 export function Sidebar({
@@ -50,11 +53,13 @@ export function Sidebar({
   onOpenSettings,
   onOpenExportModal,
   onImportSessions,
+  onOpenPersonaStudio,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isPersonaStudioOpen, setIsPersonaStudioOpen] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const isSavingRef = useRef(false);
 
@@ -64,6 +69,15 @@ export function Sidebar({
       onOpenExportModal();
     } else {
       setIsExportModalOpen(true);
+    }
+  };
+
+  const handleOpenPersonaStudio = () => {
+    sound.playCheck();
+    if (onOpenPersonaStudio) {
+      onOpenPersonaStudio();
+    } else {
+      setIsPersonaStudioOpen(true);
     }
   };
 
@@ -383,6 +397,15 @@ export function Sidebar({
       <div className="p-3 border-t border-slate-800/80 bg-slate-950/80 space-y-1">
         <button
           type="button"
+          onClick={handleOpenPersonaStudio}
+          className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition cursor-pointer"
+        >
+          <Bot className="w-4 h-4 text-teal-400" />
+          <span>Persona Studio</span>
+        </button>
+
+        <button
+          type="button"
           onClick={handleOpenExport}
           className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition cursor-pointer"
         >
@@ -421,6 +444,14 @@ export function Sidebar({
           session={sessions.find((s) => s.id === activeSessionId)}
           sessions={sessions}
           onImportSessions={onImportSessions}
+        />
+      )}
+
+      {/* Internal Persona Studio Modal fallback when not controlled externally */}
+      {!onOpenPersonaStudio && (
+        <PersonaStudioModal
+          isOpen={isPersonaStudioOpen}
+          onClose={() => setIsPersonaStudioOpen(false)}
         />
       )}
     </aside>

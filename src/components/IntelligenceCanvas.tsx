@@ -7,6 +7,7 @@ import {
   Tag,
   FileText,
   UploadCloud,
+  FolderUp,
   Trash2,
   Clock,
   CheckCircle2,
@@ -14,8 +15,7 @@ import {
   Layers,
   Sparkles,
 } from "lucide-react";
-import { KnowledgeMemoryItem } from "@/lib/types";
-import type { MemorySearchHit, MemorySearchResult } from "@/lib/memory-search";
+import type { KnowledgeMemoryItem } from "@/lib/types";
 import { sound } from "@/lib/sound";
 import { parseAttachedFile } from "@/lib/document-parser";
 import {
@@ -23,6 +23,11 @@ import {
   groupDocumentMemories,
   type DocumentGroup,
 } from "@/lib/document-indexer";
+import {
+  hybridSearchMemories,
+  batchIndexDocuments,
+  type HybridSearchResultItem,
+} from "@/lib/research/hybrid-rrf";
 import { formatDate } from "@/lib/utils";
 
 interface Props {
@@ -31,9 +36,18 @@ interface Props {
   onDeleteMemoryItems?: (ids: string[]) => void;
 }
 
+type SearchMode = "hybrid" | "bm25" | "vector";
+
+interface SearchState {
+  query: string;
+  mode: SearchMode;
+  hits: HybridSearchResultItem[];
+  fallbackReason?: string;
+}
+
 /**
- * Search over user's saved memories and indexed local documents via POST /api/intelligence (embeddings or BM25).
- * Provides a dedicated Indexed Local Documents (RAG) manager with file dropzone and chunk inspection.
+ * Search over user's saved memories and indexed local documents via Hybrid RRF, BM25, or Dense Vectors.
+ * Provides a dedicated Indexed Local Documents (RAG) manager with drag-and-drop, multi-document batch ingestion, and chunk inspection.
  */
 export function IntelligenceCanvas({
   memoryItems,
@@ -42,18 +56,21 @@ export function IntelligenceCanvas({
 }: Props) {
   const [activeTab, setActiveTab] = useState<"search" | "documents">("search");
   const [searchQuery, setSearchQuery] = useState("");
-  const [search, setSearch] = useState<MemorySearchResult | null>(null);
+  const [searchMode, setSearchMode] = useState<SearchMode>("hybrid");
+  const [searchResults, setSearchResults] = useState<SearchState | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Document RAG state
   const [isDragging, setIsDragging] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<string | null>(null);
   const [indexError, setIndexError] = useState<string | null>(null);
   const [indexSuccessMessage, setIndexSuccessMessage] = useState<string | null>(
     null,
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const batchFileInputRef = useRef<HTMLInputElement>(null);
 
   // Group document memories into high-level document overviews
   const indexedDocs = useMemo(
@@ -72,7 +89,7 @@ export function IntelligenceCanvas({
     [memoryItems],
   );
 
-  const handleSemanticSearch = async (e?: React.FormEvent) => {
+  const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!searchQuery.trim()) return;
 
@@ -81,52 +98,162 @@ export function IntelligenceCanvas({
     sound.playStart();
 
     try {
-      const res = await fetch("/api/intelligence", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: searchQuery.trim(),
-          memories: memoryItems,
-        }),
+      let queryVector: number[] | undefined;
+      let getVectors: (() => Promise<Map<string, number[]>>) | undefined;
+      let fallbackReason: string | undefined;
+
+      // Attempt to retrieve dense vector embeddings if not in explicit keyword-only mode
+      if (searchMode !== "bm25") {
+        try {
+          const texts = [
+            searchQuery.trim(),
+            ...memoryItems.map((m) => `${m.title}\n${m.content}`.trim()),
+          ];
+          const embRes = await fetch("/api/v1/embeddings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ input: texts }),
+          });
+
+          if (embRes.ok) {
+            const embData = (await embRes.json()) as {
+              data?: Array<{ embedding?: number[] }>;
+            };
+            if (Array.isArray(embData?.data) && embData.data.length > 0) {
+              queryVector = embData.data[0]?.embedding;
+              const vecMap = new Map<string, number[]>();
+              memoryItems.forEach((m, idx) => {
+                const vec = embData.data?.[idx + 1]?.embedding;
+                if (vec) vecMap.set(m.id, vec);
+              });
+              getVectors = async () => vecMap;
+            }
+          } else {
+            fallbackReason =
+              "Embeddings service unavailable. Fell back transparently to BM25 keyword matching.";
+          }
+        } catch {
+          fallbackReason =
+            "Embeddings endpoint unreachable. Fell back transparently to BM25 keyword matching.";
+        }
+      }
+
+      const hits = await hybridSearchMemories(searchQuery.trim(), memoryItems, {
+        queryVector,
+        getVectors,
+        mode: searchMode,
       });
 
-      const data: unknown = await res.json().catch(() => null);
-      const rec = (data ?? {}) as Partial<MemorySearchResult> & {
-        error?: unknown;
-      };
-      if (
-        !res.ok ||
-        (rec.method !== "embeddings" && rec.method !== "keyword")
-      ) {
-        setError(
-          typeof rec.error === "string"
-            ? rec.error
-            : `Search failed (HTTP ${res.status}).`,
-        );
-        setSearch(null);
-        return;
-      }
-      setSearch({
-        query: typeof rec.query === "string" ? rec.query : searchQuery.trim(),
-        method: rec.method,
-        embeddingModel:
-          typeof rec.embeddingModel === "string"
-            ? rec.embeddingModel
-            : undefined,
+      setSearchResults({
+        query: searchQuery.trim(),
+        mode: searchMode,
+        hits,
         fallbackReason:
-          typeof rec.fallbackReason === "string"
-            ? rec.fallbackReason
+          searchMode !== "bm25" &&
+          hits.length > 0 &&
+          hits[0].method === "bm25_keyword"
+            ? fallbackReason
             : undefined,
-        results: Array.isArray(rec.results)
-          ? (rec.results as MemorySearchHit[])
-          : [],
       });
       sound.playSuccess();
-    } catch {
-      setError("Could not reach the Nova server.");
-      setSearch(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Search failed.");
+      setSearchResults(null);
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleBatchProcessFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
+
+    setIsIndexing(true);
+    setIndexError(null);
+    setIndexSuccessMessage(null);
+    setBatchProgress(`Reading ${fileArray.length} file(s)...`);
+    sound.playStart();
+
+    const docsToBatch: Array<{ name: string; content: string }> = [];
+    const errorMessages: string[] = [];
+
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i];
+      setBatchProgress(
+        `Reading ${file.name} (${i + 1}/${fileArray.length})...`,
+      );
+      try {
+        const text = await file.text();
+        if (text && text.trim()) {
+          docsToBatch.push({ name: file.name, content: text });
+        } else {
+          errorMessages.push(`Skipped "${file.name}" because it is empty.`);
+        }
+      } catch (err: unknown) {
+        errorMessages.push(
+          `Failed to read "${file.name}": ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+
+    if (docsToBatch.length > 0) {
+      setBatchProgress(
+        `Chunking and indexing ${docsToBatch.length} document(s)...`,
+      );
+      const newChunks = batchIndexDocuments(docsToBatch);
+
+      if (newChunks.length > 0) {
+        // If an existing document with the same name was indexed, remove its old chunks
+        const newNames = new Set(docsToBatch.map((d) => d.name.toLowerCase()));
+        const oldMemoryIds = memoryItems
+          .filter((m) => {
+            const match = m.title.match(/^(.*?)(?:\s+\(Part\s+\d+\/\d+\))?$/);
+            const name =
+              match && match[1]
+                ? match[1].trim().toLowerCase()
+                : m.title.toLowerCase();
+            return newNames.has(name);
+          })
+          .map((m) => m.id);
+
+        if (oldMemoryIds.length > 0 && onDeleteMemoryItems) {
+          onDeleteMemoryItems(oldMemoryIds);
+        }
+
+        if (onSaveMemoryItems) {
+          onSaveMemoryItems(newChunks);
+        } else {
+          try {
+            const saved = localStorage.getItem("nova_memory");
+            const existing: KnowledgeMemoryItem[] = saved
+              ? JSON.parse(saved)
+              : [];
+            const oldIdSet = new Set(oldMemoryIds);
+            const filtered = existing.filter((m) => !oldIdSet.has(m.id));
+            const updated = [...newChunks, ...filtered];
+            localStorage.setItem("nova_memory", JSON.stringify(updated));
+          } catch {}
+        }
+
+        sound.playSuccess();
+        setIndexSuccessMessage(
+          `Batch Ingestion Complete: Successfully indexed ${docsToBatch.length} document${
+            docsToBatch.length > 1 ? "s" : ""
+          } (${newChunks.length} RAG chunk${newChunks.length > 1 ? "s" : ""}).`,
+        );
+      }
+    }
+
+    if (errorMessages.length > 0) {
+      setIndexError(errorMessages.join(" "));
+    }
+
+    setBatchProgress(null);
+    setIsIndexing(false);
+    if (batchFileInputRef.current) {
+      batchFileInputRef.current.value = "";
     }
   };
 
@@ -239,12 +366,12 @@ export function IntelligenceCanvas({
             <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
               Intelligence & Knowledge Base
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20">
-                Local RAG
+                Hybrid RAG
               </span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Semantic vector & BM25 keyword search across your personal
-              memories and local documents.
+              Reciprocal Rank Fusion (RRF), BM25 keyword scoring, and dense
+              vector similarity.
             </p>
           </div>
         </div>
@@ -318,10 +445,52 @@ export function IntelligenceCanvas({
               </p>
             )}
 
-            <form
-              onSubmit={handleSemanticSearch}
-              className="flex items-center gap-2"
-            >
+            {/* Search Mode selector pills */}
+            <div className="flex flex-wrap items-center gap-2 pb-1">
+              <span className="text-[11px] font-medium text-slate-400">
+                Search Mode:
+              </span>
+              <div className="inline-flex items-center p-1 bg-slate-950/90 border border-slate-800 rounded-xl gap-1">
+                <button
+                  type="button"
+                  onClick={() => setSearchMode("hybrid")}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                    searchMode === "hybrid"
+                      ? "bg-teal-500/20 text-teal-300 border border-teal-500/30 font-semibold shadow-sm"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Hybrid RRF{" "}
+                  <span className="text-[10px] text-teal-400/90 font-normal ml-0.5">
+                    (Recommended)
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchMode("bm25")}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                    searchMode === "bm25"
+                      ? "bg-teal-500/20 text-teal-300 border border-teal-500/30 font-semibold shadow-sm"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Keyword (BM25)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchMode("vector")}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                    searchMode === "vector"
+                      ? "bg-teal-500/20 text-teal-300 border border-teal-500/30 font-semibold shadow-sm"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Dense Vector
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSearch} className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
@@ -344,66 +513,84 @@ export function IntelligenceCanvas({
 
             {error && <p className="text-xs text-rose-300">{error}</p>}
 
-            {search !== null && !error && (
+            {searchResults !== null && !error && (
               <div className="space-y-3 pt-2">
                 <p className="text-[11px] text-slate-400">
-                  {search.method === "embeddings" ? (
+                  {searchResults.hits.length > 0 &&
+                  searchResults.hits[0].method === "hybrid_rrf" ? (
                     <>
-                      Ranked by embedding similarity using{" "}
-                      <span className="font-mono text-slate-300">
-                        {search.embeddingModel}
-                      </span>
+                      Ranked by{" "}
+                      <strong className="text-purple-300 font-semibold">
+                        Hybrid RRF
+                      </strong>{" "}
+                      (Reciprocal Rank Fusion k=60) combining BM25 keyword
+                      rankings with dense vector cosine similarity.
+                    </>
+                  ) : searchResults.hits.length > 0 &&
+                    searchResults.hits[0].method === "vector_dense" ? (
+                    <>
+                      Ranked by{" "}
+                      <strong className="text-cyan-300 font-semibold">
+                        Dense Vector Cosine Similarity
+                      </strong>
                       .
                     </>
                   ) : (
                     <>
-                      Ranked by keyword match (BM25). Configure an embeddings
-                      provider in Settings for vector similarity.
+                      Ranked by{" "}
+                      <strong className="text-amber-300 font-semibold">
+                        BM25 Keyword Scoring
+                      </strong>{" "}
+                      across title and content tokens.
                     </>
                   )}
                 </p>
-                {search.fallbackReason && (
+
+                {searchResults.fallbackReason && (
                   <p className="text-[11px] text-amber-300">
-                    Embeddings failed, so keyword search was used:{" "}
-                    {search.fallbackReason}
+                    {searchResults.fallbackReason}
                   </p>
                 )}
 
-                {search.results.length === 0 ? (
+                {searchResults.hits.length === 0 ? (
                   <p className="text-xs text-slate-400">
                     No matching memories or document passages found for &ldquo;
-                    {search.query}&rdquo;.
+                    {searchResults.query}&rdquo;.
                   </p>
                 ) : (
                   <>
                     <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-                      Results ({search.results.length})
+                      Results ({searchResults.hits.length})
                     </span>
 
                     <div className="space-y-2.5">
-                      {search.results.map((hit) => {
+                      {searchResults.hits.map((hit) => {
+                        const memory = hit.memory;
                         const isDocument =
-                          hit.category === "document" ||
-                          hit.memoryId.startsWith("doc-");
+                          memory.category === "document" ||
+                          memory.id.startsWith("doc-");
+
                         return (
                           <div
-                            key={hit.memoryId}
-                            className={`p-3.5 rounded-xl border bg-slate-950/70 space-y-2 transition ${
+                            key={memory.id}
+                            className={`p-3.5 rounded-xl border bg-slate-950/70 space-y-2.5 transition ${
                               isDocument
                                 ? "border-teal-900/60 hover:border-teal-700/60"
                                 : "border-slate-800 hover:border-slate-700"
                             }`}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 {isDocument ? (
-                                  <FileText className="w-3.5 h-3.5 text-teal-400" />
+                                  <FileText className="w-3.5 h-3.5 text-teal-400 shrink-0" />
                                 ) : (
-                                  <Tag className="w-3.5 h-3.5 text-indigo-400" />
+                                  <Tag className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                                 )}
                                 <span className="text-xs font-semibold text-slate-200">
-                                  {hit.title}
+                                  {memory.title}
                                 </span>
+
+                                {/* Document or Memory Category Badge */}
                                 <span
                                   className={`text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold ${
                                     isDocument
@@ -413,24 +600,47 @@ export function IntelligenceCanvas({
                                 >
                                   {isDocument
                                     ? "Document (RAG)"
-                                    : hit.category || "Memory"}
+                                    : memory.category || "Memory"}
                                 </span>
-                                {hit.totalChunks > 1 && (
-                                  <span className="text-[10px] text-slate-500 font-mono">
-                                    part {hit.chunkIndex} of {hit.totalChunks}
+
+                                {/* Matching Method Badge */}
+                                <span
+                                  className={`text-[9px] px-2 py-0.5 rounded uppercase tracking-wider font-bold border ${
+                                    hit.method === "hybrid_rrf"
+                                      ? "bg-purple-500/10 text-purple-300 border-purple-500/30"
+                                      : hit.method === "vector_dense"
+                                        ? "bg-cyan-500/10 text-cyan-300 border-cyan-500/30"
+                                        : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                                  }`}
+                                >
+                                  {hit.method === "hybrid_rrf"
+                                    ? "Hybrid RRF"
+                                    : hit.method === "vector_dense"
+                                      ? "Vector"
+                                      : "BM25"}
+                                </span>
+
+                                {/* Rank contributions */}
+                                {(hit.bm25Rank !== undefined ||
+                                  hit.vectorRank !== undefined) && (
+                                  <span className="text-[10px] font-mono text-slate-400 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-800">
+                                    {hit.bm25Rank !== undefined &&
+                                    hit.vectorRank !== undefined
+                                      ? `BM25: #${hit.bm25Rank} • Vector: #${hit.vectorRank}`
+                                      : hit.bm25Rank !== undefined
+                                        ? `BM25: #${hit.bm25Rank}`
+                                        : `Vector: #${hit.vectorRank}`}
                                   </span>
                                 )}
                               </div>
+
                               <span className="text-[11px] text-teal-300 font-mono">
-                                {search.method === "embeddings"
-                                  ? "similarity"
-                                  : "score"}{" "}
-                                {hit.score.toFixed(2)}
+                                score {hit.score.toFixed(4)}
                               </span>
                             </div>
 
                             <p className="text-xs text-slate-300 leading-relaxed font-sans whitespace-pre-wrap">
-                              {hit.text}
+                              {memory.content}
                             </p>
                           </div>
                         );
@@ -447,7 +657,56 @@ export function IntelligenceCanvas({
       {/* TAB 2: INDEXED LOCAL DOCUMENTS (RAG) */}
       {activeTab === "documents" && (
         <div className="space-y-6">
-          {/* Dropzone & File Picker Card */}
+          {/* Batch Ingest Card */}
+          <div className="p-4 rounded-2xl border border-teal-500/30 bg-teal-950/20 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20 shrink-0">
+                <FolderUp className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-slate-200">
+                  Batch Multi-Document Ingestion
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Select multiple files (.txt, .md, .json, .csv) to chunk and
+                  index simultaneously into RAG memory.
+                </p>
+              </div>
+            </div>
+
+            <input
+              type="file"
+              ref={batchFileInputRef}
+              multiple
+              accept=".txt,.md,.markdown,.json,.csv"
+              onChange={(e) => {
+                if (e.target.files) {
+                  void handleBatchProcessFiles(e.target.files);
+                }
+              }}
+              className="hidden"
+            />
+
+            <button
+              type="button"
+              disabled={isIndexing}
+              onClick={() => batchFileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-xs transition disabled:opacity-50 shrink-0 shadow-sm"
+            >
+              <FolderUp className="w-4 h-4" />
+              <span>Batch Ingest Multiple Documents</span>
+            </button>
+          </div>
+
+          {/* Batch Ingest Progress */}
+          {batchProgress && (
+            <div className="p-3.5 rounded-xl border border-teal-500/40 bg-teal-950/40 text-teal-300 text-xs flex items-center gap-2.5">
+              <div className="w-4 h-4 border-2 border-teal-400 border-t-transparent rounded-full animate-spin shrink-0" />
+              <span className="font-mono text-[11px]">{batchProgress}</span>
+            </div>
+          )}
+
+          {/* Dropzone & Single / Multi File Picker Card */}
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -504,11 +763,9 @@ export function IntelligenceCanvas({
               type="button"
               disabled={isIndexing}
               onClick={() => fileInputRef.current?.click()}
-              className="mt-1 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-xs transition disabled:opacity-50"
+              className="mt-1 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition disabled:opacity-50"
             >
-              {isIndexing
-                ? "Indexing Document..."
-                : "Select Files from Computer"}
+              {isIndexing ? "Indexing Document..." : "Select Individual Files"}
             </button>
           </div>
 

@@ -77,3 +77,54 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
 - [frontend/badges] [done] In `ResearchReportCard.tsx`, added the interactive `EvidenceAuditBadge` with popover breakdown of verified claims, source alignment %, and uncited assertions.
 - [tests] [done] Created `tests/evaluator-optimizer.test.ts` (20 tests), `tests/html-dossier.test.ts` (22 tests), and `tests/devhub-tunnel.test.ts` (21 tests). Total test suite: 340 tests passing across 20 test files.
 - [qa] [done] All 340 tests passing across 20 test files. 0 lint errors, clean Next.js 16 build. Zero fake data.
+
+## Sprint 8 — Custom Agent Persona Studio (Subagent 4)
+
+- [personas] [done] Created `src/lib/agent-personas.ts` defining `AgentPersona` specification and 4 high-rigor institutional specialist templates (`market-analyst`, `tech-architect`, `academic-critic`, `financial-analyst`).
+- [storage/security] [done] Implemented safe localStorage persistence (`loadPersonasFromStorage`, `savePersonaToStorage`, `deletePersonaFromStorage`) protecting built-ins from mutation, JSON bundle export/import (`exportPersonasBundle`, `importPersonasBundle`) with strict schema validation, and defenses against prototype pollution (`__proto__`, `constructor`, `prototype`) and XSS injection. Added prompt resolution (`resolvePersonaSystemPrompt`) and active persona tracking.
+- [frontend/modal] [done] Created `src/components/PersonaStudioModal.tsx` supporting specialist template activation, custom agent builder with live icon selection (Lucide + emojis), thinking budget selector, verification threshold slider (50%-100%), and 1-click JSON bundle export/import.
+- [sidebar] [done] Updated `src/components/Sidebar.tsx` adding the "Persona Studio" button with `<Bot className="w-4 h-4 text-teal-400" />` in the footer with `onOpenPersonaStudio` trigger and internal modal fallback.
+- [tests] [done] Created `tests/agent-personas.test.ts` (33 unit tests) covering built-ins validation, storage save/load/delete, bundle export/import, prototype pollution/XSS security hardening, and non-browser SSR resilience. All 33 tests pass cleanly. Zero fake data / Math.random.
+
+## Sprint 9 — Multi-Agent Swarm Orchestrator & Live Visual HUD (Subagent 1)
+
+- [types] [done] In `src/lib/types.ts`, added core swarm orchestration types: `SwarmAgentRole` (`scout` | `analyst` | `critic` | `synthesizer`), `SwarmStageStatus` (`pending` | `active` | `completed` | `failed`), `SwarmAgentState`, `AgentSwarmEvent`, `SwarmExecutionStage`, and `SwarmExecutionPlan`.
+- [orchestrator] [done] Created `src/lib/research/multi-agent-orchestrator.ts` with `planSwarmMission` and `createSwarmOrchestrator`:
+  - Builds DAG execution plans capturing both sequential (Scout -> Downstream -> Synthesizer) and parallel (Analyst & Critic concurrent execution after Scout) dependencies.
+  - Generates specialized goals adapted to all `StudioMode`s (`research`, `matrix`, `planner`, `debate`, `coder`, `canvas`, `mcp`, `intelligence`) and `ThinkingBudget`s (`quick`, `analytical`, `deep`).
+  - Implements honest deterministic controller tracking real wall-clock `latencyMs`, real `findingsCount`, typed events (`task_started`, `sources_gathered`, `analysis_computed`, `evidence_audited`, `synthesis_ready`, `error`), and `SwarmDependencyError` enforcement.
+  - Zero fake data / Math.random.
+- [frontend/hud] [done] Created `src/components/MultiAgentSwarmHUD.tsx` with:
+  - 4 agent role nodes (`Scout`, `Analyst`, `Critic`, `Synthesizer`) with active status indicators (pulsing teal indicator for active, green checkmark for completed, gray dot for pending, rose alert for failed).
+  - Live progress feed showing events emitted by each specialist agent with role filtering (`all`, `scout`, `analyst`, `critic`, `synthesizer`), timestamps, and metadata chips.
+  - Collapsible findings/metrics summary per agent with real numeric counts and formatted latency.
+  - Normalized state handling supporting either Record or Array inputs.
+- [tests] [done] Created `tests/multi-agent-swarm.test.ts` with 16 comprehensive unit tests covering mission plan generation, DAG dependency resolution, state transitions (`pending` -> `active` -> `completed` / `failed`), event emission ordering & metadata validation, async `executeStage` helper, and HUD component structure. All 16 tests pass with 154 expect assertions.
+
+## Sprint 10 — Hybrid RAG, Reciprocal Rank Fusion (RRF) & Multi-Document Batch Ingestion (Subagent 3)
+
+- [research/rrf] [done] Created `src/lib/research/hybrid-rrf.ts`:
+  - `reciprocalRankFusion(bm25Rankings, vectorRankings, options)`: Implemented standard RRF formula `RRF(d) = (w_bm25 / (k + rank_bm25(d))) + (w_vec / (k + rank_vec(d)))` with default `k = 60`, `w_bm25 = 1.0`, `w_vec = 1.0`. Handled documents appearing in only one ranking list gracefully, and sorts descending by `rrfScore` with deterministic tie-breaking.
+  - `hybridSearchMemories(query, memories, options)`: Executes Hybrid RRF combining BM25 keyword scoring and dense vector cosine similarity when embeddings are available, and transparently falls back to BM25 keyword matching when embeddings are unavailable, accurately reporting the real method used (`hybrid_rrf`, `bm25_keyword`, or `vector_dense`).
+  - `batchIndexDocuments(docs, options)`: Ingests multiple documents in batch, chunking them into `KnowledgeMemoryItem[]` with document tagging, part numbers, and timestamps.
+- [frontend/canvas] [done] In `src/components/IntelligenceCanvas.tsx`:
+  - Added Search Mode selector pills: `Hybrid RRF (Recommended)` | `Keyword (BM25)` | `Dense Vector`.
+  - On matched memory items, displays matching method badge (`Hybrid RRF`, `BM25`, or `Vector`) with rank contributions (`BM25: #1 • Vector: #3`), score, and content snippet.
+  - Added dedicated "Batch Ingest Multiple Documents" button allowing multi-file selection (.txt, .md, .json, .csv) with live progress summary.
+- [tests] [done] Created `tests/hybrid-rrf.test.ts` (14 unit tests) covering standard RRF score calculation (k=60 and custom weights), document union handling, deterministic tie-breaking, hybrid search execution with real vectors and keyword matches, error resilience/fallback, and multi-document batch ingestion. All 14 tests pass with 92 assertions. Zero fake data / Math.random.
+
+## Sprint 11 — Local Engine Hub, Live Model Benchmarking & Cost Savings (Subagent 2)
+
+- [local/probing] [done] Created `src/lib/providers/local-engine-probe.ts`:
+  - `probeLocalEngine(endpoint, options)`: Probes local inference runtimes (Ollama `/api/tags`, LM Studio `/v1/models`, vLLM `/v1/models`). Measures real reachability, runtime type (`'ollama' | 'lmstudio' | 'vllm' | 'unknown'`), model inventory, and real roundtrip latency in ms (`performance.now()`).
+  - `discoverLocalEngines()`: Parallel auto-discovery of default runtimes (Ollama: 11434, LM Studio: 1234, vLLM: 8000).
+  - `calculateLocalCostSavings(promptTokens, completionTokens, rates)`: Computes hosted baseline cost ($3/M input, $15/M output for Claude 3.5 Sonnet) vs local hardware ($0.00) and net savings.
+  - `countTokens`: Deterministic regex boundary token counter.
+  - `computeBenchmarkMetrics`: Measures real Time-To-First-Token (TTFT), total generation time, tokens per second (TPS), and cost savings.
+- [api/benchmark] [done] Created `src/app/api/v1/providers/benchmark/route.ts`:
+  - `GET /api/v1/providers/benchmark`: Discovers local engines or probes a specific endpoint query.
+  - `POST /api/v1/providers/benchmark`: Executes standardized benchmark using prompt: "Explain the core distinction between concurrency and parallelism in 40 words." Streams response chunks, measures real TTFT, total generation time, tokens generated, tokens per second, and local cost savings. ZERO fake data or Math.random: strictly measured via `performance.now()`.
+- [frontend/modal] [done] Created `src/components/LocalEngineBenchmarkModal.tsx`:
+  - Interactive live benchmark modal with auto-discovered local runtimes status cards (Ollama, LM Studio, vLLM), model selector, reactive "Run Benchmark" button, live Speedometer / TPS meter (`⚡ 48 tokens/sec`), TTFT latency badge (`⏱️ 180ms TTFT`), and Hardware Cost Savings counter.
+  - Integrated into `SettingsModal.tsx` with "Benchmark Engine" action button.
+- [tests] [done] Created `tests/local-engine-benchmark.test.ts` (20 unit tests) covering local runtime probing (Ollama, LM Studio with `owned_by`, vLLM, generic format, and unreachable fallback), engine discovery, cost savings calculation, benchmark metrics computation, and route request validation. All 20 tests pass. Zero fake data / Math.random.
