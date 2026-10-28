@@ -392,17 +392,34 @@ async function gatherSources(
   let chars = 0;
   settled.forEach((result, i) => {
     const source = candidates[i];
-    if (result.status === "fulfilled" && result.value.text.length > 0) {
-      source.pageText = result.value.text;
-      if (!source.citation.snippet)
-        source.citation.snippet = result.value.text.slice(0, 280);
-      fetched += 1;
-      chars += result.value.text.length;
+    if (result.status === "fulfilled") {
+      if (result.value.description && !source.citation.snippet) {
+        source.citation.snippet = result.value.description;
+      }
+      if (result.value.author) {
+        source.citation.author = result.value.author;
+      }
+      if (result.value.siteName) {
+        source.citation.siteName = result.value.siteName;
+      }
+      if (result.value.publishedDate && !source.citation.publishedDate) {
+        source.citation.publishedDate = result.value.publishedDate;
+      }
+      if (result.value.description) {
+        source.citation.description = result.value.description;
+      }
+
+      if (result.value.text.length > 0) {
+        source.pageText = result.value.text;
+        if (!source.citation.snippet)
+          source.citation.snippet = result.value.text.slice(0, 280);
+        fetched += 1;
+        chars += result.value.text.length;
+      } else {
+        failures.push(`${source.citation.domain}: no readable text`);
+      }
     } else {
-      const reason =
-        result.status === "rejected"
-          ? describeFailure(result.reason)
-          : "no readable text";
+      const reason = describeFailure(result.reason);
       failures.push(`${source.citation.domain}: ${reason}`);
     }
   });

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { GenerativeArtifact } from "@/lib/types";
+import { GenerativeArtifact, StudioMode } from "@/lib/types";
 import {
   X,
   Maximize2,
@@ -15,16 +15,31 @@ import {
   CheckCircle2,
   AlertTriangle,
   Globe,
+  Printer,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
+import {
+  getArtifactMetadata,
+  prepareBibliography,
+  resolveFindingCitations,
+  calculateMatrixOptionScores,
+} from "@/lib/print-dossier";
 
 interface Props {
   artifact: GenerativeArtifact;
   onClose: () => void;
   onRefinePrompt?: (prompt: string) => void;
+  mode?: StudioMode;
+  model?: string;
 }
 
-export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
+export function ArtifactStage({
+  artifact,
+  onClose,
+  onRefinePrompt,
+  mode,
+  model,
+}: Props) {
   const [activeTab, setActiveTab] = useState<"preview" | "raw" | "sources">(
     "preview",
   );
@@ -84,6 +99,13 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
     sound.playSuccess();
   };
 
+  const handlePrint = () => {
+    sound.playCheck();
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
   const getTitle = () => {
     switch (artifact.type) {
       case "code":
@@ -101,16 +123,59 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
     }
   };
 
+  // Prepare metadata, bibliography and resolved citations for print dossier
+  const dossierMetadata = getArtifactMetadata(artifact, mode, model);
+  const sourcesList =
+    artifact.type === "research" ? artifact.data.sources : undefined;
+  const bibliography = prepareBibliography(sourcesList);
+  const resolvedFindings =
+    artifact.type === "research"
+      ? resolveFindingCitations(artifact.data.keyFindings, sourcesList)
+      : [];
+  const matrixOptionScores =
+    artifact.type === "matrix"
+      ? calculateMatrixOptionScores(artifact.data, matrixWeights)
+      : [];
+
   return (
     <div
+      id="nova-artifact-stage"
       className={`h-full flex flex-col bg-slate-900 border-l border-slate-800 transition-all duration-300 z-20 ${
         isFullscreen
           ? "fixed inset-0 z-50 bg-slate-950"
           : "w-full md:w-[480px] lg:w-[560px] xl:w-[640px]"
-      }`}
+      } print:w-full print:max-w-none print:p-8 print:bg-white print:text-black print:overflow-visible print:border-none print:static print:h-auto print:block`}
     >
-      {/* Header Bar */}
-      <div className="h-14 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/70 backdrop-blur-md">
+      {/* Inline style for print rules to enforce document typography and page breaks */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @media print {
+              @page {
+                margin: 1.5cm;
+                size: auto;
+              }
+              html, body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                height: auto !important;
+                overflow: visible !important;
+              }
+              header, aside, nav, [role="navigation"], .print\\:hidden,
+              button, input, select, textarea {
+                display: none !important;
+              }
+              .print-avoid-break {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+              }
+            }
+          `,
+        }}
+      />
+
+      {/* Header Bar (Interactive Chrome - Hidden in Print) */}
+      <div className="h-14 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/70 backdrop-blur-md print:hidden">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-7 h-7 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-3.5 h-3.5" />
@@ -129,10 +194,23 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
 
         {/* Header Actions */}
         <div className="flex items-center gap-1">
+          {/* Print / PDF Dossier button */}
+          <button
+            type="button"
+            onClick={handlePrint}
+            title="Print / PDF Dossier"
+            aria-label="Print / PDF Dossier"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-teal-300 hover:bg-slate-800 transition cursor-pointer text-xs font-medium"
+          >
+            <Printer className="w-3.5 h-3.5 text-teal-400" />
+            <span className="hidden sm:inline">Print / PDF</span>
+          </button>
+
           <button
             type="button"
             onClick={handleDownload}
             title="Download artifact"
+            aria-label="Download artifact"
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
@@ -142,6 +220,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
             type="button"
             onClick={() => setIsFullscreen((prev) => !prev)}
             title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
           >
             {isFullscreen ? (
@@ -155,6 +234,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
             type="button"
             onClick={onClose}
             title="Close Stage"
+            aria-label="Close Stage"
             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -162,8 +242,8 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="px-4 py-2 bg-slate-950/40 border-b border-slate-800 flex items-center justify-between text-xs">
+      {/* Tabs Bar (Interactive Chrome - Hidden in Print) */}
+      <div className="px-4 py-2 bg-slate-950/40 border-b border-slate-800 flex items-center justify-between text-xs print:hidden">
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -220,8 +300,8 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Screen Interactive Content Area (Hidden in Print) */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 print:hidden">
         {activeTab === "raw" ? (
           <div className="relative">
             <button
@@ -233,6 +313,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                     : JSON.stringify(artifact.data, null, 2),
                 )
               }
+              aria-label="Copy Raw Content"
               className="absolute top-2.5 right-2.5 p-1.5 rounded-md bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer"
             >
               {copied ? (
@@ -564,6 +645,7 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
                               [crit.id]: val,
                             }));
                           }}
+                          aria-label={`Weight for ${crit.name}`}
                           className="w-full accent-teal-400 bg-slate-800 h-1 rounded cursor-pointer"
                         />
                       </div>
@@ -767,9 +849,9 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
         )}
       </div>
 
-      {/* Refine / Iteration Footer */}
+      {/* Refine / Iteration Footer (Interactive Chrome - Hidden in Print) */}
       {onRefinePrompt && (
-        <div className="p-3 bg-slate-950 border-t border-slate-800">
+        <div className="p-3 bg-slate-950 border-t border-slate-800 print:hidden">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
             <Sparkles className="w-3.5 h-3.5 text-teal-400" />
             <span className="font-semibold text-slate-300">Follow-ups:</span>
@@ -843,6 +925,533 @@ export function ArtifactStage({ artifact, onClose, onRefinePrompt }: Props) {
           </div>
         </div>
       )}
+
+      {/* Executive Print Dossier View - Rendered during window.print() */}
+      <div className="hidden print:block font-sans text-black bg-white space-y-6">
+        {/* Cover Header */}
+        <div className="pb-6 border-b-2 border-black space-y-3">
+          <div className="flex items-center justify-between pb-3 border-b border-gray-300 text-xs font-mono">
+            <div className="flex items-center gap-2">
+              <span className="font-bold tracking-widest uppercase text-black">
+                {dossierMetadata.banner}
+              </span>
+            </div>
+            <div className="text-[10px] uppercase text-gray-600 tracking-wider">
+              VERIFIED SYNTHESIS &bull; CONFIDENTIAL
+            </div>
+          </div>
+
+          <div className="pt-2 space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight text-black leading-tight">
+              {dossierMetadata.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs font-mono text-gray-800">
+              <div>
+                <span className="font-bold uppercase text-black">Mode: </span>
+                <span>{dossierMetadata.modeName}</span>
+              </div>
+              <div>
+                <span className="font-bold uppercase text-black">Model: </span>
+                <span>{dossierMetadata.model}</span>
+              </div>
+              <div>
+                <span className="font-bold uppercase text-black">Date: </span>
+                <span>{dossierMetadata.timestamp}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Section: Research */}
+        {artifact.type === "research" && (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Executive Summary
+              </h2>
+              <p className="text-sm text-gray-900 leading-relaxed font-serif">
+                {artifact.data.executiveSummary}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Key Findings & Synthesized Evidence
+              </h2>
+              <div className="space-y-3">
+                {resolvedFindings.map((finding, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 border border-gray-300 rounded bg-white print-avoid-break space-y-1.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-black font-sans">
+                          {finding.point}
+                        </span>
+                        {finding.citations.length > 0 && (
+                          <span className="inline-flex items-center gap-1">
+                            {finding.citations.map((c, cIdx) => (
+                              <span
+                                key={cIdx}
+                                className="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded border border-black bg-gray-100 text-black"
+                              >
+                                {c.marker}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border border-gray-400 font-bold text-gray-800">
+                        {finding.confidence} Confidence
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-800 leading-relaxed font-sans">
+                      {finding.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {artifact.data.contradictionsAndRisks &&
+              artifact.data.contradictionsAndRisks.length > 0 && (
+                <div className="p-3.5 border-l-4 border-amber-600 bg-amber-50/60 print-avoid-break space-y-1.5">
+                  <h3 className="text-xs font-mono font-bold uppercase text-amber-900 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Caveats, Risks & Counter-Arguments</span>
+                  </h3>
+                  <ul className="list-disc pl-5 space-y-1 text-xs text-gray-900">
+                    {artifact.data.contradictionsAndRisks.map((risk, i) => (
+                      <li key={i}>{risk}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+            {artifact.data.recommendation && (
+              <div className="p-3.5 border border-gray-300 rounded bg-gray-50 print-avoid-break space-y-1">
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-black">
+                  Strategic Recommendation
+                </h3>
+                <p className="text-xs text-gray-900 leading-relaxed">
+                  {artifact.data.recommendation}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Content Section: Decision Matrix */}
+        {artifact.type === "matrix" && (
+          <div className="space-y-6">
+            {artifact.data.verdict && (
+              <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-gray-700 block mb-1">
+                  Evaluation Verdict
+                </span>
+                <p className="text-sm font-semibold text-black">
+                  {artifact.data.verdict}
+                </p>
+              </div>
+            )}
+
+            {/* Criteria Weights Summary */}
+            <div className="space-y-1.5">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900">
+                Evaluation Criteria & Weights
+              </h3>
+              <div className="flex flex-wrap gap-2 text-xs font-mono">
+                {artifact.data.criteria.map((c) => (
+                  <span
+                    key={c.id}
+                    className="px-2.5 py-1 border border-gray-400 rounded bg-gray-100 text-gray-900"
+                  >
+                    <strong>{c.name}</strong>: {matrixWeights[c.id] ?? c.weight}
+                    x
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Comparison Table with clean borders & zebra striping */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900">
+                Decision Matrix Comparison
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse border border-gray-400">
+                  <thead>
+                    <tr className="bg-gray-100 border-b-2 border-gray-400 text-black font-mono">
+                      <th className="p-2 border border-gray-300 font-bold">
+                        Option
+                      </th>
+                      {artifact.data.criteria.map((c) => (
+                        <th
+                          key={c.id}
+                          className="p-2 border border-gray-300 font-semibold text-center"
+                        >
+                          {c.name}
+                          <span className="block text-[10px] text-gray-600">
+                            ({matrixWeights[c.id] ?? c.weight}x)
+                          </span>
+                        </th>
+                      ))}
+                      <th className="p-2 border border-gray-300 font-bold text-center bg-gray-200">
+                        Total Score
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {matrixOptionScores.map((opt, rIdx) => (
+                      <tr
+                        key={opt.id}
+                        className={rIdx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                      >
+                        <td className="p-2 border border-gray-300 font-semibold text-black">
+                          {opt.name}
+                        </td>
+                        {artifact.data.criteria.map((c) => {
+                          const origOpt = artifact.data.options.find(
+                            (o) => o.id === opt.id,
+                          );
+                          const score = origOpt?.scores[c.id] ?? "-";
+                          return (
+                            <td
+                              key={c.id}
+                              className="p-2 border border-gray-300 text-center font-mono"
+                            >
+                              {score} / 10
+                            </td>
+                          );
+                        })}
+                        <td className="p-2 border border-gray-300 text-center font-mono font-bold text-black bg-gray-100">
+                          {opt.score} / 10
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Pros & Cons Breakdowns */}
+            <div className="space-y-3 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900">
+                Qualitative Tradeoffs
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                {artifact.data.options.map((opt) => (
+                  <div
+                    key={opt.id}
+                    className="p-3 border border-gray-300 rounded space-y-1.5"
+                  >
+                    <h4 className="text-xs font-bold text-black uppercase font-mono">
+                      {opt.name}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-[11px] font-mono font-bold text-emerald-800 uppercase block mb-0.5">
+                          Pros:
+                        </span>
+                        <ul className="list-disc pl-4 space-y-0.5 text-gray-800">
+                          {opt.pros.map((p, i) => (
+                            <li key={i}>{p}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-mono font-bold text-rose-800 uppercase block mb-0.5">
+                          Cons:
+                        </span>
+                        <ul className="list-disc pl-4 space-y-0.5 text-gray-800">
+                          {opt.cons.map((c, i) => (
+                            <li key={i}>{c}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Goal Plan */}
+        {artifact.type === "plan" && (
+          <div className="space-y-6">
+            <div className="p-4 border border-gray-300 rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="text-xs font-mono font-bold uppercase text-gray-700">
+                Target Timeframe: {artifact.data.timeframe}
+              </div>
+              <h2 className="text-base font-bold text-black">
+                {artifact.data.goal}
+              </h2>
+              <p className="text-xs text-gray-800 leading-relaxed">
+                {artifact.data.overview}
+              </p>
+            </div>
+
+            {artifact.data.keySuccessMetrics &&
+              artifact.data.keySuccessMetrics.length > 0 && (
+                <div className="p-3.5 border border-gray-300 rounded print-avoid-break space-y-1.5">
+                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-black">
+                    Key Success Metrics
+                  </h3>
+                  <ul className="list-disc pl-5 space-y-1 text-xs text-gray-800 font-mono">
+                    {artifact.data.keySuccessMetrics.map((metric, i) => (
+                      <li key={i}>{metric}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+            <div className="space-y-4">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Execution Steps & Milestones
+              </h2>
+              <div className="space-y-4">
+                {artifact.data.phases.map((phase) => (
+                  <div
+                    key={phase.id}
+                    className="p-3.5 border border-gray-300 rounded print-avoid-break space-y-2"
+                  >
+                    <div className="flex items-center justify-between border-b border-gray-200 pb-1.5">
+                      <h3 className="text-xs font-bold text-black font-mono">
+                        Phase {phase.phaseNumber}: {phase.phaseName}
+                      </h3>
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border border-gray-400 text-gray-700">
+                        {phase.status || "active"} &bull; {phase.tasks.length}{" "}
+                        tasks
+                      </span>
+                    </div>
+                    {phase.summary && (
+                      <p className="text-xs text-gray-700 italic">
+                        {phase.summary}
+                      </p>
+                    )}
+                    <div className="space-y-2 pt-1">
+                      {phase.tasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-start gap-2 text-xs text-gray-900 pl-1"
+                        >
+                          <span className="font-bold text-emerald-700 mt-0.5 select-none font-mono">
+                            ✓
+                          </span>
+                          <div className="space-y-0.5">
+                            <span className="font-semibold text-black">
+                              {task.title}
+                            </span>
+                            <p className="text-[11px] text-gray-700">
+                              {task.description}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Chart Data Matrix */}
+        {artifact.type === "chart" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border border-gray-300 rounded bg-gray-50 print-avoid-break space-y-1">
+              <span className="text-[10px] font-mono font-bold uppercase text-gray-700 block">
+                Primary Insight & Key Takeaway
+              </span>
+              <p className="text-xs text-black font-medium leading-relaxed">
+                {artifact.data.insight}
+              </p>
+            </div>
+
+            <div className="space-y-2 print-avoid-break">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900">
+                Quantitative Data Matrix
+              </h2>
+              <table className="w-full text-left text-xs border-collapse border border-gray-400">
+                <thead>
+                  <tr className="bg-gray-100 border-b-2 border-gray-400 text-black font-mono">
+                    <th className="p-2 border border-gray-300 font-bold">
+                      Label
+                    </th>
+                    <th className="p-2 border border-gray-300 font-bold text-right">
+                      Value
+                    </th>
+                    {artifact.data.data[0]?.secondaryValue !== undefined && (
+                      <th className="p-2 border border-gray-300 font-bold text-right">
+                        Secondary
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="font-mono">
+                  {artifact.data.data.map((d, i) => (
+                    <tr
+                      key={i}
+                      className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                    >
+                      <td className="p-2 border border-gray-300 text-black font-sans font-medium">
+                        {d.label}
+                      </td>
+                      <td className="p-2 border border-gray-300 text-right font-bold text-black">
+                        {d.value}
+                      </td>
+                      {d.secondaryValue !== undefined && (
+                        <td className="p-2 border border-gray-300 text-right text-gray-700">
+                          {d.secondaryValue}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {artifact.data.takeaways && artifact.data.takeaways.length > 0 && (
+              <div className="p-3.5 border border-gray-300 rounded space-y-1.5 print-avoid-break">
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-black">
+                  Key Observations
+                </h3>
+                <ul className="list-disc pl-5 space-y-1 text-xs text-gray-800">
+                  {artifact.data.takeaways.map((t, idx) => (
+                    <li key={idx}>{t}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Content Section: Debate */}
+        {artifact.type === "debate" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-1">
+              <span className="text-[10px] font-mono font-bold uppercase text-gray-700 block">
+                Synthesis Verdict & Consensus
+              </span>
+              <p className="text-xs font-semibold text-black leading-relaxed">
+                {artifact.data.synthesisVerdict}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Dialectical Perspectives
+              </h2>
+              <div className="space-y-3">
+                {artifact.data.perspectives.map((persp, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 border border-gray-300 rounded print-avoid-break space-y-2"
+                  >
+                    <div className="flex items-center justify-between border-b border-gray-200 pb-1">
+                      <span className="text-xs font-bold text-black font-mono">
+                        {persp.agentName}
+                      </span>
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border border-gray-400 font-bold text-black">
+                        {persp.stance}
+                      </span>
+                    </div>
+                    <ul className="list-disc pl-5 space-y-1 text-xs text-gray-800">
+                      {persp.arguments.map((arg, i) => (
+                        <li key={i}>{arg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Code */}
+        {artifact.type === "code" && (
+          <div className="space-y-4">
+            <div className="p-3 border border-gray-300 rounded bg-gray-50 text-xs text-gray-900 font-sans print-avoid-break">
+              <strong>Notes:</strong> {artifact.data.explanation}
+            </div>
+            <div className="border border-gray-400 rounded overflow-hidden">
+              <div className="p-2 bg-gray-100 border-b border-gray-300 font-mono text-xs text-black font-semibold">
+                {artifact.data.filename} ({artifact.data.language})
+              </div>
+              <pre className="p-3 text-[11px] font-mono text-black bg-white overflow-x-auto leading-relaxed whitespace-pre-wrap">
+                {artifact.data.code}
+              </pre>
+            </div>
+          </div>
+        )}
+
+        {/* Formatted Bibliography / Cited References section at the end */}
+        {bibliography.length > 0 && (
+          <div className="mt-8 pt-6 border-t-2 border-black space-y-4 print-avoid-break">
+            <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-black">
+                Bibliography & Cited References ({bibliography.length})
+              </h2>
+              <span className="text-[10px] font-mono uppercase text-gray-600">
+                Grounded Knowledge Base
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {bibliography.map((bib) => (
+                <div
+                  key={bib.index}
+                  className="p-3 border border-gray-300 rounded bg-white text-xs space-y-1 print-avoid-break"
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="font-mono font-bold text-black flex-shrink-0">
+                      {bib.citationMarker}
+                    </span>
+                    <div className="space-y-1 min-w-0">
+                      <div className="font-semibold text-black">
+                        {bib.title}
+                        <span className="font-mono text-gray-700 font-normal ml-1">
+                          - {bib.domain}
+                        </span>
+                      </div>
+
+                      {bib.url && (
+                        <div className="font-mono text-[10.5px] text-gray-700 break-all">
+                          {bib.url}
+                        </div>
+                      )}
+
+                      {(bib.author ||
+                        bib.publishedDate ||
+                        bib.relevanceLabel) && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px] font-mono text-gray-700">
+                          {bib.author && <span>Author: {bib.author}</span>}
+                          {bib.publishedDate && (
+                            <span>Date: {bib.publishedDate}</span>
+                          )}
+                          {bib.relevanceLabel && (
+                            <span className="font-bold text-black">
+                              {bib.relevanceLabel}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {bib.snippet && (
+                        <blockquote className="italic text-[11px] text-gray-700 border-l-2 border-gray-300 pl-2 mt-1">
+                          &ldquo;{bib.snippet}&rdquo;
+                        </blockquote>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

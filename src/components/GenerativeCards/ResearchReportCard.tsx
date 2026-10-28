@@ -53,6 +53,46 @@ function resolveSource(
   return null;
 }
 
+function formatPublishedDate(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const monthIndex = parseInt(match[2], 10) - 1;
+    if (monthIndex >= 0 && monthIndex < 12) {
+      return `${months[monthIndex]} ${parseInt(match[3], 10)}, ${match[1]}`;
+    }
+  }
+  const parsed = Date.parse(trimmed);
+  if (!Number.isNaN(parsed) && /^\d{4}/.test(trimmed)) {
+    try {
+      return new Date(parsed).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      });
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
+}
+
 interface CitationBadgeProps {
   source: SourceCitation;
   displayIndex: number;
@@ -182,10 +222,14 @@ function CitationBadge({
             </a>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-2">
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1.5 gap-2">
             <span className="flex items-center gap-1 text-teal-400 font-medium truncate">
               <Globe className="w-3 h-3 text-teal-400 flex-shrink-0" />
-              <span className="truncate">{source.domain}</span>
+              <span className="truncate">
+                {source.siteName
+                  ? `${source.siteName} (${source.domain})`
+                  : source.domain}
+              </span>
             </span>
             {source.relevanceScore !== undefined && (
               <span className="px-1.5 py-0.5 rounded bg-slate-800 text-teal-300 border border-slate-700 flex-shrink-0 ml-1">
@@ -193,6 +237,24 @@ function CitationBadge({
               </span>
             )}
           </div>
+
+          {(source.author || source.publishedDate) && (
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mb-2 flex-wrap">
+              {source.author && (
+                <span className="text-slate-300 font-medium truncate max-w-[190px]">
+                  By {source.author}
+                </span>
+              )}
+              {source.author && source.publishedDate && (
+                <span className="text-slate-600">•</span>
+              )}
+              {source.publishedDate && (
+                <span className="text-slate-400 font-mono">
+                  {formatPublishedDate(source.publishedDate)}
+                </span>
+              )}
+            </div>
+          )}
 
           <p className="text-[11px] text-slate-300 leading-relaxed bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 mb-2.5 line-clamp-4">
             &ldquo;{source.snippet}&rdquo;
@@ -571,11 +633,29 @@ export function ResearchReportCard({ report }: Props) {
                     )}
                   </div>
                   <p className="text-[11px] text-slate-400 line-clamp-2 mb-2 leading-relaxed">
-                    {src.snippet}
+                    {src.snippet || src.description}
                   </p>
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
-                    <span>{src.domain}</span>
-                    {src.publishedDate && <span>{src.publishedDate}</span>}
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono gap-2 pt-1 border-t border-slate-900/60">
+                    <div className="flex items-center gap-1.5 truncate min-w-0">
+                      <span className="truncate">
+                        {src.siteName
+                          ? `${src.siteName} (${src.domain})`
+                          : src.domain}
+                      </span>
+                      {src.author && (
+                        <>
+                          <span className="text-slate-600">•</span>
+                          <span className="truncate text-slate-400">
+                            By {src.author}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {src.publishedDate && (
+                      <span className="flex-shrink-0">
+                        {formatPublishedDate(src.publishedDate)}
+                      </span>
+                    )}
                   </div>
                 </a>
               );

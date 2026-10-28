@@ -109,7 +109,7 @@ export function Navbar({
   const modeInfo = getModeLabel(currentMode);
 
   return (
-    <header className="h-14 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40 px-4 md:px-6 flex items-center justify-between">
+    <header className="h-14 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40 px-4 md:px-6 flex items-center justify-between print:hidden">
       {/* Left: Brand & Clean Breadcrumb */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
