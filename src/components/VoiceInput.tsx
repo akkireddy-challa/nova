@@ -1,90 +1,63 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { Mic, MicOff } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Mic } from "lucide-react";
+import {
+  isSpeechRecognitionSupported,
+  createSpeechRecognizer,
+  SpeechRecognizer,
+} from "@/lib/client/voice";
 
 interface Props {
   onTranscription: (text: string) => void;
 }
 
-// Web Speech API is not in TypeScript's DOM lib yet; declare the subset we use.
-interface SpeechRecognitionLike {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onresult: ((event: { results: SpeechRecognitionResultList }) => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
-  onend: (() => void) | null;
-  start(): void;
-  stop(): void;
-}
-
-type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
-
-interface SpeechWindow {
-  SpeechRecognition?: SpeechRecognitionCtor;
-  webkitSpeechRecognition?: SpeechRecognitionCtor;
-}
-
 export function VoiceInput({ onTranscription }: Props) {
   const [isListening, setIsListening] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const recognizerRef = useRef<SpeechRecognizer | null>(null);
 
   useEffect(() => {
-    const speechWindow = window as unknown as SpeechWindow;
-    const SpeechRecognition =
-      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
-
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = "en-US";
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          onTranscription(transcript);
-        }
-        setIsListening(false);
-      };
-
-      recognition.onerror = (event) => {
-        console.warn("Speech recognition error:", event.error);
-        setIsListening(false);
-        setErrorMsg("Voice input paused");
-        setTimeout(() => setErrorMsg(null), 3000);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
-    }
-  }, [onTranscription]);
+    return () => {
+      recognizerRef.current?.stop();
+    };
+  }, []);
 
   const toggleListening = () => {
-    if (!recognitionRef.current) {
+    if (isListening) {
+      recognizerRef.current?.stop();
+      recognizerRef.current = null;
+      setIsListening(false);
+      return;
+    }
+
+    if (!isSpeechRecognitionSupported()) {
       setErrorMsg("Speech recognition unavailable in this browser");
       setTimeout(() => setErrorMsg(null), 3000);
       return;
     }
 
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      try {
-        setErrorMsg(null);
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (err) {
-        console.warn("Speech recognition start failed:", err);
+    setErrorMsg(null);
+    const recognizer = createSpeechRecognizer({
+      onResult: (text, isFinal) => {
+        if (isFinal && text) {
+          onTranscription(text.trim());
+        }
+      },
+      onError: (err) => {
+        setErrorMsg(err);
         setIsListening(false);
-      }
-    }
+        recognizerRef.current = null;
+        setTimeout(() => setErrorMsg(null), 3000);
+      },
+      onEnd: () => {
+        setIsListening(false);
+        recognizerRef.current = null;
+      },
+    });
+
+    recognizerRef.current = recognizer;
+    setIsListening(true);
   };
 
   return (
@@ -93,17 +66,13 @@ export function VoiceInput({ onTranscription }: Props) {
         type="button"
         onClick={toggleListening}
         title={isListening ? "Listening... click to stop" : "Voice input"}
-        className={`p-2 rounded-xl transition flex items-center justify-center ${
+        className={`p-1.5 rounded-lg transition cursor-pointer flex items-center justify-center ${
           isListening
-            ? "bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/30"
-            : "bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700"
+            ? "bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse"
+            : "text-slate-400 hover:text-teal-300 hover:bg-slate-800"
         }`}
       >
-        {isListening ? (
-          <MicOff className="w-4 h-4 text-white" />
-        ) : (
-          <Mic className="w-4 h-4" />
-        )}
+        <Mic className="w-3.5 h-3.5" />
       </button>
 
       {errorMsg && (
