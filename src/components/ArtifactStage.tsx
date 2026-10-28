@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { GenerativeArtifact, StudioMode } from "@/lib/types";
 import {
   X,
@@ -16,6 +16,9 @@ import {
   AlertTriangle,
   Globe,
   Printer,
+  RotateCcw,
+  ListOrdered,
+  Trophy,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import {
@@ -24,6 +27,15 @@ import {
   resolveFindingCitations,
   calculateMatrixOptionScores,
 } from "@/lib/print-dossier";
+import {
+  calculateNormalizedWeights,
+  recalculateOptionScores,
+  chartDataToCsv,
+  matrixToCsv,
+  downloadArtifactCode,
+  downloadCsvData,
+  resolveCodeFilename,
+} from "@/lib/matrix-calculator";
 
 interface Props {
   artifact: GenerativeArtifact;
@@ -45,19 +57,28 @@ export function ArtifactStage({
   );
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showLineNumbers, setShowLineNumbers] = useState(true);
 
-  const [matrixWeights, setMatrixWeights] = useState<Record<string, number>>(
-    () => {
-      if (artifact.type === "matrix") {
-        const initial: Record<string, number> = {};
-        artifact.data.criteria.forEach((c) => {
-          initial[c.id] = c.weight;
-        });
-        return initial;
-      }
-      return {};
-    },
-  );
+  const initialMatrixWeights = useMemo(() => {
+    if (artifact.type === "matrix") {
+      const initial: Record<string, number> = {};
+      artifact.data.criteria.forEach((c) => {
+        initial[c.id] = c.weight;
+      });
+      return initial;
+    }
+    return {};
+  }, [artifact]);
+
+  const [matrixWeights, setMatrixWeights] =
+    useState<Record<string, number>>(initialMatrixWeights);
+
+  const isMatrixModified = useMemo(() => {
+    if (artifact.type !== "matrix") return false;
+    return artifact.data.criteria.some(
+      (c) => (matrixWeights[c.id] ?? c.weight) !== c.weight,
+    );
+  }, [artifact, matrixWeights]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -67,14 +88,37 @@ export function ArtifactStage({
   };
 
   const handleDownload = () => {
+    if (artifact.type === "code") {
+      const filename = resolveCodeFilename(
+        artifact.data.filename || getTitle(),
+        artifact.data.language,
+      );
+      downloadArtifactCode(filename, artifact.data.code);
+      sound.playSuccess();
+      return;
+    }
+
+    if (artifact.type === "chart") {
+      const csvContent = chartDataToCsv(artifact.data.data);
+      const filename = `${(artifact.data.title || "chart-data").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
+    if (artifact.type === "matrix") {
+      const csvContent = matrixToCsv(artifact.data, matrixWeights);
+      const filename = `${(artifact.data.topic || "decision-matrix").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
 
-    if (artifact.type === "code") {
-      filename = artifact.data.filename || "code.ts";
-      content = artifact.data.code;
-    } else if (artifact.type === "research") {
+    if (artifact.type === "research") {
       filename = `${artifact.data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md`;
       content =
         `# ${artifact.data.title}\n\n## Executive Summary\n${artifact.data.executiveSummary}\n\n## Key Findings\n` +
@@ -451,26 +495,96 @@ export function ArtifactStage({
                 </div>
 
                 <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950">
-                  <div className="h-8 px-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-400">
-                    <span>
+                  <div className="h-9 px-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-400 gap-2 flex-wrap">
+                    <span className="truncate font-medium text-slate-300">
                       {artifact.data.filename} ({artifact.data.language})
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(artifact.data.code)}
-                      className="flex items-center gap-1 hover:text-slate-200 transition cursor-pointer"
-                    >
-                      {copied ? (
-                        <Check className="w-3 h-3 text-teal-400" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                      <span>{copied ? "Copied" : "Copy"}</span>
-                    </button>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Line Numbers Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowLineNumbers((prev) => !prev)}
+                        className={`flex items-center gap-1 px-2 py-1 rounded text-[10.5px] transition cursor-pointer border ${
+                          showLineNumbers
+                            ? "bg-teal-500/15 text-teal-300 border-teal-500/30 font-medium"
+                            : "bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200"
+                        }`}
+                        title={
+                          showLineNumbers
+                            ? "Hide Line Numbers"
+                            : "Show Line Numbers"
+                        }
+                        aria-label="Toggle Line Numbers"
+                      >
+                        <ListOrdered className="w-3 h-3" />
+                        <span>
+                          {showLineNumbers ? "Lines On" : "Lines Off"}
+                        </span>
+                      </button>
+
+                      {/* Copy Snippet Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(artifact.data.code)}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-[10.5px] text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition cursor-pointer"
+                        title="Copy Snippet"
+                        aria-label="Copy Snippet"
+                      >
+                        {copied ? (
+                          <Check className="w-3 h-3 text-teal-400" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                        <span>{copied ? "Copied" : "Copy Snippet"}</span>
+                      </button>
+
+                      {/* Download Code File Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const resolvedFilename = resolveCodeFilename(
+                            artifact.data.filename || getTitle(),
+                            artifact.data.language,
+                          );
+                          downloadArtifactCode(
+                            resolvedFilename,
+                            artifact.data.code,
+                          );
+                          sound.playSuccess();
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-[10.5px] font-medium bg-teal-500/10 text-teal-300 hover:bg-teal-500/20 border border-teal-500/30 transition cursor-pointer"
+                        title="Download Code File"
+                        aria-label="Download Code File"
+                      >
+                        <Download className="w-3 h-3 text-teal-400" />
+                        <span>Download Code File</span>
+                      </button>
+                    </div>
                   </div>
-                  <pre className="p-4 text-xs font-mono text-slate-200 overflow-x-auto max-h-[420px] leading-relaxed">
-                    {artifact.data.code}
-                  </pre>
+
+                  {showLineNumbers ? (
+                    <div className="p-3 text-xs font-mono text-slate-200 overflow-x-auto max-h-[440px] leading-relaxed">
+                      <table className="w-full border-collapse">
+                        <tbody>
+                          {artifact.data.code.split("\n").map((line, idx) => (
+                            <tr key={idx} className="hover:bg-slate-900/60">
+                              <td className="select-none text-right pr-4 text-slate-600 font-mono text-[11px] w-8 align-top">
+                                {idx + 1}
+                              </td>
+                              <td className="text-slate-200 whitespace-pre align-top font-mono">
+                                {line || " "}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <pre className="p-4 text-xs font-mono text-slate-200 overflow-x-auto max-h-[440px] leading-relaxed">
+                      {artifact.data.code}
+                    </pre>
+                  )}
                 </div>
               </div>
             )}
@@ -613,101 +727,183 @@ export function ArtifactStage({
             )}
 
             {/* MATRIX ARTIFACT WITH INTERACTIVE SLIDERS */}
-            {artifact.type === "matrix" && (
-              <div className="space-y-4">
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-                      <Sliders className="w-3.5 h-3.5 text-teal-400" />
-                      <span>Criteria weights</span>
-                    </span>
-                  </div>
+            {artifact.type === "matrix" &&
+              (() => {
+                const normalized = calculateNormalizedWeights(
+                  artifact.data.criteria.map((c) => ({
+                    ...c,
+                    weight: matrixWeights[c.id] ?? c.weight,
+                  })),
+                );
+                const pMap = new Map(
+                  normalized.map((n) => [n.id, n.percentage]),
+                );
+                const rankedOptions = recalculateOptionScores(
+                  artifact.data.options,
+                  matrixWeights,
+                );
 
-                  <div className="space-y-2.5">
-                    {artifact.data.criteria.map((crit) => (
-                      <div key={crit.id} className="space-y-1">
-                        <div className="flex justify-between text-[11px]">
-                          <span className="text-slate-300">{crit.name}</span>
-                          <span className="font-mono text-teal-400 font-semibold">
-                            {matrixWeights[crit.id] ?? crit.weight}x
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min="1"
-                          max="5"
-                          step="1"
-                          value={matrixWeights[crit.id] ?? crit.weight}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value, 10);
-                            setMatrixWeights((prev) => ({
-                              ...prev,
-                              [crit.id]: val,
-                            }));
-                          }}
-                          aria-label={`Weight for ${crit.name}`}
-                          className="w-full accent-teal-400 bg-slate-800 h-1 rounded cursor-pointer"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                return (
+                  <div className="space-y-4">
+                    <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                          <Sliders className="w-3.5 h-3.5 text-teal-400" />
+                          <span>Criteria weights</span>
+                        </span>
 
-                <div className="space-y-2.5">
-                  <h4 className="text-xs font-semibold text-slate-300 uppercase font-mono">
-                    Options
-                  </h4>
-                  {artifact.data.options.map((opt) => {
-                    let dynamicScore = 0;
-                    let totalWeight = 0;
-                    artifact.data.criteria.forEach((c) => {
-                      const w = matrixWeights[c.id] ?? c.weight;
-                      totalWeight += w;
-                      dynamicScore += (opt.scores[c.id] || 0) * w;
-                    });
-                    const finalAvg =
-                      totalWeight > 0
-                        ? (dynamicScore / totalWeight).toFixed(1)
-                        : "0.0";
+                        <div className="flex items-center gap-2">
+                          {isMatrixModified && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMatrixWeights(initialMatrixWeights);
+                                sound.playCheck();
+                              }}
+                              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-medium text-teal-300 hover:text-white bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 transition cursor-pointer"
+                              title="Reset to original AI weights"
+                              aria-label="Reset to original AI weights"
+                            >
+                              <RotateCcw className="w-3 h-3 text-teal-400" />
+                              <span>Reset Weights</span>
+                            </button>
+                          )}
 
-                    return (
-                      <div
-                        key={opt.id}
-                        className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-100">
-                            {opt.name}
-                          </span>
-                          <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-teal-500/15 text-teal-300 border border-teal-500/30">
-                            Score: {finalAvg} / 10
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 text-[11px]">
-                          <div className="text-emerald-400/90 space-y-0.5">
-                            <span className="font-semibold block text-[10px] uppercase font-mono">
-                              Pros:
-                            </span>
-                            {opt.pros.map((p, i) => (
-                              <div key={i}>+ {p}</div>
-                            ))}
-                          </div>
-                          <div className="text-rose-400/90 space-y-0.5">
-                            <span className="font-semibold block text-[10px] uppercase font-mono">
-                              Cons:
-                            </span>
-                            {opt.cons.map((c, i) => (
-                              <div key={i}>- {c}</div>
-                            ))}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const csv = matrixToCsv(
+                                artifact.data,
+                                matrixWeights,
+                              );
+                              const filename = `${(artifact.data.topic || "decision-matrix").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+                              downloadCsvData(filename, csv);
+                              sound.playSuccess();
+                            }}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-medium text-teal-300 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 transition cursor-pointer"
+                            title="Download Decision Matrix as CSV"
+                            aria-label="Download CSV Data"
+                          >
+                            <Download className="w-3 h-3 text-teal-400" />
+                            <span>Download CSV Data</span>
+                          </button>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+
+                      <div className="space-y-2.5">
+                        {artifact.data.criteria.map((crit) => {
+                          const currentW =
+                            matrixWeights[crit.id] ?? crit.weight;
+                          const pct = pMap.get(crit.id) ?? 0;
+                          return (
+                            <div key={crit.id} className="space-y-1">
+                              <div className="flex justify-between text-[11px]">
+                                <span className="text-slate-300 font-medium">
+                                  {crit.name}
+                                </span>
+                                <div className="flex items-center gap-1.5 font-mono">
+                                  <span className="text-slate-500 text-[10px]">
+                                    ({pct}%)
+                                  </span>
+                                  <span className="text-teal-400 font-semibold">
+                                    {currentW}x
+                                  </span>
+                                </div>
+                              </div>
+                              <input
+                                type="range"
+                                min="1"
+                                max="10"
+                                step="1"
+                                value={currentW}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value, 10);
+                                  setMatrixWeights((prev) => ({
+                                    ...prev,
+                                    [crit.id]: val,
+                                  }));
+                                }}
+                                aria-label={`Weight for ${crit.name}`}
+                                className="w-full accent-teal-400 bg-slate-800 h-1.5 rounded cursor-pointer"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <h4 className="text-xs font-semibold text-slate-300 uppercase font-mono">
+                        Options Ranking
+                      </h4>
+                      {rankedOptions.map((opt) => {
+                        const isTop = opt.rank === 1;
+                        return (
+                          <div
+                            key={opt.id || opt.name}
+                            className={`p-3.5 rounded-xl border space-y-2 transition ${
+                              isTop
+                                ? "bg-teal-950/20 border-teal-500/40 shadow-sm"
+                                : "bg-slate-950 border-slate-800"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                                    isTop
+                                      ? "bg-teal-500 text-slate-950"
+                                      : "bg-slate-800 text-slate-400"
+                                  }`}
+                                >
+                                  #{opt.rank}
+                                </span>
+                                <span className="text-xs font-semibold text-slate-100 flex items-center gap-1.5">
+                                  <span>{opt.name}</span>
+                                  {isTop && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9.5px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                      <Trophy className="w-2.5 h-2.5 text-amber-400" />
+                                      <span>Top Choice</span>
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                              <span
+                                className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
+                                  isTop
+                                    ? "bg-teal-500/20 text-teal-300 border border-teal-500/40"
+                                    : "bg-slate-900 text-slate-300 border border-slate-800"
+                                }`}
+                              >
+                                Score: {opt.totalScore} / 10
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-800/60">
+                              <div className="text-emerald-400/90 space-y-0.5">
+                                <span className="font-semibold block text-[10px] uppercase font-mono">
+                                  Pros:
+                                </span>
+                                {(opt.pros || []).map((p, i) => (
+                                  <div key={i}>+ {p}</div>
+                                ))}
+                              </div>
+                              <div className="text-rose-400/90 space-y-0.5">
+                                <span className="font-semibold block text-[10px] uppercase font-mono">
+                                  Cons:
+                                </span>
+                                {(opt.cons || []).map((c, i) => (
+                                  <div key={i}>- {c}</div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
             {/* PLAN ARTIFACT */}
             {artifact.type === "plan" && (
@@ -771,9 +967,26 @@ export function ArtifactStage({
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                  <span className="text-xs font-semibold text-slate-200 block mb-2 font-mono uppercase">
-                    Data
-                  </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-slate-200 font-mono uppercase">
+                      Data
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const csv = chartDataToCsv(artifact.data.data);
+                        const filename = `${(artifact.data.title || "chart-data").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+                        downloadCsvData(filename, csv);
+                        sound.playSuccess();
+                      }}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-teal-300 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 transition cursor-pointer"
+                      title="Download Chart Data as CSV"
+                      aria-label="Download CSV Data"
+                    >
+                      <Download className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Download CSV Data</span>
+                    </button>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs text-slate-300">
                       <thead className="text-[10.5px] uppercase font-mono text-slate-500 border-b border-slate-800">

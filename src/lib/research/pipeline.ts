@@ -34,15 +34,20 @@ import {
 } from "../schemas/artifacts";
 import { fetchPageText, HostLookup, isSafePublicUrl } from "./fetch-page";
 import {
+  buildQueryDecompositionPrompt,
   buildQueryRewritePrompt,
   buildRetryPrompt,
   buildSystemPrompt,
   buildUserPrompt,
+  decomposeResearchQuery,
+  isMultiFacetedQuery,
   PromptSource,
+  QUERY_DECOMPOSITION_SYSTEM_PROMPT,
   QUERY_REWRITE_SYSTEM_PROMPT,
   TextAttachment,
 } from "./prompts";
-import { SEARCH_PROVIDER_LABELS, searchWeb } from "./search";
+import { SEARCH_PROVIDER_LABELS, SearchProviderId, searchWeb } from "./search";
+import type { WebSearchResult } from "../web-grounding";
 
 export type PipelineErrorCode = "INVALID_OUTPUT" | "BAD_REQUEST";
 
@@ -72,6 +77,7 @@ export interface PipelineInput {
   model?: string;
   attachments?: Attachment[];
   thinkingBudget?: ThinkingBudget;
+  budget?: ThinkingBudget;
   /** Earlier turns of the conversation, oldest first. Capped to MAX_HISTORY_TURNS x MAX_HISTORY_CHARS. */
   history?: ConversationTurn[];
 }
@@ -315,69 +321,52 @@ function splitAttachments(
   return { images, texts };
 }
 
-async function gatherSources(
-  query: string,
-  budget: ThinkingBudget,
+export function normalizeUrlForDeduplication(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl.trim());
+    const protocol = parsed.protocol.toLowerCase();
+    const hostname = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    const port = parsed.port ? `:${parsed.port}` : "";
+    let pathname = parsed.pathname || "/";
+    if (pathname.length > 1 && pathname.endsWith("/")) {
+      pathname = pathname.slice(0, -1);
+    }
+    parsed.searchParams.sort();
+    const search = parsed.searchParams.toString()
+      ? `?${parsed.searchParams.toString()}`
+      : "";
+    return `${protocol}//${hostname}${port}${pathname}${search}`;
+  } catch {
+    return rawUrl.trim().toLowerCase().replace(/\/+$/, "");
+  }
+}
+
+export function deduplicateSearchResults(
+  results: WebSearchResult[],
+): WebSearchResult[] {
+  const seen = new Set<string>();
+  const deduped: WebSearchResult[] = [];
+  for (const item of results) {
+    if (!item.url) continue;
+    const key = normalizeUrlForDeduplication(item.url);
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(item);
+    }
+  }
+  return deduped;
+}
+
+async function fetchCandidatePages(
+  sources: PromptSource[],
+  maxPages: number,
   log: ThoughtLog,
   deps: PipelineDeps,
 ): Promise<PromptSource[]> {
-  const limits = BUDGETS[budget];
   const { signal } = deps;
-  throwIfAborted(signal);
-  // searchWeb has no signal parameter yet, so cancellation stops waiting for it rather than the request itself.
-  const outcome = await raceAbort(
-    searchWeb(query.slice(0, MAX_QUERY_CHARS), limits.results),
-    signal,
-  );
-
-  for (const failure of outcome.errors) {
-    log.add(
-      "Web search",
-      `${SEARCH_PROVIDER_LABELS[failure.provider]} search failed: ${failure.message}`,
-      "warn",
-    );
-  }
-  if (!outcome.provider) {
-    log.add(
-      "Web search",
-      "No search provider returned results; continuing without sources",
-      "warn",
-    );
-    return [];
-  }
-  const label = SEARCH_PROVIDER_LABELS[outcome.provider];
-  if (outcome.results.length === 0) {
-    log.add(
-      "Web search",
-      `${label} returned no results; continuing without sources`,
-      "warn",
-    );
-    return [];
-  }
-  log.add(
-    "Web search",
-    `Found ${outcome.results.length} results via ${label} in ${seconds(outcome.latencyMs)}`,
-  );
-
-  const sources: PromptSource[] = outcome.results.map((r, i) => ({
-    citation: {
-      id: `src-${i + 1}`,
-      title: r.title,
-      url: r.url,
-      domain: domainOf(r.url),
-      snippet: r.snippet,
-      ...(typeof r.score === "number"
-        ? {
-            relevanceScore: Math.round(Math.min(Math.max(r.score, 0), 1) * 100),
-          }
-        : {}),
-      ...(r.publishedDate ? { publishedDate: r.publishedDate } : {}),
-    },
-  }));
-
   const candidates = sources
     .filter((s) => isSafePublicUrl(s.citation.url))
-    .slice(0, limits.pages);
+    .slice(0, maxPages);
   if (candidates.length === 0) return sources;
 
   const fetchStart = Date.now();
@@ -430,6 +419,165 @@ async function gatherSources(
     failures.length > 0 ? `Failed: ${failures.join("; ")}` : undefined,
   );
   return sources;
+}
+
+export async function gatherSources(
+  query: string,
+  budget: ThinkingBudget,
+  log: ThoughtLog,
+  deps: PipelineDeps,
+): Promise<PromptSource[]> {
+  const limits = BUDGETS[budget];
+  const { signal } = deps;
+  throwIfAborted(signal);
+
+  if (budget !== "deep") {
+    const outcome = await raceAbort(
+      searchWeb(query.slice(0, MAX_QUERY_CHARS), limits.results, signal),
+      signal,
+    );
+
+    for (const failure of outcome.errors) {
+      log.add(
+        "Web search",
+        `${SEARCH_PROVIDER_LABELS[failure.provider]} search failed: ${failure.message}`,
+        "warn",
+      );
+    }
+    if (!outcome.provider) {
+      log.add(
+        "Web search",
+        "No search provider returned results; continuing without sources",
+        "warn",
+      );
+      return [];
+    }
+    const label = SEARCH_PROVIDER_LABELS[outcome.provider];
+    if (outcome.results.length === 0) {
+      log.add(
+        "Web search",
+        `${label} returned no results; continuing without sources`,
+        "warn",
+      );
+      return [];
+    }
+    log.add(
+      "Web search",
+      `Found ${outcome.results.length} results via ${label} in ${seconds(outcome.latencyMs)}`,
+    );
+
+    const sources: PromptSource[] = outcome.results.map((r, i) => ({
+      citation: {
+        id: `src-${i + 1}`,
+        title: r.title,
+        url: r.url,
+        domain: domainOf(r.url),
+        snippet: r.snippet,
+        ...(typeof r.score === "number"
+          ? {
+              relevanceScore: Math.round(
+                Math.min(Math.max(r.score, 0), 1) * 100,
+              ),
+            }
+          : {}),
+        ...(r.publishedDate ? { publishedDate: r.publishedDate } : {}),
+      },
+    }));
+
+    return fetchCandidatePages(sources, limits.pages, log, deps);
+  }
+
+  // --- Deep Research Multi-Step Path ---
+  log.add(
+    "Query",
+    "Decomposing research query into targeted sub-investigations",
+  );
+
+  const queries = decomposeResearchQuery(query);
+  const searchQueries = queries.length > 0 ? queries : [query];
+
+  const searchStart = Date.now();
+  const outcomes = await Promise.all(
+    searchQueries.map(async (q) => {
+      try {
+        return await raceAbort(
+          searchWeb(q.slice(0, MAX_QUERY_CHARS), limits.results, signal),
+          signal,
+        );
+      } catch (err) {
+        if (err instanceof PipelineAbortedError) throw err;
+        return {
+          provider: null,
+          results: [],
+          errors: [
+            {
+              provider: "duckduckgo" as SearchProviderId,
+              message: describeFailure(err),
+            },
+          ],
+          latencyMs: 0,
+        };
+      }
+    }),
+  );
+  throwIfAborted(signal);
+
+  for (const outcome of outcomes) {
+    for (const failure of outcome.errors) {
+      log.add(
+        "Web search",
+        `${SEARCH_PROVIDER_LABELS[failure.provider]} search failed: ${failure.message}`,
+        "warn",
+      );
+    }
+  }
+
+  const successfulOutcomes = outcomes.filter(
+    (o) => o.provider !== null && o.results.length > 0,
+  );
+
+  if (successfulOutcomes.length === 0) {
+    log.add(
+      "Web search",
+      "No search provider returned results across multi-step queries; continuing without sources",
+      "warn",
+    );
+    return [];
+  }
+
+  const providers = Array.from(
+    new Set(successfulOutcomes.map((o) => SEARCH_PROVIDER_LABELS[o.provider!])),
+  );
+  log.add(
+    "Web search",
+    `Executed multi-step search across ${providers.join(", ")} in ${seconds(Date.now() - searchStart)}`,
+  );
+
+  const allResults = outcomes.flatMap((o) => o.results);
+  const dedupedResults = deduplicateSearchResults(allResults);
+
+  log.add(
+    "Web search",
+    `Aggregated and deduplicated ${dedupedResults.length} distinct sources`,
+  );
+
+  const sources: PromptSource[] = dedupedResults.map((r, i) => ({
+    citation: {
+      id: `src-${i + 1}`,
+      title: r.title,
+      url: r.url,
+      domain: domainOf(r.url),
+      snippet: r.snippet,
+      ...(typeof r.score === "number"
+        ? {
+            relevanceScore: Math.round(Math.min(Math.max(r.score, 0), 1) * 100),
+          }
+        : {}),
+      ...(r.publishedDate ? { publishedDate: r.publishedDate } : {}),
+    },
+  }));
+
+  return fetchCandidatePages(sources, limits.pages, log, deps);
 }
 
 interface LlmUsageTotals {
@@ -679,12 +827,17 @@ export async function runPipeline(
   deps: PipelineDeps = {},
 ): Promise<PipelineResult> {
   const startedAt = Date.now();
-  const budget: ThinkingBudget =
-    input.thinkingBudget && input.thinkingBudget in BUDGETS
-      ? input.thinkingBudget
-      : "analytical";
   const prompt = input.prompt.trim();
   if (!prompt) throw new PipelineError("Prompt is required.", "BAD_REQUEST");
+
+  const explicitBudget = input.thinkingBudget ?? input.budget;
+  const isMultiFaceted = isMultiFacetedQuery(prompt);
+  const budget: ThinkingBudget =
+    explicitBudget && explicitBudget in BUDGETS
+      ? explicitBudget
+      : !explicitBudget && input.mode === "research" && isMultiFaceted
+        ? "deep"
+        : "analytical";
 
   const { signal } = deps;
   throwIfAborted(signal);
@@ -788,7 +941,7 @@ export async function runPipeline(
       );
       const { report, droppedCitations } = toResearchReport(output, sources, {
         sourcesCrawled: promptSources.filter((s) => s.pageText).length,
-        depthLevel: 1,
+        depthLevel: budget === "deep" ? 2 : 1,
         synthesisTimeMs: totals.latencyMs,
       });
       if (droppedCitations.length > 0) {
@@ -873,3 +1026,10 @@ export async function runPipeline(
       );
   }
 }
+
+export {
+  buildQueryDecompositionPrompt,
+  decomposeResearchQuery,
+  isMultiFacetedQuery,
+  QUERY_DECOMPOSITION_SYSTEM_PROMPT,
+};

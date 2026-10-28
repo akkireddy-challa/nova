@@ -213,3 +213,138 @@ export function buildQueryRewritePrompt(
     .join("\n\n");
   return `Conversation so far:\n${transcript}\n\nFollow-up question: ${followUp}\n\nStandalone web search query:`;
 }
+
+export const QUERY_DECOMPOSITION_SYSTEM_PROMPT =
+  "You are a research query strategist. Decompose the research topic into two distinct, highly targeted web search queries:\n" +
+  "1. A primary query covering the core concepts and overview.\n" +
+  "2. A secondary query targeting specific empirical data, benchmarks, metrics, comparisons, or counter-perspectives.\n" +
+  "Output exactly two lines, one query per line, with no labels, numbers, or quotation marks.";
+
+/** Prompt template for LLM query decomposition when needed. */
+export function buildQueryDecompositionPrompt(topic: string): string {
+  return `Research Topic: ${topic}\n\nFormulate 2 complementary search queries:`;
+}
+
+/**
+ * Detects whether a research topic has multiple facets (comparisons, multiple sub-topics,
+ * trade-offs, or metric/data focus) that benefit from multi-step search query decomposition.
+ */
+export function isMultiFacetedQuery(query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (q.length < 5) return false;
+
+  // Comparison markers
+  if (
+    /\b(vs\.?|versus|compare|comparison|difference between|trade-?offs?|pros and cons)\b/i.test(
+      q,
+    )
+  ) {
+    return true;
+  }
+
+  // Conjunctions with sufficient length (e.g. "X and Y", "X as well as Y")
+  const words = q.split(/\s+/);
+  if (
+    words.length >= 4 &&
+    /\b(and|as well as|along with|with focus on|including|in addition to)\b/i.test(
+      q,
+    )
+  ) {
+    return true;
+  }
+
+  // Analytical or metric focus
+  if (
+    /\b(benchmarks?|metrics|market size|market share|statistics|regulations?|challenges|risks|forecast|trends?)\b/i.test(
+      q,
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Algorithmic decomposition of a research query into a primary search query and a targeted
+ * secondary query focusing on empirical evidence, benchmarks, metrics, or distinct sub-facets.
+ * Avoids extra LLM call latency while guaranteeing robust search coverage.
+ */
+export function decomposeResearchQuery(rawQuery: string): string[] {
+  const query = rawQuery.trim().replace(/\s+/g, " ");
+  if (!query) return [];
+
+  // Very short query (1-2 words): return the query plus a targeted analytical angle
+  const words = query.split(" ");
+  if (words.length <= 2) {
+    return [query, `${query} overview benchmarks and analysis`];
+  }
+
+  // 1. "Compare A and B" pattern
+  const compareMatch = query.match(/^compare\s+(.+?)\s+and\s+(.+)$/i);
+  if (compareMatch) {
+    const itemA = compareMatch[1].trim();
+    const itemB = compareMatch[2].trim();
+    return [
+      query,
+      `${itemA} vs ${itemB} comparison performance benchmarks trade-offs`,
+    ];
+  }
+
+  // 2. Comparison queries: "A vs B" / "A versus B" / "A compared to B"
+  const vsMatch = query.match(
+    /^(?:compare\s+)?(.+?)\s+(?:vs\.?|versus|compared to)\s+(.+)$/i,
+  );
+  if (vsMatch) {
+    const itemA = vsMatch[1].replace(/^compare\s+/i, "").trim();
+    const itemB = vsMatch[2].trim();
+    return [
+      query,
+      `${itemA} vs ${itemB} performance benchmarks metrics comparison`,
+    ];
+  }
+
+  // 3. "Difference between A and B" pattern
+  const diffMatch = query.match(/^difference between\s+(.+?)\s+and\s+(.+)$/i);
+  if (diffMatch) {
+    const itemA = diffMatch[1].trim();
+    const itemB = diffMatch[2].trim();
+    return [query, `${itemA} vs ${itemB} comparison trade-offs benchmarks`];
+  }
+
+  // 4. Conjunction queries: "Topic Part A and Part B"
+  const conjunctionMatch = query.match(
+    /^(.+?)\s+(?:and|as well as|along with|with focus on)\s+(.+)$/i,
+  );
+  if (conjunctionMatch) {
+    const partA = conjunctionMatch[1].trim();
+    const partB = conjunctionMatch[2].trim();
+    if (partA.split(" ").length >= 2) {
+      const subject = partA.split(" ").slice(0, 3).join(" ");
+      const secondaryTarget = partB
+        .toLowerCase()
+        .includes(subject.toLowerCase())
+        ? partB
+        : `${subject} ${partB}`;
+      return [query, `${secondaryTarget} data metrics analysis`];
+    }
+  }
+
+  // 5. Market / Industry queries
+  const lower = query.toLowerCase();
+  if (lower.includes("market") || lower.includes("industry")) {
+    return [query, `${query} market size revenue statistics forecast`];
+  }
+
+  // 6. Architecture / Systems / Engineering queries
+  if (
+    lower.includes("architecture") ||
+    lower.includes("design") ||
+    lower.includes("system")
+  ) {
+    return [query, `${query} implementation benchmarks trade-offs`];
+  }
+
+  // 7. General deep research: primary query + empirical metrics and benchmarks angle
+  return [query, `${query} data metrics benchmarks statistics`];
+}

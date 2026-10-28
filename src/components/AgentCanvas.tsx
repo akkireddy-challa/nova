@@ -16,7 +16,7 @@ import { ChartCard } from "./GenerativeCards/ChartCard";
 import { DecisionMatrixCard } from "./GenerativeCards/DecisionMatrixCard";
 import { CodeSandboxCard } from "./GenerativeCards/CodeSandboxCard";
 import { DebateCard } from "./GenerativeCards/DebateCard";
-import { VoiceInput } from "./VoiceInput";
+import { AudioBriefingBar } from "./AudioBriefingBar";
 import { ArtifactStage } from "./ArtifactStage";
 import { SessionExportModal } from "./SessionExportModal";
 import { ProviderOnboarding } from "./ProviderOnboarding";
@@ -26,6 +26,13 @@ import {
   isStoppedMessage,
   settleStoppedSteps,
 } from "@/lib/client/agent";
+import {
+  isSpeechRecognitionSupported,
+  createSpeechRecognizer,
+  createAudioBriefing,
+  SpeechRecognizer,
+  AudioBriefingController,
+} from "@/lib/client/voice";
 import {
   Loader2,
   Bot,
@@ -50,6 +57,8 @@ import {
   AlertTriangle,
   Square,
   CheckCircle2,
+  Mic,
+  Volume2,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import { generateId } from "@/lib/utils";
@@ -114,6 +123,140 @@ export function AgentCanvas({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const [isListening, setIsListening] = useState(false);
+  const speechRecognizerRef = useRef<SpeechRecognizer | null>(null);
+
+  const [activeAudioBriefing, setActiveAudioBriefing] = useState<{
+    isPlaying: boolean;
+    isPaused: boolean;
+    currentChunk: number;
+    totalChunks: number;
+    speed: number;
+    title: string;
+  } | null>(null);
+  const audioBriefingRef = useRef<AudioBriefingController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      speechRecognizerRef.current?.stop();
+      audioBriefingRef.current?.stop();
+    };
+  }, []);
+
+  const toggleVoiceInput = () => {
+    if (isListening) {
+      speechRecognizerRef.current?.stop();
+      speechRecognizerRef.current = null;
+      setIsListening(false);
+      return;
+    }
+
+    if (!isSpeechRecognitionSupported()) {
+      setFileError("Speech recognition is not supported in this browser.");
+      setTimeout(() => setFileError(null), 4000);
+      return;
+    }
+
+    const recognizer = createSpeechRecognizer({
+      onResult: (text, isFinal) => {
+        if (text && isFinal) {
+          sound.playCheck();
+          setInput((prev) => {
+            const trimmed = prev.trim();
+            return trimmed ? `${trimmed} ${text.trim()}` : text.trim();
+          });
+        }
+      },
+      onError: (err) => {
+        setIsListening(false);
+        speechRecognizerRef.current = null;
+        setFileError(`Voice input: ${err}`);
+        setTimeout(() => setFileError(null), 4000);
+      },
+      onEnd: () => {
+        setIsListening(false);
+        speechRecognizerRef.current = null;
+      },
+    });
+
+    speechRecognizerRef.current = recognizer;
+    setIsListening(true);
+  };
+
+  const handleStartAudioBriefing = (text: string, title?: string) => {
+    sound.playStart();
+    audioBriefingRef.current?.stop();
+
+    const speed = activeAudioBriefing?.speed ?? 1.0;
+    const briefing = createAudioBriefing(text, {
+      rate: speed,
+      onStart: () => {
+        setActiveAudioBriefing((prev) => ({
+          isPlaying: true,
+          isPaused: false,
+          currentChunk: 0,
+          totalChunks: prev?.totalChunks ?? 1,
+          speed,
+          title: title || "Audio Overview Briefing",
+        }));
+      },
+      onChunkChange: (chunkIndex, totalChunks) => {
+        setActiveAudioBriefing((prev) =>
+          prev
+            ? {
+                ...prev,
+                currentChunk: chunkIndex,
+                totalChunks,
+                isPlaying: true,
+                isPaused: false,
+              }
+            : null,
+        );
+      },
+      onEnd: () => {
+        setActiveAudioBriefing(null);
+        audioBriefingRef.current = null;
+      },
+      onError: (err) => {
+        console.warn("Audio briefing error:", err);
+        setActiveAudioBriefing(null);
+        audioBriefingRef.current = null;
+      },
+    });
+
+    audioBriefingRef.current = briefing;
+    briefing.play();
+  };
+
+  const handlePlayPauseBriefing = () => {
+    if (!audioBriefingRef.current || !activeAudioBriefing) return;
+    if (activeAudioBriefing.isPaused) {
+      audioBriefingRef.current.resume();
+      setActiveAudioBriefing((prev) =>
+        prev ? { ...prev, isPaused: false, isPlaying: true } : null,
+      );
+    } else {
+      audioBriefingRef.current.pause();
+      setActiveAudioBriefing((prev) =>
+        prev ? { ...prev, isPaused: true } : null,
+      );
+    }
+  };
+
+  const handleStopBriefing = () => {
+    sound.playCheck();
+    audioBriefingRef.current?.stop();
+    audioBriefingRef.current = null;
+    setActiveAudioBriefing(null);
+  };
+
+  const handleSpeedChange = (speed: number) => {
+    sound.playCheck();
+    if (!audioBriefingRef.current) return;
+    audioBriefingRef.current.setRate(speed);
+    setActiveAudioBriefing((prev) => (prev ? { ...prev, speed } : null));
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -506,6 +649,25 @@ export function AgentCanvas({
                           {msg.mode}
                         </span>
                       )}
+                      {msg.role === "assistant" &&
+                        !isErrorMessage(msg) &&
+                        !isStoppedMessage(msg) &&
+                        msg.content && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleStartAudioBriefing(
+                                msg.content,
+                                "Audio Overview Briefing",
+                              )
+                            }
+                            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-mono text-slate-400 hover:text-teal-300 hover:bg-slate-900 border border-transparent hover:border-slate-800 transition cursor-pointer ml-auto"
+                            title="Listen to audio overview briefing"
+                          >
+                            <Volume2 className="w-3 h-3 text-teal-400" />
+                            <span>Listen</span>
+                          </button>
+                        )}
                     </div>
 
                     {/* Attachments Preview in User Message */}
@@ -922,11 +1084,22 @@ export function AgentCanvas({
                     <ImageIcon className="w-3.5 h-3.5" />
                   </button>
 
-                  <VoiceInput
-                    onTranscription={(text) =>
-                      setInput((prev) => (prev ? `${prev} ${text}` : text))
+                  <button
+                    type="button"
+                    onClick={toggleVoiceInput}
+                    title={
+                      isListening
+                        ? "Listening... click to stop"
+                        : "Start voice input"
                     }
-                  />
+                    className={`p-1.5 rounded-lg transition cursor-pointer flex items-center justify-center ${
+                      isListening
+                        ? "bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse"
+                        : "text-slate-400 hover:text-teal-300 hover:bg-slate-800"
+                    }`}
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                  </button>
 
                   {input.trim() && (
                     <button
@@ -1009,6 +1182,21 @@ export function AgentCanvas({
         onClose={() => setIsExportOpen(false)}
         session={currentSessionObj}
       />
+
+      {/* Floating Audio Overview Briefing Player Bar */}
+      {activeAudioBriefing && (
+        <AudioBriefingBar
+          isPlaying={activeAudioBriefing.isPlaying}
+          isPaused={activeAudioBriefing.isPaused}
+          currentChunk={activeAudioBriefing.currentChunk}
+          totalChunks={activeAudioBriefing.totalChunks}
+          currentSpeed={activeAudioBriefing.speed}
+          onPlayPause={handlePlayPauseBriefing}
+          onStop={handleStopBriefing}
+          onSpeedChange={handleSpeedChange}
+          title={activeAudioBriefing.title}
+        />
+      )}
     </div>
   );
 }
