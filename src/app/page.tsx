@@ -220,6 +220,21 @@ export default function Home() {
     } catch {}
   };
 
+  const handleImportSessions = (importedSessions: Session[]) => {
+    sound.playSuccess();
+    const existingIds = new Set(sessions.map((s) => s.id));
+    const newItems = importedSessions.filter((s) => !existingIds.has(s.id));
+    const merged = [...newItems, ...sessions];
+    setSessions(merged);
+    if (newItems.length > 0) {
+      setActiveSessionId(newItems[0].id);
+      setCurrentMode(newItems[0].mode);
+    }
+    try {
+      localStorage.setItem("nova_sessions", JSON.stringify(merged));
+    } catch {}
+  };
+
   // Save memory changes
   const handleSaveMemoryItem = (item: KnowledgeMemoryItem) => {
     sound.playCheck();
@@ -501,6 +516,7 @@ export default function Home() {
             onApplyPrompt={handleApplyPreset}
             onOpenDevHub={() => setIsDevHubOpen(true)}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onImportSessions={handleImportSessions}
           />
 
           {currentMode === "intelligence" ? (

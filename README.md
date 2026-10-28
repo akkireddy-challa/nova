@@ -119,10 +119,13 @@ The app UI itself uses `POST /api/agent`. See [ARCHITECTURE.md](ARCHITECTURE.md)
 ## Roadmap
 
 - [x] Streaming answers in the UI
-- Better source extraction and citation highlighting
-- Saved and shareable research sessions
-- More search providers
-- A hosted demo
+- [x] Source extraction, citation highlighting & dedicated Sources inspector
+- [x] Saved and shareable research sessions (JSON backup/restore & Markdown export)
+- [x] Local document attachment grounding (.txt, .md, .json, .csv, code files)
+- [x] Interactive Provider & Health Control Hub with live latency tests & local engine presets
+- [x] Desktop application readiness (Tauri v2)
+- [x] Pluggable search providers (Tavily, Exa, Brave, SearXNG, DuckDuckGo)
+- [ ] A hosted demo
 
 Have an idea? Open an issue.
 
