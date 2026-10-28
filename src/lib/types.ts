@@ -35,6 +35,15 @@ export interface ResearchPlanStep {
   sourcesFound: number;
 }
 
+export interface VerificationAudit {
+  verifiedClaims: number;
+  uncitedClaims?: number | string[];
+  sourceAlignment: number;
+  totalClaims?: number;
+  contradictions?: string[];
+  status?: "verified" | "flagged" | "warning";
+}
+
 export interface ResearchReport {
   title: string;
   executiveSummary: string;
@@ -51,6 +60,7 @@ export interface ResearchReport {
     sourcesCrawled: number;
     depthLevel: number;
     synthesisTimeMs: number;
+    verificationAudit?: VerificationAudit;
   };
 }
 
