@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Code,
   FileCode2,
+  Share2,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import {
@@ -24,6 +25,7 @@ import {
   copySessionMarkdownToClipboard,
   validateSessionBackup,
 } from "@/lib/session-export";
+import { downloadStandaloneHtmlDossier } from "@/lib/html-dossier";
 
 export interface SessionExportModalProps {
   isOpen: boolean;
@@ -123,6 +125,16 @@ export function SessionExportModal({
     if (!session) return;
     sound.playSuccess();
     exportSessionAsJson(session);
+  };
+
+  const handleDownloadHtmlDossier = () => {
+    if (!session) return;
+    sound.playSuccess();
+    const activeArtifact = session.messages
+      .slice()
+      .reverse()
+      .find((m) => Boolean(m.artifact))?.artifact;
+    downloadStandaloneHtmlDossier(activeArtifact, session);
   };
 
   const handleBackupAll = () => {
@@ -312,22 +324,24 @@ export function SessionExportModal({
                 </div>
 
                 {/* Export Action Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {/* Markdown (.md) */}
-                  <div className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-teal-500/30 transition space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-teal-400 text-xs font-semibold">
-                        <FileText className="w-4 h-4" />
-                        <span>Markdown (.md)</span>
+                  <div className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-teal-500/30 transition space-y-2.5 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-teal-400 text-xs font-semibold">
+                          <FileText className="w-4 h-4" />
+                          <span>Markdown (.md)</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-500">
+                          GitHub
+                        </span>
                       </div>
-                      <span className="text-[10px] font-mono text-slate-500">
-                        GitHub Flavored
-                      </span>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Clean documentation with executive summaries, findings,
+                        source links, and code blocks.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Clean documentation with executive summaries, findings,
-                      source links, and code blocks.
-                    </p>
                     <div className="flex items-center gap-2 pt-1">
                       <button
                         type="button"
@@ -352,21 +366,23 @@ export function SessionExportModal({
                     </div>
                   </div>
 
-                  {/* JSON Snapshot (.nova.json) */}
-                  <div className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-cyan-500/30 transition space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-cyan-400 text-xs font-semibold">
-                        <Code className="w-4 h-4" />
-                        <span>JSON Snapshot (.json)</span>
+                  {/* JSON Snapshot (.json) */}
+                  <div className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-cyan-500/30 transition space-y-2.5 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-cyan-400 text-xs font-semibold">
+                          <Code className="w-4 h-4" />
+                          <span>JSON Snapshot (.json)</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-500">
+                          Structured
+                        </span>
                       </div>
-                      <span className="text-[10px] font-mono text-slate-500">
-                        Structured
-                      </span>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Raw session payload with message logs, telemetry,
+                        thoughts, and structured artifacts.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Raw session payload with message logs, telemetry,
-                      thoughts, and structured artifacts.
-                    </p>
                     <div className="flex items-center gap-2 pt-1">
                       <button
                         type="button"
@@ -387,6 +403,37 @@ export function SessionExportModal({
                         ) : (
                           <Copy className="w-3.5 h-3.5" />
                         )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Standalone HTML Dossier (.html) */}
+                  <div className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-emerald-500/30 transition space-y-2.5 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold">
+                          <Share2 className="w-4 h-4" />
+                          <span>HTML Dossier (.html)</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-500">
+                          Interactive
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Self-contained dossier with interactive citations, live
+                        weight sliders, and zero network dependencies.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleDownloadHtmlDossier}
+                        title="Download Standalone HTML Dossier (.html)"
+                        aria-label="Download Standalone HTML Dossier (.html)"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold transition cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download .html</span>
                       </button>
                     </div>
                   </div>

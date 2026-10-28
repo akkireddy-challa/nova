@@ -48,6 +48,10 @@ import {
 } from "./prompts";
 import { SEARCH_PROVIDER_LABELS, SearchProviderId, searchWeb } from "./search";
 import type { WebSearchResult } from "../web-grounding";
+import {
+  auditEvidenceAndCitations,
+  refineWithCritic,
+} from "./evaluator-optimizer";
 
 export type PipelineErrorCode = "INVALID_OUTPUT" | "BAD_REQUEST";
 
@@ -952,6 +956,53 @@ export async function runPipeline(
           droppedCitations.join(", "),
         );
       }
+
+      if (budget === "deep") {
+        const refinement = refineWithCritic(report.keyFindings, sources);
+        if (refinement.optimizedCount > 0) {
+          log.add(
+            "Critic",
+            `Optimized ${refinement.optimizedCount} finding(s) with crawled evidence citations`,
+          );
+          report.keyFindings = refinement.findings;
+        }
+      }
+
+      const crawledCount =
+        promptSources.filter((s) => s.pageText).length || sources.length;
+      log.add(
+        "Verification",
+        `Auditing evidence against ${crawledCount} crawled sources`,
+      );
+
+      const audit = auditEvidenceAndCitations(
+        report.keyFindings.map((f) => ({
+          text: `${f.point}. ${f.description}`,
+          citationIds: f.citationIds,
+        })),
+        sources,
+      );
+
+      const distinctVerifiedSources = new Set(
+        audit.details
+          .filter((d) => d.status === "verified")
+          .flatMap((d) => d.matchedSources),
+      );
+      const verifiedSourceCount = distinctVerifiedSources.size;
+
+      log.add(
+        "Verification",
+        `Verified ${audit.verifiedClaims} claims across ${verifiedSourceCount} sources (${audit.sourceAlignment}% alignment)`,
+      );
+
+      if (report.metrics) {
+        report.metrics.verificationAudit = {
+          verifiedClaims: audit.verifiedClaims,
+          uncitedClaims: audit.uncitedClaims,
+          sourceAlignment: audit.sourceAlignment,
+        };
+      }
+
       return finish(output.content, { type: "research", data: report });
     }
     case "planner": {
@@ -1032,4 +1083,6 @@ export {
   decomposeResearchQuery,
   isMultiFacetedQuery,
   QUERY_DECOMPOSITION_SYSTEM_PROMPT,
+  auditEvidenceAndCitations,
+  refineWithCritic,
 };

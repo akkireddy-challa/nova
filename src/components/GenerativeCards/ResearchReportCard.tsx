@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ResearchReport, SourceCitation } from "@/lib/types";
+import { ResearchReport, SourceCitation, VerificationAudit } from "@/lib/types";
 import {
   ExternalLink,
   AlertTriangle,
@@ -10,8 +10,176 @@ import {
   CheckCircle2,
   BookOpen,
   Globe,
+  ShieldCheck,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
+
+export interface EvidenceAuditBadgeProps {
+  audit: VerificationAudit;
+}
+
+export function EvidenceAuditBadge({ audit }: EvidenceAuditBadgeProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const hasContradictions = Boolean(
+    audit.contradictions && audit.contradictions.length > 0,
+  );
+  const uncitedCount = Array.isArray(audit.uncitedClaims)
+    ? audit.uncitedClaims.length
+    : typeof audit.uncitedClaims === "number"
+      ? audit.uncitedClaims
+      : 0;
+  const hasUncited = uncitedCount > 0;
+  const isWarning = hasContradictions || audit.status === "warning";
+  const isFlagged = !isWarning && (hasUncited || audit.status === "flagged");
+
+  return (
+    <div ref={containerRef} className="relative inline-block align-middle">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition cursor-pointer select-none ${
+          isWarning
+            ? "bg-rose-500/10 text-rose-300 border-rose-500/30 hover:bg-rose-500/20 hover:border-rose-400"
+            : isFlagged
+              ? "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-400"
+              : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-400"
+        }`}
+        title="View Evidence Verification Audit"
+        aria-label="Evidence Verification Audit status"
+      >
+        {isWarning ? (
+          <AlertTriangle className="w-3 h-3 text-rose-400 flex-shrink-0" />
+        ) : isFlagged ? (
+          <AlertTriangle className="w-3 h-3 text-amber-400 flex-shrink-0" />
+        ) : (
+          <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+        )}
+        <span>
+          {audit.verifiedClaims} verified claims ({audit.sourceAlignment}%
+          alignment)
+        </span>
+      </button>
+
+      {isOpen && (
+        <div
+          role="dialog"
+          aria-label="Evidence Verification Audit Details"
+          className="absolute z-50 top-full left-0 sm:left-auto sm:right-0 mt-2 w-80 sm:w-96 p-4 rounded-xl border border-slate-700 bg-slate-900/95 backdrop-blur-md shadow-2xl text-left text-xs"
+        >
+          <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
+            <div className="flex items-center gap-1.5 font-semibold text-slate-100">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Evidence Verification Audit</span>
+            </div>
+            <span
+              className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded font-semibold border ${
+                isWarning
+                  ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                  : isFlagged
+                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                    : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+              }`}
+            >
+              {isWarning
+                ? "Contradiction"
+                : isFlagged
+                  ? "Review Needed"
+                  : "Verified"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
+                Verified Claims
+              </span>
+              <span className="text-sm font-semibold text-slate-100 font-mono">
+                {audit.verifiedClaims} /{" "}
+                {audit.totalClaims ?? audit.verifiedClaims + uncitedCount}
+              </span>
+            </div>
+            <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
+                Source Alignment
+              </span>
+              <span className="text-sm font-semibold text-emerald-400 font-mono">
+                {audit.sourceAlignment}%
+              </span>
+            </div>
+          </div>
+
+          {hasContradictions && (
+            <div className="mb-3 p-2.5 rounded-lg border border-rose-500/20 bg-rose-500/5">
+              <span className="text-[11px] font-semibold text-rose-300 flex items-center gap-1 mb-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                Contradictions Detected ({audit.contradictions?.length})
+              </span>
+              <ul className="space-y-1 text-[11px] text-rose-200/90 list-disc list-inside">
+                {audit.contradictions?.map((item, idx) => (
+                  <li key={idx} className="leading-snug">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {hasUncited && (
+            <div className="mb-3 p-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5">
+              <span className="text-[11px] font-semibold text-amber-300 flex items-center gap-1 mb-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                Uncited Claims ({uncitedCount})
+              </span>
+              <ul className="space-y-1 text-[11px] text-amber-200/90 list-disc list-inside">
+                {Array.isArray(audit.uncitedClaims) ? (
+                  audit.uncitedClaims.map((item, idx) => (
+                    <li key={idx} className="leading-snug">
+                      {item}
+                    </li>
+                  ))
+                ) : (
+                  <li className="leading-snug">
+                    {uncitedCount} claim(s) require primary source citations
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {!hasContradictions && !hasUncited && (
+            <div className="p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 text-emerald-300 text-[11px]">
+              All key statements and findings in this report are strictly
+              verified against primary source citations.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   report: ResearchReport;
@@ -376,9 +544,14 @@ export function ResearchReportCard({ report }: Props) {
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-slate-100 text-base leading-tight">
-              {report.title}
-            </h3>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h3 className="font-semibold text-slate-100 text-base leading-tight">
+                {report.title}
+              </h3>
+              {report.metrics?.verificationAudit && (
+                <EvidenceAuditBadge audit={report.metrics.verificationAudit} />
+              )}
+            </div>
             <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
               <span>{report.sources?.length ?? 0} sources</span>
               {report.metrics && report.metrics.synthesisTimeMs > 0 && (

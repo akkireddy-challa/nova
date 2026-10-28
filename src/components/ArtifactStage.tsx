@@ -19,6 +19,7 @@ import {
   RotateCcw,
   ListOrdered,
   Trophy,
+  Share2,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import {
@@ -36,6 +37,7 @@ import {
   downloadCsvData,
   resolveCodeFilename,
 } from "@/lib/matrix-calculator";
+import { downloadStandaloneHtmlDossier } from "@/lib/html-dossier";
 
 interface Props {
   artifact: GenerativeArtifact;
@@ -238,6 +240,21 @@ export function ArtifactStage({
 
         {/* Header Actions */}
         <div className="flex items-center gap-1">
+          {/* Save as Standalone HTML button */}
+          <button
+            type="button"
+            onClick={() => {
+              sound.playSuccess();
+              downloadStandaloneHtmlDossier(artifact);
+            }}
+            title="Save as Standalone HTML Dossier"
+            aria-label="Save as Standalone HTML"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition cursor-pointer text-xs font-medium"
+          >
+            <Share2 className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">HTML Dossier</span>
+          </button>
+
           {/* Print / PDF Dossier button */}
           <button
             type="button"

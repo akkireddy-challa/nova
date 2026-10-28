@@ -66,3 +66,14 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
 - [export] [done] Added 1-click "Download Code File" with automatic extension resolution, Line Numbers gutter toggle in `ArtifactStage.tsx`, and RFC 4180 compliant "Download CSV Data" for quantitative charts and decision matrices.
 - [tests] [done] Added `tests/deep-research.test.ts` (22 tests), `tests/voice.test.ts` (19 tests), and `tests/interactive-artifacts.test.ts` (24 tests).
 - All 276 tests passing across 17 test files. 0 lint errors, clean Next.js 16 build. Zero fake data.
+
+## Sprint 7 — Multi-Agent Evaluator-Optimizer Critic, Portable HTML Dossiers & DevHub Live Tunnel
+
+- [research/critic] [done] Created `src/lib/research/evaluator-optimizer.ts` implementing `auditEvidenceAndCitations` and `refineWithCritic`. Computes factual keyword overlap against real retrieved sources, tallies verified claims vs uncited claims vs invalid citations, and produces a factual alignment score (0-100%).
+- [critic/optimizer] [done] In `refineWithCritic`, performs targeted optimization pass during deep budget synthesis if critical findings lack citations, matching and attaching real crawled sources based on keyword alignment.
+- [pipeline] [done] In `src/lib/research/pipeline.ts`, hooked evidence audit and critic loop during research synthesis. Logs honest thought trace steps (`Auditing evidence against [N] crawled sources`, `Verified [X] claims across [Y] sources ([Z]% alignment)`), and attaches `verificationAudit` to research artifact metrics. Strictly zero fake data, zero Math.random().
+- [html/export] [done] Created `src/lib/html-dossier.ts` compiling 100% self-contained single-file HTML5 documents with embedded CSS (dark/light themes), vanilla JS interactive citation hover popovers with smooth scroll glow, working criteria weight sliders with real-time score recalculation, and full bibliography with zero external network/CDN dependencies. Added "Save as Standalone HTML" (`<Share2 />`) buttons in `ArtifactStage.tsx` and `SessionExportModal.tsx`.
+- [devhub/tunnel] [done] Upgraded `DevHubModal.tsx` and created `src/lib/devhub.ts` with instant 1-click Live Public Demo Tunnel launchers (`cloudflared`, `localtunnel`, `ngrok`), interactive API Gateway Sandbox for live query testing against `/api/v1` endpoints with latency measurement, and cURL command generators.
+- [frontend/badges] [done] In `ResearchReportCard.tsx`, added the interactive `EvidenceAuditBadge` with popover breakdown of verified claims, source alignment %, and uncited assertions.
+- [tests] [done] Created `tests/evaluator-optimizer.test.ts` (20 tests), `tests/html-dossier.test.ts` (22 tests), and `tests/devhub-tunnel.test.ts` (21 tests). Total test suite: 340 tests passing across 20 test files.
+- [qa] [done] All 340 tests passing across 20 test files. 0 lint errors, clean Next.js 16 build. Zero fake data.
