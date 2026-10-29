@@ -176,4 +176,3 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Integrated `DialecticDebateCard` into `ArtifactStage.tsx` with dedicated CSV and Markdown export handling for debate artifacts.
   - Created `tests/debate-integration.test.ts` (8 unit tests passing).
 - [qa] [done] All 532 tests passing across 30 test files (2,774 expect assertions). Next.js 16 build passed (1,067ms). Cargo check passed (0.96s). Zero lint errors or warnings. Strictly zero fake data.
-
