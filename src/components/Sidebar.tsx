@@ -97,6 +97,7 @@ export function Sidebar({
   const isStudioMode = [
     "research",
     "debate",
+    "persona",
     "planner",
     "matrix",
     "coder",
@@ -108,7 +109,7 @@ export function Sidebar({
       label: "Chat",
       icon: <MessageSquare className="w-4 h-4" />,
       isActive: isStudioMode,
-      description: "Research, Plan, Compare, Code, Debate",
+      description: "Research, Plan, Compare, Code, Debate, Council",
     },
     {
       id: "canvas" as StudioMode,

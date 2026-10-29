@@ -5,6 +5,7 @@ export type StudioMode =
   | "coder"
   | "matrix"
   | "debate"
+  | "persona"
   | "intelligence"
   | "mcp";
 
@@ -170,13 +171,61 @@ export interface TraceStep {
   ms: number;
 }
 
+export interface PersonaCouncilCriteriaScore {
+  criterion: string;
+  score: number;
+  weight: number;
+}
+
+export interface PersonaReview {
+  personaId: string;
+  personaName: string;
+  roleTitle: string;
+  avatarIcon: string;
+  score: number; // 0-100
+  grade: "A+" | "A" | "B" | "C" | "D" | "F";
+  verdict: "approve" | "conditional" | "veto";
+  coreEndorsement: string;
+  criticalObjections: string[];
+  nonNegotiables: string[];
+  criteriaScores: PersonaCouncilCriteriaScore[];
+}
+
+export interface FatalBlindspot {
+  dimension: string;
+  flaggedBy: string;
+  severity: "critical" | "warning";
+  risk: string;
+  mitigation: string;
+}
+
+export type CouncilVerdict =
+  | "unanimous_approval"
+  | "conditional_consensus"
+  | "divided_council"
+  | "rejected_high_risk";
+
+export interface PersonaCouncilArtifact {
+  topic: string;
+  alignmentIndex: number; // 0-100
+  meanScore: number;
+  councilVerdict: CouncilVerdict;
+  verdictSummary: string;
+  reviews: PersonaReview[];
+  fatalBlindspots: FatalBlindspot[];
+  actionItems: string[];
+  strategicCompromise: string;
+  generatedAt: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
   | { type: "chart"; data: ChartArtifact }
   | { type: "matrix"; data: DecisionMatrix }
   | { type: "code"; data: CodeArtifact }
-  | { type: "debate"; data: DebateArtifact };
+  | { type: "debate"; data: DebateArtifact }
+  | { type: "council"; data: PersonaCouncilArtifact };
 
 export interface AgentThought {
   id: string;

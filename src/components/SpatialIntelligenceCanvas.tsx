@@ -25,6 +25,7 @@ import {
   ExternalLink,
   X,
   ArrowRight,
+  UserCheck,
 } from "lucide-react";
 import type { Session, StudioMode, GenerativeArtifact } from "@/lib/types";
 import { sound } from "@/lib/sound";
@@ -833,6 +834,8 @@ function getNodeCardStyling(type: SpatialCanvasNode["artifactType"]): string {
       return "border border-blue-500/40 bg-slate-900/90 hover:border-blue-400/80 text-blue-300";
     case "code":
       return "border border-purple-500/40 bg-slate-900/90 hover:border-purple-400/80 text-purple-300";
+    case "council":
+      return "border border-indigo-500/40 bg-slate-900/90 hover:border-indigo-400/80 text-indigo-300";
     default:
       return "border border-slate-800 bg-slate-900/90 text-slate-300";
   }
@@ -852,6 +855,8 @@ function getNodeIcon(type: SpatialCanvasNode["artifactType"]) {
       return <BarChart2 className="w-3.5 h-3.5 text-blue-400" />;
     case "code":
       return <Code2 className="w-3.5 h-3.5 text-purple-400" />;
+    case "council":
+      return <UserCheck className="w-3.5 h-3.5 text-indigo-400" />;
   }
 }
 
@@ -869,6 +874,8 @@ function getMiniMapDotColor(type: SpatialCanvasNode["artifactType"]): string {
       return "bg-blue-500";
     case "code":
       return "bg-purple-500";
+    case "council":
+      return "bg-indigo-500";
     default:
       return "bg-slate-400";
   }
@@ -888,6 +895,8 @@ function getItemCountLabel(type: SpatialCanvasNode["artifactType"]): string {
       return "points";
     case "code":
       return "lines";
+    case "council":
+      return "evaluations";
     default:
       return "items";
   }
@@ -929,6 +938,12 @@ function renderNodeGauge(node: SpatialCanvasNode) {
       return (
         <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-purple-950/80 text-purple-300 border border-purple-800/60">
           Sandboxed Code
+        </span>
+      );
+    case "council":
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">
+          Executive Council
         </span>
       );
   }

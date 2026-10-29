@@ -25,10 +25,12 @@ import {
 import { sound } from "@/lib/sound";
 import { KnowledgeGraphCard } from "@/components/GenerativeCards/KnowledgeGraphCard";
 import { DebateCard } from "@/components/GenerativeCards/DebateCard";
+import { PersonaCouncilCard } from "@/components/GenerativeCards/PersonaCouncilCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
 } from "@/lib/research/dialectic-debate";
+import { personaCouncilToCsv } from "@/lib/research/persona-studio";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -127,6 +129,14 @@ export function ArtifactStage({
       const analysis = analyzeDialecticDebate(artifact.data);
       const csvContent = debateToCsv(artifact.data, analysis);
       const filename = `${(artifact.data.topic || "dialectic-debate").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
+    if (artifact.type === "council") {
+      const csvContent = personaCouncilToCsv(artifact.data);
+      const filename = `${(artifact.data.topic || "persona-council").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
       downloadCsvData(filename, csvContent);
       sound.playSuccess();
       return;
@@ -283,8 +293,8 @@ export function ArtifactStage({
             <span className="hidden sm:inline">Print / PDF</span>
           </button>
 
-          {/* Download CSV button for debate */}
-          {artifact.type === "debate" && (
+          {/* Download CSV button for debate and council */}
+          {(artifact.type === "debate" || artifact.type === "council") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1095,6 +1105,20 @@ export function ArtifactStage({
                 <DebateCard debate={artifact.data} />
               </div>
             )}
+
+            {/* PERSONA COUNCIL ARTIFACT */}
+            {artifact.type === "council" && (
+              <div className="space-y-4">
+                <PersonaCouncilCard
+                  council={artifact.data}
+                  onApplyAction={(action) => {
+                    if (onRefinePrompt) {
+                      onRefinePrompt(`Execute council action: ${action}`);
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1642,6 +1666,84 @@ export function ArtifactStage({
                         </ul>
                       </div>
                     )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Persona Council */}
+        {artifact.type === "council" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Council Verdict:{" "}
+                  {artifact.data.councilVerdict
+                    .replace(/_/g, " ")
+                    .toUpperCase()}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Alignment Index: {artifact.data.alignmentIndex}% (Mean:{" "}
+                  {artifact.data.meanScore}/100)
+                </span>
+              </div>
+              <p className="text-xs text-gray-900 leading-relaxed font-semibold">
+                {artifact.data.verdictSummary}
+              </p>
+              {artifact.data.strategicCompromise && (
+                <div className="pt-2 border-t border-gray-200">
+                  <span className="text-[10px] font-mono font-bold uppercase text-gray-600 block">
+                    Strategic Compromise Blueprint
+                  </span>
+                  <p className="text-xs text-gray-800 leading-relaxed mt-0.5">
+                    {artifact.data.strategicCompromise}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Specialist Scorecards &amp; Deliberations
+              </h2>
+              <div className="space-y-3">
+                {artifact.data.reviews.map((rev, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 border border-gray-300 rounded print-avoid-break space-y-2"
+                  >
+                    <div className="flex items-center justify-between border-b border-gray-200 pb-1">
+                      <span className="text-xs font-bold text-black font-mono">
+                        {rev.personaName} ({rev.roleTitle})
+                      </span>
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border border-gray-400 font-bold text-black">
+                        Grade {rev.grade} ({rev.score}/100) —{" "}
+                        {rev.verdict.toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono uppercase font-bold text-gray-600 block mb-0.5">
+                        Endorsement
+                      </span>
+                      <p className="text-xs text-gray-800 italic">
+                        &ldquo;{rev.coreEndorsement}&rdquo;
+                      </p>
+                    </div>
+                    {rev.criticalObjections &&
+                      rev.criticalObjections.length > 0 && (
+                        <div className="pt-1.5 border-t border-gray-200">
+                          <span className="text-[10px] font-mono uppercase font-bold text-gray-700 block mb-1">
+                            Critical Objections
+                          </span>
+                          <ul className="list-disc pl-5 space-y-1 text-xs text-gray-800">
+                            {rev.criticalObjections.map((obj, oIdx) => (
+                              <li key={oIdx}>{obj}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                   </div>
                 ))}
               </div>
