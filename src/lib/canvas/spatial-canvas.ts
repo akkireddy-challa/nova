@@ -36,7 +36,8 @@ export interface SpatialCanvasNode {
     | "workflow_orchestrator"
     | "formal_prover"
     | "epistemic_consensus"
-    | "game_theory";
+    | "game_theory"
+    | "ast_control_flow";
   title: string;
   summary: string;
   x: number;
@@ -974,6 +975,43 @@ export function extractSpatialNodes(
         metrics.status = "verified";
         break;
       }
+      case "ast_control_flow": {
+        const cfg = data as {
+          title?: string;
+          summary?: {
+            functionName?: string;
+            cyclomaticComplexity?: number;
+            complexityGrade?: string;
+            totalBasicBlocks?: number;
+            totalEdges?: number;
+            naturalLoopCount?: number;
+          };
+          basicBlocks?: unknown[];
+          edges?: unknown[];
+          technicalNotes?: string;
+        };
+        title = cfg.title || "Control Flow Graph & Decompiler Studio";
+        summary =
+          cfg.technicalNotes ||
+          `CFG symbolic decompiler analysis: ${cfg.summary?.functionName || "function"} (Cyclomatic M=${cfg.summary?.cyclomaticComplexity || 1}, ${cfg.summary?.totalBasicBlocks || 0} blocks, ${cfg.summary?.naturalLoopCount || 0} loops).`;
+        tags.push(
+          "CONTROL_FLOW_GRAPH",
+          "CYCLOMATIC_COMPLEXITY",
+          "DOMINATOR_TREE",
+          "DECOMPILER",
+        );
+        if (typeof cfg.summary?.cyclomaticComplexity === "number") {
+          metrics.score = cfg.summary.cyclomaticComplexity;
+        }
+        if (Array.isArray(cfg.basicBlocks)) {
+          metrics.itemCount = cfg.basicBlocks.length;
+        }
+        if (Array.isArray(cfg.edges)) {
+          metrics.evidenceCount = cfg.edges.length;
+        }
+        metrics.status = "verified";
+        break;
+      }
     }
 
     nodes.push({
@@ -1356,6 +1394,25 @@ export function computeSpatialEdges(
         relationType = "validates";
         label = "Strategic Invariant Verification";
         baseStrength = 0.96;
+      } else if (types.has("ast_control_flow") && types.has("code")) {
+        relationType = "implements";
+        label = "Control Flow Structural Decompilation";
+        baseStrength = 0.98;
+      } else if (types.has("ast_control_flow") && types.has("formal_prover")) {
+        relationType = "validates";
+        label = "Inductive Invariant Hoare Verification";
+        baseStrength = 0.99;
+      } else if (
+        types.has("ast_control_flow") &&
+        types.has("workflow_orchestrator")
+      ) {
+        relationType = "synthesizes";
+        label = "FSM State Transition Topology";
+        baseStrength = 0.96;
+      } else if (types.has("ast_control_flow") && types.has("eval_suite")) {
+        relationType = "validates";
+        label = "Cyclomatic Test Coverage Audit";
+        baseStrength = 0.95;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

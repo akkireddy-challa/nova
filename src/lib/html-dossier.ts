@@ -16,6 +16,7 @@ import type {
   FormalProverArtifact,
   EpistemicConsensusArtifact,
   GameTheoryArtifact,
+  AstControlFlowArtifact,
 } from "./types";
 import { sanitizeFileName } from "./session-export";
 import { formatDossierDate } from "./print-dossier";
@@ -149,6 +150,9 @@ export function resolveDossierTitle(
         if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
       case "game_theory":
+        if (artifact.data.title?.trim()) return artifact.data.title.trim();
+        break;
+      case "ast_control_flow":
         if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
     }
@@ -1116,6 +1120,55 @@ function renderGameTheorySection(gt: GameTheoryArtifact): string {
       <p class="rec-text">${escapeHtml(gt.summary.strategicRecommendation)}</p>
     </div>`;
   }
+
+  html += `</section>`;
+  return html;
+}
+
+function renderAstControlFlowSection(cfg: AstControlFlowArtifact): string {
+  let html = `<section class="dossier-section" id="ast-control-flow">
+    <div class="section-badge">CONTROL FLOW GRAPH &amp; SYMBOLIC DECOMPILER</div>
+    <h2 class="section-heading">${escapeHtml(cfg.title || "Control Flow Graph & Decompiler Report")}</h2>
+    <div class="summary-card">
+      <h3 class="summary-subtitle">Cyclomatic Complexity &amp; Dominator Tree Analysis</h3>
+      <p class="summary-text">${escapeHtml(cfg.executiveSummary)}</p>
+      <p class="summary-text"><strong>Function:</strong> <code>${escapeHtml(cfg.summary.functionName)}</code> | <strong>Cyclomatic Complexity:</strong> M = ${cfg.summary.cyclomaticComplexity} (${escapeHtml(cfg.summary.complexityGrade)}) | <strong>Basic Blocks:</strong> ${cfg.summary.totalBasicBlocks} | <strong>Edges:</strong> ${cfg.summary.totalEdges} | <strong>Loops:</strong> ${cfg.summary.naturalLoopCount}</p>
+    </div>
+
+    <div class="findings-list">
+      <h3 class="summary-subtitle">Basic Blocks &amp; Dominator Hierarchy (${cfg.basicBlocks.length})</h3>
+      <table class="matrix-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="border-bottom: 2px solid #334155; text-align: left;">
+            <th style="padding: 8px;">Block ID</th>
+            <th style="padding: 8px;">Label</th>
+            <th style="padding: 8px;">Predecessors</th>
+            <th style="padding: 8px;">Successors</th>
+            <th style="padding: 8px;">Immediate Dominator</th>
+            <th style="padding: 8px;">Frontier</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+  cfg.basicBlocks.forEach((b) => {
+    html += `
+          <tr style="border-bottom: 1px solid #1e293b;">
+            <td style="padding: 8px; font-family: monospace;"><strong>${escapeHtml(b.id)}</strong></td>
+            <td style="padding: 8px;">${escapeHtml(b.label)}</td>
+            <td style="padding: 8px; font-family: monospace;">${escapeHtml(b.predecessorIds.join(", ") || "-")}</td>
+            <td style="padding: 8px; font-family: monospace;">${escapeHtml(b.successorIds.join(", ") || "-")}</td>
+            <td style="padding: 8px; font-family: monospace;">${escapeHtml(b.immediateDominatorId || "*(Entry Root)*")}</td>
+            <td style="padding: 8px; font-family: monospace;">${escapeHtml(b.dominanceFrontier.join(", ") || "∅")}</td>
+          </tr>
+    `;
+  });
+
+  html += `</tbody></table></div>`;
+
+  html += `<div class="findings-list">
+      <h3 class="summary-subtitle">Reconstructed Decompiled Pseudocode</h3>
+      <pre style="background: #090d16; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px; color: #38bdf8; overflow-x: auto;"><code>${escapeHtml(cfg.decompiledCode)}</code></pre>
+    </div>`;
 
   html += `</section>`;
   return html;
@@ -2610,6 +2663,9 @@ export function generateStandaloneHtmlDossier(
         break;
       case "game_theory":
         contentHtml = renderGameTheorySection(artifact.data);
+        break;
+      case "ast_control_flow":
+        contentHtml = renderAstControlFlowSection(artifact.data);
         break;
     }
   } else if (session) {

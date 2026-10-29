@@ -285,6 +285,10 @@ export function getArtifactMetadata(
         artifact.data.title || "Game Theory & Strategic Equilibrium Studio";
       modeName = "Strategic Mechanism Design Studio";
       break;
+    case "ast_control_flow":
+      title = artifact.data.title || "Control Flow Graph & Decompiler Studio";
+      modeName = "Control Flow & Symbolic Decompiler Studio";
+      break;
   }
 
   if (mode) {

@@ -28,6 +28,7 @@ import type {
   FormalProverArtifact,
   EpistemicConsensusArtifact,
   GameTheoryArtifact,
+  AstControlFlowArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -664,6 +665,38 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
       }
       if (gt.summary.strategicRecommendation) {
         md += `**Strategic Recommendation:**\n> ${gt.summary.strategicRecommendation}\n\n`;
+      }
+      break;
+    }
+
+    case "ast_control_flow": {
+      const cfg: AstControlFlowArtifact = artifact.data;
+      md += `#### 🌿 Control Flow Graph & Decompiler: ${cfg.title}\n\n`;
+      md += `*Function:* \`${cfg.summary.functionName}\` • *Cyclomatic Complexity:* **M = ${cfg.summary.cyclomaticComplexity}** (\`${cfg.summary.complexityGrade}\`) • *Basic Blocks:* **${cfg.summary.totalBasicBlocks}** • *Edges:* **${cfg.summary.totalEdges}** • *Natural Loops:* **${cfg.summary.naturalLoopCount}**\n\n`;
+      if (cfg.executiveSummary) {
+        md += `> ${cfg.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (cfg.basicBlocks && cfg.basicBlocks.length > 0) {
+        md += `**Basic Blocks & Dominance Hierarchy (${cfg.basicBlocks.length}):**\n`;
+        cfg.basicBlocks.forEach((b) => {
+          const preds = b.predecessorIds.join(", ") || "-";
+          const succs = b.successorIds.join(", ") || "-";
+          const idomStr = b.immediateDominatorId || "*(Entry Root)*";
+          const loopStr = b.isLoopHeader ? " 🔄 [LOOP HEADER]" : "";
+          md += `- 📦 **${b.id}** (${b.label}): Preds: [${preds}], Succs: [${succs}], idom: \`${idomStr}\`${loopStr}\n`;
+        });
+        md += "\n";
+      }
+      if (cfg.defUseChains && cfg.defUseChains.length > 0) {
+        md += `**Def-Use Chains & Dead Store Audit (${cfg.defUseChains.length}):**\n`;
+        cfg.defUseChains.forEach((du) => {
+          const alert = du.isDeadStore ? " ⚠️ [DEAD STORE]" : " ✅";
+          md += `- 🔍 \`${du.variable}\`: Def in \`${du.definitionBlockId}\` (${du.definitionInstruction}), Uses: [${du.useBlockIds.join(", ") || "none"}]${alert}\n`;
+        });
+        md += "\n";
+      }
+      if (cfg.decompiledCode) {
+        md += `**Reconstructed Decompiled Pseudocode:**\n\`\`\`typescript\n${cfg.decompiledCode}\n\`\`\`\n\n`;
       }
       break;
     }
