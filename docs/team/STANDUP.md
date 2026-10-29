@@ -323,3 +323,28 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with battle-card metadata and Markdown export format.
   - Created `tests/battle-card-integration.test.ts` (8 integration tests passing).
 - [qa] [done] All 730 tests passing across 45 test files (3,884 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (792ms). Tauri cargo check passed (0.49s). Strictly zero fake data.
+
+## Sprint 19 — Multi-Provider Cost-Latency Pareto Frontier & Routing Optimizer
+
+- [pareto/engine] [done] Created `src/lib/research/pareto-optimizer.ts`:
+  - Pure deterministic calculation of non-dominated Pareto trade-off frontiers (`computeParetoDominance`, `calculateParetoFrontier`) across 4 enterprise dimensions: Latency (totalLatencyMs, timeToFirstTokenMs), Token Costs (costPer1kInput, costPer1kOutput), Empirical Quality (qualityScore, reasoningScore), and Privacy Compliance (privacyComplianceIndex, isAirGapped).
+  - Provider A dominates B if A is <= in cost and latency, >= in quality and privacy, and strictly better in at least one dimension.
+  - Generates 4 strategic enterprise routing recommendations (`computeRoutingRecommendations`): "Balanced Enterprise Frontier", "Sub-Second Latency Critical", "Deep Analytical Reasoning", and "Zero-Variable Cost Air-Gap" with expected monthly savings percentages and explicit fallback policies.
+  - Strict RFC 4180 CSV export (`paretoFrontierToCsv`) with CRLF (`\r\n`) and formatted executive markdown report (`paretoFrontierToMarkdown`).
+  - Strictly ZERO pseudo-random numbers, strictly ZERO fake data.
+  - Created `tests/pareto-optimizer.test.ts` (12 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/ParetoFrontierCard.tsx`:
+  - Rich interactive 2D SVG trade-off scatter plot with connected Pareto frontier curve, latency vs quality axes, and hover inspection tooltips.
+  - 3 view tabs: "Frontier Curve", "Routing Strategies", "Benchmark Matrix".
+  - Strategy cards with primary/fallback routing badges, expected cost reductions, and architectural rationales.
+  - Model benchmark matrix table with p95 latency, input/output cost, quality score, reasoning score, and privacy tier.
+  - 1-click RFC 4180 CSV download and Markdown report copy with sound effects (`sound.playPop()`, `sound.playSuccess()`, `sound.playTap()`).
+  - Created `tests/pareto-frontier-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `ProviderBenchmarkMetrics`, `ParetoOptimizationResult`, `RoutingRecommendation`, `ParetoFrontierArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "pareto_frontier"; data: ParetoFrontierArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated Pareto frontier card, CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "pareto_frontier"`), `TrendingUp` icon, teal badge styling, frontier optimal count metrics, and topological edges (`compares`, `validates`, `implements`, `debates`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with Pareto frontier metadata and Markdown export format.
+  - Created `tests/pareto-integration.test.ts` (9 integration tests passing).
+- [qa] [done] All 756 tests passing across 48 test files (3,988 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (800ms). Tauri cargo check passed (0.46s). Strictly zero fake data.

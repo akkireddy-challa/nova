@@ -21,7 +21,8 @@ export interface SpatialCanvasNode {
     | "council"
     | "simulation"
     | "audio_briefing"
-    | "battlecard";
+    | "battlecard"
+    | "pareto_frontier";
   title: string;
   summary: string;
   x: number;
@@ -513,6 +514,31 @@ export function extractSpatialNodes(
         metrics.status = "benchmarked";
         break;
       }
+      case "pareto_frontier": {
+        const pf = data as {
+          topic?: string;
+          frontierProviderIds?: string[];
+          providers?: unknown[];
+          recommendations?: unknown[];
+          summary?: string;
+        };
+        title = pf.topic || "Cost-Latency Pareto Frontier";
+        summary =
+          pf.summary ||
+          `Pareto frontier with ${pf.frontierProviderIds?.length || 0} optimal configurations.`;
+        tags.push("PARETO", "OPTIMIZER", "ROUTING");
+        if (Array.isArray(pf.frontierProviderIds)) {
+          metrics.score = pf.frontierProviderIds.length;
+        }
+        if (Array.isArray(pf.providers)) {
+          metrics.itemCount = pf.providers.length;
+        }
+        if (Array.isArray(pf.recommendations)) {
+          metrics.evidenceCount = pf.recommendations.length;
+        }
+        metrics.status = "optimized";
+        break;
+      }
     }
 
     nodes.push({
@@ -643,6 +669,26 @@ export function computeSpatialEdges(
         relationType = "debates";
         label = "Council Strategic Review";
         baseStrength = 0.85;
+      } else if (types.has("pareto_frontier") && types.has("matrix")) {
+        relationType = "compares";
+        label = "Pareto Tradeoff Matrix";
+        baseStrength = 0.85;
+      } else if (types.has("pareto_frontier") && types.has("research")) {
+        relationType = "validates";
+        label = "Empirical Benchmark Frontier";
+        baseStrength = 0.85;
+      } else if (types.has("pareto_frontier") && types.has("battlecard")) {
+        relationType = "compares";
+        label = "Provider Frontier vs Rivals";
+        baseStrength = 0.85;
+      } else if (types.has("pareto_frontier") && types.has("plan")) {
+        relationType = "implements";
+        label = "Routing Infrastructure Plan";
+        baseStrength = 0.8;
+      } else if (types.has("pareto_frontier") && types.has("council")) {
+        relationType = "debates";
+        label = "Council Routing Policy Review";
+        baseStrength = 0.8;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

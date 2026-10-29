@@ -29,6 +29,7 @@ import { PersonaCouncilCard } from "@/components/GenerativeCards/PersonaCouncilC
 import { ResilienceSimulationCard } from "@/components/GenerativeCards/ResilienceSimulationCard";
 import { AudioBriefingCard } from "@/components/GenerativeCards/AudioBriefingCard";
 import { CompetitiveBattleCard } from "@/components/GenerativeCards/CompetitiveBattleCard";
+import { ParetoFrontierCard } from "@/components/GenerativeCards/ParetoFrontierCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -40,6 +41,7 @@ import {
   formatDurationTimestamp,
 } from "@/lib/audio/voice-briefing";
 import { battleCardToCsv } from "@/lib/competitive/battle-card";
+import { paretoFrontierToCsv } from "@/lib/research/pareto-optimizer";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -175,6 +177,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "pareto_frontier") {
+      const csvContent = paretoFrontierToCsv(artifact.data);
+      const filename = `${(artifact.data.topic || "pareto-frontier").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -233,6 +243,8 @@ export function ArtifactStage({
         return artifact.data.title || "Audio Briefing";
       case "battlecard":
         return artifact.data.topic || "Competitive Battle-Card";
+      case "pareto_frontier":
+        return artifact.data.topic || "Cost-Latency Pareto Frontier";
     }
   };
 
@@ -334,12 +346,13 @@ export function ArtifactStage({
             <span className="hidden sm:inline">Print / PDF</span>
           </button>
 
-          {/* Download CSV button for debate, council, simulation, audio_briefing, and battlecard */}
+          {/* Download CSV button for debate, council, simulation, audio_briefing, battlecard, and pareto_frontier */}
           {(artifact.type === "debate" ||
             artifact.type === "council" ||
             artifact.type === "simulation" ||
             artifact.type === "audio_briefing" ||
-            artifact.type === "battlecard") && (
+            artifact.type === "battlecard" ||
+            artifact.type === "pareto_frontier") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1192,6 +1205,13 @@ export function ArtifactStage({
                 <CompetitiveBattleCard battleCard={artifact.data} />
               </div>
             )}
+
+            {/* COST-LATENCY PARETO FRONTIER ARTIFACT */}
+            {artifact.type === "pareto_frontier" && (
+              <div className="space-y-4">
+                <ParetoFrontierCard artifact={artifact.data} />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1978,6 +1998,125 @@ export function ArtifactStage({
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Pareto Frontier */}
+        {artifact.type === "pareto_frontier" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Pareto Optimal Models:{" "}
+                  {artifact.data.frontierProviderIds.length} /{" "}
+                  {artifact.data.providers.length}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Workload: {artifact.data.workloadProfile}
+                </span>
+              </div>
+              {artifact.data.summary && (
+                <p className="text-xs text-gray-800 leading-relaxed italic">
+                  &ldquo;{artifact.data.summary}&rdquo;
+                </p>
+              )}
+            </div>
+
+            {/* Strategic Routing Recommendations */}
+            {artifact.data.recommendations &&
+              artifact.data.recommendations.length > 0 && (
+                <div className="space-y-2 print-avoid-break">
+                  <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                    Strategic Enterprise Routing Matrix
+                  </h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    {artifact.data.recommendations.map((rec) => (
+                      <div
+                        key={rec.strategy}
+                        className="p-2 border border-gray-300 rounded bg-white text-xs"
+                      >
+                        <div className="font-bold text-black flex items-center justify-between">
+                          <span>{rec.title}</span>
+                          <span className="text-[10px] font-mono text-gray-600">
+                            {rec.estimatedMonthlySavingsPct}% savings
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-semibold text-gray-800 mt-0.5">
+                          Primary: {rec.primaryProviderId} | Fallback:{" "}
+                          {rec.fallbackProviderId}
+                        </div>
+                        <p className="text-[10px] text-gray-600 mt-1 leading-snug">
+                          {rec.rationale}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {/* Provider Benchmark Matrix */}
+            <div className="space-y-2 print-avoid-break">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Provider Cost &amp; Latency Frontier Benchmarks
+              </h2>
+              <table className="w-full text-left text-xs border border-gray-400 border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-gray-400 text-black font-bold">
+                    <th className="p-1.5 border-r border-gray-300">
+                      Model / Provider
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Status
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Cost/1k In
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Cost/1k Out
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Latency
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Quality
+                    </th>
+                    <th className="p-1.5 text-center">Privacy</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-300">
+                  {artifact.data.providers.map((p) => {
+                    return (
+                      <tr key={p.providerId} className="text-gray-900">
+                        <td className="p-1.5 font-semibold border-r border-gray-300">
+                          {p.displayName}
+                          <span className="text-[10px] text-gray-600 block">
+                            {p.tier}
+                          </span>
+                        </td>
+                        <td className="p-1.5 text-center uppercase font-mono text-[10px] border-r border-gray-300 font-bold">
+                          {p.isParetoOptimal ? "Frontier" : "Dominated"}
+                        </td>
+                        <td className="p-1.5 text-center font-mono border-r border-gray-300">
+                          ${p.costPer1kInput.toFixed(4)}
+                        </td>
+                        <td className="p-1.5 text-center font-mono border-r border-gray-300">
+                          ${p.costPer1kOutput.toFixed(4)}
+                        </td>
+                        <td className="p-1.5 text-center font-mono border-r border-gray-300">
+                          {p.totalLatencyMs}ms
+                        </td>
+                        <td className="p-1.5 text-center font-mono border-r border-gray-300">
+                          {p.qualityScore}/100
+                        </td>
+                        <td className="p-1.5 text-center font-mono">
+                          {p.privacyComplianceIndex}/100
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
