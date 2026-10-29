@@ -151,4 +151,4 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Tab switcher in `DecisionMatrixCard.tsx` toggling between "Matrix Overview" and "Deep Gap Analysis".
   - Created `tests/gap-analysis.test.ts` (26 unit tests passing).
 - [qa] [done] All 480 tests passing across 27 test files (2,538 expect assertions). Zero lint errors, clean Next.js 16 build. Zero fake data.
-- [desktop/tauri] [done] Installed `@tauri-apps/cli@^2` as devDependency in `package.json` so `bun run desktop:dev` (`tauri dev`) executes natively without requiring a globally installed tauri binary.
+- [desktop/tauri] [done] Installed `@tauri-apps/cli@^2` as devDependency in `package.json`. Added `src-tauri/src/lib.rs`, updated `src-tauri/src/main.rs` to call `nova_desktop_lib::run()`, generated required Tauri icons (32x32, 128x128, ICNS, ICO) via `nova-icon.svg`, and verified `cargo check` and `cargo build` pass in 0.72s. Ignored `src-tauri/target/` in `.gitignore` and `eslint.config.mjs`.
