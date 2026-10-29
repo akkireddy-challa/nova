@@ -15,10 +15,10 @@ import {
   Compass,
   Users,
   ListTodo,
-  BarChart2,
   Scale,
   Code2,
   Puzzle,
+  LayoutGrid,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 
@@ -35,8 +35,56 @@ interface Props {
   onSelectModel: (m: ModelProvider) => void;
 }
 
+export const NAVBAR_MODES: {
+  id: StudioMode;
+  label: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    id: "research",
+    label: "Research",
+    icon: <Compass className="w-3.5 h-3.5 text-teal-400" />,
+  },
+  {
+    id: "canvas",
+    label: "Spatial Canvas",
+    icon: <LayoutGrid className="w-3.5 h-3.5 text-amber-400" />,
+  },
+  {
+    id: "debate",
+    label: "Debate",
+    icon: <Users className="w-3.5 h-3.5 text-purple-400" />,
+  },
+  {
+    id: "planner",
+    label: "Plan",
+    icon: <ListTodo className="w-3.5 h-3.5 text-cyan-400" />,
+  },
+  {
+    id: "matrix",
+    label: "Compare",
+    icon: <Scale className="w-3.5 h-3.5 text-emerald-400" />,
+  },
+  {
+    id: "coder",
+    label: "Code",
+    icon: <Code2 className="w-3.5 h-3.5 text-rose-400" />,
+  },
+  {
+    id: "intelligence",
+    label: "Memory Search",
+    icon: <Brain className="w-3.5 h-3.5 text-purple-400" />,
+  },
+  {
+    id: "mcp",
+    label: "Tools & API",
+    icon: <Puzzle className="w-3.5 h-3.5 text-teal-400" />,
+  },
+];
+
 export function Navbar({
   currentMode,
+  onSelectMode,
   onOpenMemory,
   onOpenPalette,
   onNewSession,
@@ -48,6 +96,7 @@ export function Navbar({
 }: Props) {
   const [isMuted, setIsMuted] = useState(sound.getMuted());
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
 
   const getModeLabel = (mode: StudioMode) => {
     switch (mode) {
@@ -68,8 +117,8 @@ export function Navbar({
         };
       case "canvas":
         return {
-          label: "Chart",
-          icon: <BarChart2 className="w-3.5 h-3.5 text-amber-400" />,
+          label: "Spatial Canvas",
+          icon: <LayoutGrid className="w-3.5 h-3.5 text-amber-400" />,
         };
       case "matrix":
         return {
@@ -125,10 +174,45 @@ export function Navbar({
 
         <span className="text-slate-600 text-xs">/</span>
 
-        {/* Current Active Mode Breadcrumb */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-xs">
-          {modeInfo.icon}
-          <span className="font-medium text-slate-200">{modeInfo.label}</span>
+        {/* Current Active Mode Breadcrumb & Switcher */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setModeDropdownOpen(!modeDropdownOpen)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-200 transition cursor-pointer"
+            title="Switch Workspace Mode"
+          >
+            {modeInfo.icon}
+            <span className="font-medium">{modeInfo.label}</span>
+            <ChevronDown className="w-3 h-3 text-slate-500 ml-0.5" />
+          </button>
+
+          {modeDropdownOpen && (
+            <div className="absolute left-0 mt-2 w-48 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl p-1.5 z-50 animate-in fade-in">
+              <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                Workspaces & Modes
+              </div>
+              {NAVBAR_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    sound.playCheck();
+                    onSelectMode(m.id);
+                    setModeDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-left transition cursor-pointer ${
+                    currentMode === m.id
+                      ? "bg-slate-800 text-teal-300 font-semibold"
+                      : "text-slate-300 hover:bg-slate-800/60"
+                  }`}
+                >
+                  {m.icon}
+                  <span>{m.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -213,7 +297,7 @@ export function Navbar({
         >
           <Brain className="w-3.5 h-3.5 text-purple-400" />
           <span className="hidden sm:inline font-mono text-[11px]">
-            {memoryCount} Memories
+            {`${memoryCount} Memories`}
           </span>
         </button>
 

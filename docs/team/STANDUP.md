@@ -176,3 +176,31 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Integrated `DialecticDebateCard` into `ArtifactStage.tsx` with dedicated CSV and Markdown export handling for debate artifacts.
   - Created `tests/debate-integration.test.ts` (8 unit tests passing).
 - [qa] [done] All 532 tests passing across 30 test files (2,774 expect assertions). Next.js 16 build passed (1,067ms). Cargo check passed (0.96s). Zero lint errors or warnings. Strictly zero fake data.
+
+## Sprint 14 — Infinite Spatial Intelligence Canvas & Visual Knowledge Topology
+
+- [spatial-canvas/math] [done] Created `src/lib/canvas/spatial-canvas.ts`:
+  - Pure deterministic 2D spatial arrangement, semantic edge discovery, and topological relationship engine for the Infinite Spatial Intelligence Canvas.
+  - Strictly ZERO `Math.random()` or invented synthetic telemetry.
+  - Exports interfaces: `SpatialCanvasNode`, `SpatialCanvasEdge`, `ViewportTransform`, `SpatialCanvasBounds`, `SpatialCanvasData`.
+  - Implements `extractSpatialNodes`: extracts all 6 artifact types (`research`, `plan`, `chart`, `matrix`, `code`, `debate`) with deterministic multi-column tier coordinates (spacingX: 380, spacingY: 280, width: 320, height: 220) guaranteeing cards never overlap.
+  - Implements `computeSpatialEdges`: deterministic edge discovery using Jaccard word overlap and semantic pair typing (`debate`+`matrix` -> `compares`, `research`+`plan` -> `implements`, `research`+`chart` -> `validates`, `research`+`debate` -> `debates`, high keyword overlap >= 0.25 -> `synthesizes`, moderate overlap >= 0.12 -> `relates_to`).
+  - Implements `computeCanvasBounds`: enclosing bounding box with configurable padding (default: 80px) handling 0, 1, and multiple nodes cleanly.
+  - Implements `computeFitViewport`: container dimension fitting with centering pan and zoom clamping strictly between 0.25x and 2.5x.
+  - Implements `calculateBezierPath`: smooth cubic bezier SVG wire curves with vertical stacking detection and curve midpoint calculation.
+  - Implements `spatialCanvasToCsv`: strict RFC 4180 compliant CSV export with escaped quotes `""`, commas, newlines, and CRLF line endings.
+  - Implements `spatialCanvasToMarkdown`: executive Markdown briefing report with node inventory, edge topology table, and artifact distribution.
+  - Created `tests/spatial-canvas.test.ts` (41 unit tests covering all extraction, layout, geometry, export, and zero Math.random audit).
+- [frontend/canvas] [done] Created `src/components/SpatialIntelligenceCanvas.tsx`:
+  - Rich interactive infinite 2D spatial canvas with mouse drag-pan, wheel zoom (0.25x to 2.5x), and dot grid background.
+  - Curved cubic SVG bezier connecting wires with directional gradient stroke and animated pulse markers.
+  - Interactive cards for all 6 artifact types (`research`, `plan`, `chart`, `matrix`, `code`, `debate`) with selection highlight, detail inspector drawer, and status badges.
+  - Mini-map navigator with interactive viewport rectangle and click-to-pan repositioning.
+  - Filter pills to toggle visibility by artifact type.
+  - 1-click RFC 4180 CSV download and Markdown briefing export with acoustic feedback (`sound.playSuccess()`, `sound.playPop()`).
+  - Created `tests/spatial-canvas-ui.test.ts` (6 unit tests passing).
+- [frontend/navigation] [done] Updated `src/components/Navbar.tsx`, `src/components/Sidebar.tsx`, and `src/app/page.tsx`:
+  - Added `"canvas"` mode to `NAVBAR_MODES` and sidebar workspaces with "2D" badge.
+  - Connected `currentMode === "canvas"` in `page.tsx` to render `<SpatialIntelligenceCanvas session={activeSession} onSelectMode={setCurrentMode} />`.
+  - Created `tests/canvas-integration.test.ts` (18 integration tests passing).
+- [qa] [done] All 597 tests passing across 33 test files (3,087 expect assertions). Zero lint errors or warnings. Next.js 16 build passed (1,552ms). Tauri cargo check passed (0.37s). Strictly zero fake data.

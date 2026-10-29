@@ -17,6 +17,7 @@ import {
   Copy,
   FolderArchive,
   Bot,
+  LayoutGrid,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import { SessionExportModal } from "./SessionExportModal";
@@ -97,7 +98,6 @@ export function Sidebar({
     "research",
     "debate",
     "planner",
-    "canvas",
     "matrix",
     "coder",
   ].includes(currentMode);
@@ -108,7 +108,14 @@ export function Sidebar({
       label: "Chat",
       icon: <MessageSquare className="w-4 h-4" />,
       isActive: isStudioMode,
-      description: "Research, Plan, Compare, Chart, Code, Debate",
+      description: "Research, Plan, Compare, Code, Debate",
+    },
+    {
+      id: "canvas" as StudioMode,
+      label: "Spatial Canvas",
+      icon: <LayoutGrid className="w-4 h-4" />,
+      isActive: currentMode === "canvas",
+      badge: "2D",
     },
     {
       id: "intelligence" as StudioMode,
