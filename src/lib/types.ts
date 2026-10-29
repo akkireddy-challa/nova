@@ -333,6 +333,50 @@ export interface CompetitiveBattleCardArtifact {
   generatedAt: string;
 }
 
+export interface ProviderBenchmarkMetrics {
+  providerId: string;
+  displayName: string;
+  tier: "flagship" | "fast" | "local" | "reasoning";
+  timeToFirstTokenMs: number;
+  totalLatencyMs: number;
+  costPer1kInput: number; // in USD
+  costPer1kOutput: number; // in USD
+  qualityScore: number; // 0-100
+  reasoningScore: number; // 0-100
+  privacyComplianceIndex: number; // 0-100
+  isAirGapped: boolean;
+}
+
+export interface ParetoOptimizationResult {
+  isParetoOptimal: boolean;
+  dominatedBy: string[]; // Provider IDs that dominate this point
+  efficiencyScore: number; // 0-100 normalized trade-off efficiency
+}
+
+export interface RoutingRecommendation {
+  strategy:
+    | "cost_minimizer"
+    | "latency_critical"
+    | "maximum_reasoning"
+    | "balanced_enterprise";
+  title: string;
+  primaryProviderId: string;
+  fallbackProviderId: string;
+  estimatedMonthlySavingsPct: number;
+  rationale: string;
+}
+
+export interface ParetoFrontierArtifact {
+  id: string;
+  topic: string;
+  workloadProfile: string;
+  providers: Array<ProviderBenchmarkMetrics & ParetoOptimizationResult>;
+  frontierProviderIds: string[];
+  recommendations: RoutingRecommendation[];
+  summary: string;
+  generatedAt: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -343,7 +387,8 @@ export type GenerativeArtifact =
   | { type: "council"; data: PersonaCouncilArtifact }
   | { type: "simulation"; data: ResilienceSimulationArtifact }
   | { type: "audio_briefing"; data: AudioBriefingArtifact }
-  | { type: "battlecard"; data: CompetitiveBattleCardArtifact };
+  | { type: "battlecard"; data: CompetitiveBattleCardArtifact }
+  | { type: "pareto_frontier"; data: ParetoFrontierArtifact };
 
 export interface AgentThought {
   id: string;

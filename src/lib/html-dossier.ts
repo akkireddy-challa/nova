@@ -95,6 +95,9 @@ export function resolveDossierTitle(
       case "battlecard":
         if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
         break;
+      case "pareto_frontier":
+        if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
+        break;
     }
   }
   if (session?.title?.trim()) {

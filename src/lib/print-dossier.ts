@@ -224,6 +224,10 @@ export function getArtifactMetadata(
       title = artifact.data.topic || "Competitive Moat Battle-Card";
       modeName = "Competitive Intelligence Battle-Card";
       break;
+    case "pareto_frontier":
+      title = artifact.data.topic || "Cost-Latency Pareto Frontier";
+      modeName = "Pareto Routing Optimizer";
+      break;
   }
 
   if (mode) {

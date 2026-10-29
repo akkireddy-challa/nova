@@ -13,6 +13,7 @@ import type {
   ResilienceSimulationArtifact,
   AudioBriefingArtifact,
   CompetitiveBattleCardArtifact,
+  ParetoFrontierArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -292,6 +293,23 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
         md += `**Key Win Themes:**\n`;
         card.keyWinThemes.forEach((w) => {
           md += `- ${w}\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "pareto_frontier": {
+      const pf: ParetoFrontierArtifact = artifact.data;
+      md += `#### 📈 Cost-Latency Pareto Frontier: ${pf.topic}\n\n`;
+      md += `*Workload Profile:* ${pf.workloadProfile} • *Frontier Optimal Models:* ${pf.frontierProviderIds.length} / ${pf.providers.length}\n\n`;
+      if (pf.summary) {
+        md += `> ${pf.summary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (pf.recommendations && pf.recommendations.length > 0) {
+        md += `**Strategic Routing Recommendations:**\n`;
+        pf.recommendations.forEach((r) => {
+          md += `- **${r.title}** (Primary: \`${r.primaryProviderId}\`, Fallback: \`${r.fallbackProviderId}\`): ${r.rationale} *[Estimated savings: ${r.estimatedMonthlySavingsPct}%]*\n`;
         });
         md += "\n";
       }

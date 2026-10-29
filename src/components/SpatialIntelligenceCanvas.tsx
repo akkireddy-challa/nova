@@ -29,6 +29,7 @@ import {
   Activity,
   Headphones,
   ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
 import type { Session, StudioMode, GenerativeArtifact } from "@/lib/types";
 import { sound } from "@/lib/sound";
@@ -845,6 +846,8 @@ function getNodeCardStyling(type: SpatialCanvasNode["artifactType"]): string {
       return "border border-amber-500/40 bg-slate-900/90 hover:border-amber-400/80 text-amber-300";
     case "battlecard":
       return "border border-rose-500/40 bg-slate-900/90 hover:border-rose-400/80 text-rose-300";
+    case "pareto_frontier":
+      return "border border-teal-500/40 bg-slate-900/90 hover:border-teal-400/80 text-teal-300";
     default:
       return "border border-slate-800 bg-slate-900/90 text-slate-300";
   }
@@ -872,6 +875,8 @@ function getNodeIcon(type: SpatialCanvasNode["artifactType"]) {
       return <Headphones className="w-3.5 h-3.5 text-amber-400" />;
     case "battlecard":
       return <ShieldCheck className="w-3.5 h-3.5 text-rose-400" />;
+    case "pareto_frontier":
+      return <TrendingUp className="w-3.5 h-3.5 text-teal-400" />;
   }
 }
 
@@ -897,6 +902,8 @@ function getMiniMapDotColor(type: SpatialCanvasNode["artifactType"]): string {
       return "bg-amber-500";
     case "battlecard":
       return "bg-rose-500";
+    case "pareto_frontier":
+      return "bg-teal-500";
     default:
       return "bg-slate-400";
   }
@@ -924,6 +931,8 @@ function getItemCountLabel(type: SpatialCanvasNode["artifactType"]): string {
       return "chapters";
     case "battlecard":
       return "competitors";
+    case "pareto_frontier":
+      return "models";
     default:
       return "items";
   }
@@ -989,6 +998,12 @@ function renderNodeGauge(node: SpatialCanvasNode) {
       return (
         <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-950/80 text-rose-300 border border-rose-800/60">
           {`Moat Score ${node.metrics?.score ?? 0}%`}
+        </span>
+      );
+    case "pareto_frontier":
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-teal-950/80 text-teal-300 border border-teal-800/60">
+          {`${node.metrics?.score ?? 0} Frontier Optimal`}
         </span>
       );
   }
