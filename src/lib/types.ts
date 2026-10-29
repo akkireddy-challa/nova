@@ -477,6 +477,64 @@ export interface RedTeamAuditArtifact {
   generatedAt: string;
 }
 
+export type PolicyViolationType =
+  | "api_key"
+  | "pii_email"
+  | "pii_phone"
+  | "credit_card"
+  | "canary_leak"
+  | "domain_boundary"
+  | "hallucination_drift";
+
+export type ViolationSeverity = "low" | "medium" | "high" | "critical";
+
+export interface PolicyViolation {
+  id: string;
+  type: PolicyViolationType;
+  severity: ViolationSeverity;
+  offsetStart: number;
+  offsetEnd: number;
+  matchedPattern: string;
+  redactedReplacement: string;
+  description: string;
+  timestamp: string;
+}
+
+export interface GuardrailRule {
+  ruleId: string;
+  name: string;
+  description: string;
+  violationType: PolicyViolationType;
+  severity: ViolationSeverity;
+  enabled: boolean;
+  action: "block" | "redact" | "warn" | "audit";
+  triggerCount: number;
+}
+
+export interface GuardrailAuditSummary {
+  totalScannedChars: number;
+  totalViolations: number;
+  redactedCount: number;
+  blockedCount: number;
+  cleanTokensPct: number;
+  riskGrade: "A+" | "A" | "B" | "C" | "F";
+  policyStatus: "enforced" | "monitored" | "breached";
+}
+
+export interface SemanticGuardrailArtifact {
+  id: string;
+  topic: string;
+  targetChannel: string;
+  policyVersion: string;
+  appliedRules: GuardrailRule[];
+  violations: PolicyViolation[];
+  summary: GuardrailAuditSummary;
+  executiveSummary: string;
+  sanitizedPreview: string;
+  originalPreview: string;
+  generatedAt: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -490,7 +548,8 @@ export type GenerativeArtifact =
   | { type: "battlecard"; data: CompetitiveBattleCardArtifact }
   | { type: "pareto_frontier"; data: ParetoFrontierArtifact }
   | { type: "eval_suite"; data: RegressionEvalArtifact }
-  | { type: "red_team_audit"; data: RedTeamAuditArtifact };
+  | { type: "red_team_audit"; data: RedTeamAuditArtifact }
+  | { type: "guardrail_policy"; data: SemanticGuardrailArtifact };
 
 export interface AgentThought {
   id: string;

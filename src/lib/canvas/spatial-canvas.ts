@@ -24,7 +24,8 @@ export interface SpatialCanvasNode {
     | "battlecard"
     | "pareto_frontier"
     | "eval_suite"
-    | "red_team_audit";
+    | "red_team_audit"
+    | "guardrail_policy";
   title: string;
   summary: string;
   x: number;
@@ -583,6 +584,31 @@ export function extractSpatialNodes(
         metrics.status = "audited";
         break;
       }
+      case "guardrail_policy": {
+        const gp = data as {
+          topic?: string;
+          summary?: { cleanTokensPct?: number };
+          appliedRules?: unknown[];
+          violations?: unknown[];
+          executiveSummary?: string;
+        };
+        title = gp.topic || "Semantic Guardrail Policy";
+        summary =
+          gp.executiveSummary ||
+          `Enforced guardrail policy with ${gp.appliedRules?.length || 0} active rules.`;
+        tags.push("GUARDRAIL", "POLICY", "SANITIZER", "SECURITY");
+        if (typeof gp.summary?.cleanTokensPct === "number") {
+          metrics.score = gp.summary.cleanTokensPct;
+        }
+        if (Array.isArray(gp.violations)) {
+          metrics.itemCount = gp.violations.length;
+        }
+        if (Array.isArray(gp.appliedRules)) {
+          metrics.evidenceCount = gp.appliedRules.length;
+        }
+        metrics.status = "enforced";
+        break;
+      }
     }
 
     nodes.push({
@@ -776,6 +802,26 @@ export function computeSpatialEdges(
       } else if (types.has("red_team_audit") && types.has("research")) {
         relationType = "validates";
         label = "Grounded Security Proof";
+        baseStrength = 0.8;
+      } else if (types.has("guardrail_policy") && types.has("red_team_audit")) {
+        relationType = "validates";
+        label = "Threat Remediation Hardening";
+        baseStrength = 0.9;
+      } else if (types.has("guardrail_policy") && types.has("eval_suite")) {
+        relationType = "validates";
+        label = "Guardrail Regression QA";
+        baseStrength = 0.9;
+      } else if (types.has("guardrail_policy") && types.has("code")) {
+        relationType = "implements";
+        label = "Runtime Output Sanitization";
+        baseStrength = 0.85;
+      } else if (types.has("guardrail_policy") && types.has("council")) {
+        relationType = "debates";
+        label = "Council Policy Approval";
+        baseStrength = 0.85;
+      } else if (types.has("guardrail_policy") && types.has("research")) {
+        relationType = "validates";
+        label = "Compliance Regulatory Alignment";
         baseStrength = 0.8;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";

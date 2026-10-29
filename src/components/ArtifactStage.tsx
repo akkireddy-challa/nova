@@ -32,6 +32,7 @@ import { CompetitiveBattleCard } from "@/components/GenerativeCards/CompetitiveB
 import { ParetoFrontierCard } from "@/components/GenerativeCards/ParetoFrontierCard";
 import { RegressionEvaluatorCard } from "@/components/GenerativeCards/RegressionEvaluatorCard";
 import { RedTeamAuditCard } from "@/components/GenerativeCards/RedTeamAuditCard";
+import { GuardrailPolicyCard } from "@/components/GenerativeCards/GuardrailPolicyCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -46,6 +47,7 @@ import { battleCardToCsv } from "@/lib/competitive/battle-card";
 import { paretoFrontierToCsv } from "@/lib/research/pareto-optimizer";
 import { evalSuiteToCsv } from "@/lib/eval/regression-evaluator";
 import { redTeamAuditToCsv } from "@/lib/security/red-team-auditor";
+import { guardrailsPolicyToCsv } from "@/lib/security/semantic-guardrails";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -205,6 +207,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "guardrail_policy") {
+      const csvContent = guardrailsPolicyToCsv(artifact.data);
+      const filename = `${(artifact.data.topic || "guardrail-policy").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -269,6 +279,8 @@ export function ArtifactStage({
         return artifact.data.topic || "Regression Evaluator Suite";
       case "red_team_audit":
         return artifact.data.topic || "Dialectic Red-Team Security Audit";
+      case "guardrail_policy":
+        return artifact.data.topic || "Semantic Guardrail Policy";
     }
   };
 
@@ -370,7 +382,7 @@ export function ArtifactStage({
             <span className="hidden sm:inline">Print / PDF</span>
           </button>
 
-          {/* Download CSV button for debate, council, simulation, audio_briefing, battlecard, pareto_frontier, eval_suite, and red_team_audit */}
+          {/* Download CSV button for debate, council, simulation, audio_briefing, battlecard, pareto_frontier, eval_suite, red_team_audit, and guardrail_policy */}
           {(artifact.type === "debate" ||
             artifact.type === "council" ||
             artifact.type === "simulation" ||
@@ -378,7 +390,8 @@ export function ArtifactStage({
             artifact.type === "battlecard" ||
             artifact.type === "pareto_frontier" ||
             artifact.type === "eval_suite" ||
-            artifact.type === "red_team_audit") && (
+            artifact.type === "red_team_audit" ||
+            artifact.type === "guardrail_policy") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1250,6 +1263,13 @@ export function ArtifactStage({
             {artifact.type === "red_team_audit" && (
               <div className="space-y-4">
                 <RedTeamAuditCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* SEMANTIC GUARDRAIL POLICY ARTIFACT */}
+            {artifact.type === "guardrail_policy" && (
+              <div className="space-y-4">
+                <GuardrailPolicyCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -2394,6 +2414,124 @@ export function ArtifactStage({
                 </ul>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Content Section: Semantic Guardrail Policy */}
+        {artifact.type === "guardrail_policy" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Channel: {artifact.data.targetChannel} (
+                  {artifact.data.policyVersion})
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Grade: {artifact.data.summary.riskGrade} (
+                  {artifact.data.summary.cleanTokensPct}% Clean Tokens)
+                </span>
+              </div>
+              {artifact.data.executiveSummary && (
+                <p className="text-xs text-gray-800 leading-relaxed italic">
+                  &ldquo;{artifact.data.executiveSummary}&rdquo;
+                </p>
+              )}
+            </div>
+
+            {/* Metrics Summary */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Clean Tokens
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.cleanTokensPct}%
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Violations
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.totalViolations}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Redacted
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.redactedCount}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Blocked
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.blockedCount}
+                </div>
+              </div>
+            </div>
+
+            {/* Applied Rules Scorecard */}
+            <div className="space-y-2 print-avoid-break">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Enforced Guardrail Policy Rules
+              </h2>
+              <table className="w-full text-left text-xs border border-gray-400 border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-gray-400 text-black font-bold">
+                    <th className="p-1.5 border-r border-gray-300">Rule ID</th>
+                    <th className="p-1.5 border-r border-gray-300">Name</th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Violation Type
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Severity
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Action
+                    </th>
+                    <th className="p-1.5 text-center">Triggers</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-300">
+                  {artifact.data.appliedRules.map((r) => (
+                    <tr key={r.ruleId} className="text-gray-900">
+                      <td className="p-1.5 font-mono text-[10px] border-r border-gray-300">
+                        {r.ruleId}
+                      </td>
+                      <td className="p-1.5 font-semibold border-r border-gray-300">
+                        {r.name}
+                      </td>
+                      <td className="p-1.5 text-center font-mono text-[10px] border-r border-gray-300">
+                        {r.violationType}
+                      </td>
+                      <td className="p-1.5 text-center font-bold uppercase font-mono text-[10px] border-r border-gray-300">
+                        {r.severity}
+                      </td>
+                      <td className="p-1.5 text-center uppercase font-mono text-[10px] border-r border-gray-300">
+                        {r.action}
+                      </td>
+                      <td className="p-1.5 text-center font-mono font-bold">
+                        {r.triggerCount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Sanitized Stream Preview */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Sanitized Payload Preview
+              </h3>
+              <pre className="p-3 text-[11px] font-mono text-black bg-gray-50 border border-gray-300 rounded overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                {artifact.data.sanitizedPreview}
+              </pre>
+            </div>
           </div>
         )}
 
