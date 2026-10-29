@@ -9,6 +9,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { DevHubModal } from "@/components/DevHubModal";
 import { SettingsModal } from "@/components/SettingsModal";
 import { IntelligenceCanvas } from "@/components/IntelligenceCanvas";
+import { SpatialIntelligenceCanvas } from "@/components/SpatialIntelligenceCanvas";
 import { PluginsAndApiHub } from "@/components/PluginsAndApiHub";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
@@ -548,6 +549,14 @@ export default function Home() {
             />
           ) : currentMode === "mcp" ? (
             <PluginsAndApiHub />
+          ) : currentMode === "canvas" ? (
+            <SpatialIntelligenceCanvas
+              session={activeSession || null}
+              onSelectMode={setCurrentMode}
+              onInspectArtifact={() => {
+                // If user selects an artifact from canvas, they can switch or inspect
+              }}
+            />
           ) : (
             <AgentCanvas
               messages={currentMessages}
