@@ -34,7 +34,8 @@ export interface SpatialCanvasNode {
     | "causal_dag"
     | "bayesian_opt"
     | "workflow_orchestrator"
-    | "formal_prover";
+    | "formal_prover"
+    | "epistemic_consensus";
   title: string;
   summary: string;
   x: number;
@@ -900,6 +901,42 @@ export function extractSpatialNodes(
             : "verified";
         break;
       }
+      case "epistemic_consensus": {
+        const ec = data as {
+          title?: string;
+          summary?: {
+            deliberationTopic?: string;
+            consensusIndexPct?: number;
+            totalAgents?: number;
+            delphiRoundsCompleted?: number;
+            entropyReductionPct?: number;
+          };
+          agents?: unknown[];
+          delphiRounds?: unknown[];
+          technicalNotes?: string;
+        };
+        title = ec.title || "Epistemic Consensus Studio";
+        summary =
+          ec.technicalNotes ||
+          `Prelec Bayesian Truth Serum consensus across ${ec.agents?.length || 0} agents (${ec.summary?.consensusIndexPct || 0}% agreement, -${ec.summary?.entropyReductionPct || 0}% entropy).`;
+        tags.push(
+          "EPISTEMIC_CONSENSUS",
+          "BAYESIAN_TRUTH_SERUM",
+          "DELPHI",
+          "QUADRATIC_VOTING",
+        );
+        if (typeof ec.summary?.consensusIndexPct === "number") {
+          metrics.score = Math.round(ec.summary.consensusIndexPct);
+        }
+        if (Array.isArray(ec.agents)) {
+          metrics.itemCount = ec.agents.length;
+        }
+        if (Array.isArray(ec.delphiRounds)) {
+          metrics.evidenceCount = ec.delphiRounds.length;
+        }
+        metrics.status = "verified";
+        break;
+      }
     }
 
     nodes.push({
@@ -1247,6 +1284,25 @@ export function computeSpatialEdges(
         relationType = "validates";
         label = "Automated Proof Regression Check";
         baseStrength = 0.94;
+      } else if (types.has("epistemic_consensus") && types.has("council")) {
+        relationType = "synthesizes";
+        label = "Bayesian Truth Serum Council Arbitration";
+        baseStrength = 0.98;
+      } else if (types.has("epistemic_consensus") && types.has("debate")) {
+        relationType = "validates";
+        label = "Delphi Convergence Verification";
+        baseStrength = 0.96;
+      } else if (types.has("epistemic_consensus") && types.has("matrix")) {
+        relationType = "synthesizes";
+        label = "Quadratic Voting Decision Synthesis";
+        baseStrength = 0.95;
+      } else if (
+        types.has("epistemic_consensus") &&
+        types.has("formal_prover")
+      ) {
+        relationType = "validates";
+        label = "Formal Invariant Epistemic Consensus";
+        baseStrength = 0.97;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

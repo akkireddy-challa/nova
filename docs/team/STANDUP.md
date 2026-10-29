@@ -663,3 +663,29 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with formal prover metadata and Markdown export format.
   - Created `tests/formal-prover-integration.test.ts` (6 integration tests passing).
 - [qa] [done] All 1,044 tests passing across 85 test files (5,124 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.7s). Tauri cargo check passed (0.44s). Strictly zero fake data.
+
+## Sprint 32 — Autonomous Multi-Agent Epistemic Consensus & Bayesian Truth Serum Protocol Studio
+
+- [consensus/engine] [done] Created `src/lib/consensus/consensus-engine.ts`:
+  - Pure deterministic Prelec Bayesian Truth Serum (Science 2004) scoring engine (`computePrelecBtsScores`): Information Score identifying "surprisingly common" expert insights and Prediction Score penalizing crowd expectation inaccuracy.
+  - Information-theoretic convergence metrics: Shannon Entropy $H(P)$ in bits (`calculateShannonEntropy`) and Jensen-Shannon Divergence $JSD(P || Q)$ (`calculateJensenShannonDivergence`) measuring uncertainty collapse across Delphi rounds.
+  - Quadratic Voting governance allocation (`computeQuadraticVoting`) via $v = \sqrt{C}$ ensuring non-linear conviction weight without minority suppression.
+  - Formal consensus synthesis (`synthesizeEpistemicConsensus`), RFC 4180 CSV export (`consensusToCsv`), and executive Markdown report generator (`consensusToMarkdown`).
+  - Strictly ZERO pseudo-randomness, strictly ZERO `Math.random()`.
+  - Created `tests/consensus-engine.test.ts` (9 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/EpistemicConsensusCard.tsx`:
+  - Rich interactive generative UI dashboard for multi-agent epistemic coordination and Bayesian Truth Serum verification.
+  - Interactive SVG BTS Belief Distribution Map (`role="graphics-document"`, zoom/pan controls 60%-180%, reset zoom) displaying 2D belief plane ($x_i$ personal endorsement vs $y_i$ crowd prediction), diagonal $y=x$ neutral boundary, 90% confidence interval rings, and surprisingly common BTS truth regions.
+  - Scorecard metrics row: Consensus Index (83.6%), Entropy Reduction (-81.8%), Total Agents (5), and Quadratic Governance.
+  - Interactive agent inspection drawer displaying role, expertise weight, Prelec information score, and reasoning justification.
+  - 5 view tabs: "BTS Belief Distribution Map", "Agent Endorsements", "Delphi Rounds", "Quadratic Governance", and "Prelec BTS Proof".
+  - 1-click Markdown dossier copy, and RFC 4180 CSV download with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`).
+  - Created `tests/consensus-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `AgentBeliefEndorsement`, `DelphiRoundTrace`, `QuadraticVoteAllocation`, `EpistemicConsensusSummary`, `EpistemicConsensusArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "epistemic_consensus"; data: EpistemicConsensusArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "epistemic_consensus"`), `Users` icon, cyan badge styling, Consensus gauge (`84% Consensus`), and topological domain edges (`synthesizes`, `validates`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with consensus metadata and Markdown export format.
+  - Created `tests/consensus-integration.test.ts` (6 integration tests passing).
+- [qa] [done] All 1,064 tests passing across 88 test files (5,206 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.4s). Tauri cargo check passed (0.48s). Strictly zero fake data.

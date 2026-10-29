@@ -14,6 +14,7 @@ import type {
   BayesianOptArtifact,
   WorkflowOrchestratorArtifact,
   FormalProverArtifact,
+  EpistemicConsensusArtifact,
 } from "./types";
 import { sanitizeFileName } from "./session-export";
 import { formatDossierDate } from "./print-dossier";
@@ -141,6 +142,9 @@ export function resolveDossierTitle(
         if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
       case "formal_prover":
+        if (artifact.data.title?.trim()) return artifact.data.title.trim();
+        break;
+      case "epistemic_consensus":
         if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
     }
@@ -998,6 +1002,42 @@ function renderFormalProverSection(fp: FormalProverArtifact): string {
           <p class="perspective-core"><strong>Formula:</strong> <code>${escapeHtml(node.formula)}</code></p>
           <p class="finding-desc">${escapeHtml(node.description)}</p>
           <p class="perspective-core"><strong>Rule:</strong> ${escapeHtml(node.inferenceRule)} | <strong>Depth:</strong> ${node.depth}</p>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div></div></section>`;
+  return html;
+}
+
+function renderEpistemicConsensusSection(
+  ec: EpistemicConsensusArtifact,
+): string {
+  let html = `<section class="dossier-section" id="epistemic-consensus">
+    <div class="section-badge">BAYESIAN TRUTH SERUM &amp; DELPHI CONSENSUS</div>
+    <h2 class="section-heading">${escapeHtml(ec.title || "Epistemic Consensus Report")}</h2>
+    <div class="summary-card">
+      <h3 class="summary-subtitle">Prelec BTS Information Scoring &amp; Epistemic Convergence</h3>
+      <p class="summary-text">${escapeHtml(ec.executiveSummary)}</p>
+      <p class="summary-text"><strong>Consensus Index:</strong> ${ec.summary.consensusIndexPct}% (Grade ${escapeHtml(ec.summary.verdictConfidenceGrade)}) | <strong>Entropy Reduction:</strong> -${ec.summary.entropyReductionPct}% | <strong>Delphi Rounds:</strong> ${ec.summary.delphiRoundsCompleted} | <strong>Governance:</strong> ${escapeHtml(ec.summary.governanceModel)}</p>
+    </div>
+
+    <div class="findings-list">
+      <h3 class="summary-subtitle">Agent Belief Endorsements &amp; BTS Scores (${ec.agents.length})</h3>
+      <div class="perspectives-grid">`;
+
+  ec.agents.forEach((agent) => {
+    html += `
+      <div class="perspective-card">
+        <div class="perspective-header">
+          <span class="perspective-persona">${escapeHtml(agent.agentName)}</span>
+          <span class="perspective-stance">BTS +${agent.btsTotalScore}</span>
+        </div>
+        <div class="perspective-body">
+          <p class="perspective-core"><strong>Role:</strong> ${escapeHtml(agent.role)} | <strong>Weight:</strong> ${agent.expertiseWeight}</p>
+          <p class="finding-desc">${escapeHtml(agent.justification)}</p>
+          <p class="perspective-core"><strong>Endorsement:</strong> ${(agent.personalEndorsement * 100).toFixed(0)}% | <strong>Predicted Crowd:</strong> ${(agent.predictedCrowdMean * 100).toFixed(0)}% | <strong>Info Score:</strong> +${agent.informationScore}</p>
         </div>
       </div>
     `;
@@ -2490,6 +2530,9 @@ export function generateStandaloneHtmlDossier(
         break;
       case "formal_prover":
         contentHtml = renderFormalProverSection(artifact.data);
+        break;
+      case "epistemic_consensus":
+        contentHtml = renderEpistemicConsensusSection(artifact.data);
         break;
     }
   } else if (session) {
