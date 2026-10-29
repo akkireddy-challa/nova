@@ -244,6 +244,10 @@ export function getArtifactMetadata(
       title = artifact.data.topic || "Multimodal Vision Inspector";
       modeName = "Multimodal Vision Grounding";
       break;
+    case "memory_graph":
+      title = artifact.data.topic || "Memory & Knowledge Graph";
+      modeName = "Graph RAG Memory Studio";
+      break;
   }
 
   if (mode) {

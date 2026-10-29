@@ -110,6 +110,9 @@ export function resolveDossierTitle(
       case "multimodal_inspection":
         if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
         break;
+      case "memory_graph":
+        if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
+        break;
     }
   }
   if (session?.title?.trim()) {

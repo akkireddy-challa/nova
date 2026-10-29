@@ -452,3 +452,27 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Created `tests/multimodal-inspection-integration.test.ts` (6 tests passing).
 - [security/audit] [done] Documented Dependabot Security Alert #1 (`GHSA-wrw7-89jp-8q8g` on `glib::VariantStrIter` via `tauri` -> `wry` -> `webkit2gtk`) in `SECURITY.md`, confirming zero attack surface on macOS/Windows and uninvoked path.
 - [qa] [done] Verified full test suite, format check, lint check, build check, and Tauri cargo check. Zero regressions.
+
+## Sprint 24 — Autonomous Dynamic Memory & Knowledge Graph Visualizer / Graph RAG Studio
+
+- [graph/engine] [done] Created `src/lib/graph/memory-graph-engine.ts`:
+  - Pure deterministic degree centrality calculation (`calculateDegreeCentrality`), normalized graph density calculation (`computeGraphDensity`), graph summary metrics (`calculateGraphSummary`), deterministic concentric/equidistant circle node coordinates layout (`computeDeterministicNodePositions`), and memory synthesis (`synthesizeMemoryGraph`).
+  - Strict RFC 4180 CSV export (`memoryGraphToCsv`) with CRLF line endings and formatted executive Markdown reporting (`memoryGraphToMarkdown`).
+  - Strictly ZERO pseudo-randomness, strictly ZERO fake data.
+  - Created `tests/memory-graph-engine.test.ts` (12 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/MemoryGraphCard.tsx`:
+  - Rich interactive generative UI dashboard for dynamic memory graphs and Graph RAG exploration.
+  - Interactive SVG graph canvas with accessible ARIA graphics roles, scaled node circles by centrality score, degree counter, directed edge arrows with active highlight, and focus ring animation.
+  - Interactive inspection side drawer showing entity category, centrality score, description, and connected incident relations.
+  - Real-time search filter and entity category pills (All, Technology, Concept, Methodology, Organization, Standard, Person).
+  - 3 view modes: "Interactive Graph", "Entity Hierarchy" table, and "Semantic Relations" table.
+  - 1-click RFC 4180 CSV export and Markdown clipboard copy with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`, `sound.playTap()`).
+  - Created `tests/memory-graph-ui.test.ts` (6 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `GraphEntityType`, `GraphRelationType`, `GraphNode`, `GraphEdge`, `MemoryGraphSummary`, `MemoryGraphArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "memory_graph"; data: MemoryGraphArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "memory_graph"`), `Network` icon, violet/indigo badge styling, graph density gauge, and topological edges (`synthesizes`, `implements`, `validates`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with memory graph metadata and Markdown export format.
+  - Created `tests/memory-graph-integration.test.ts` (7 integration tests passing).
+- [qa] [done] All 892 tests passing across 64 test files (4,514 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.3s). Tauri cargo check passed (0.46s). Strictly zero fake data.

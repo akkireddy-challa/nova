@@ -26,7 +26,8 @@ export interface SpatialCanvasNode {
     | "eval_suite"
     | "red_team_audit"
     | "guardrail_policy"
-    | "multimodal_inspection";
+    | "multimodal_inspection"
+    | "memory_graph";
   title: string;
   summary: string;
   x: number;
@@ -634,6 +635,36 @@ export function extractSpatialNodes(
         metrics.status = "grounded";
         break;
       }
+      case "memory_graph": {
+        const kg = data as {
+          topic?: string;
+          summary?: {
+            density?: number;
+            totalNodes?: number;
+            totalEdges?: number;
+            averageDegree?: number;
+          };
+          nodes?: unknown[];
+          edges?: unknown[];
+          executiveSummary?: string;
+        };
+        title = kg.topic || "Memory & Knowledge Graph";
+        summary =
+          kg.executiveSummary ||
+          `Semantic knowledge graph with ${kg.nodes?.length || 0} entities and ${kg.edges?.length || 0} relations.`;
+        tags.push("GRAPH_RAG", "MEMORY_GRAPH", "CENTRALITY", "ONTOLOGY");
+        if (typeof kg.summary?.density === "number") {
+          metrics.score = Math.round(kg.summary.density * 100);
+        }
+        if (Array.isArray(kg.nodes)) {
+          metrics.itemCount = kg.nodes.length;
+        }
+        if (Array.isArray(kg.edges)) {
+          metrics.evidenceCount = kg.edges.length;
+        }
+        metrics.status = "indexed";
+        break;
+      }
     }
 
     nodes.push({
@@ -873,6 +904,25 @@ export function computeSpatialEdges(
         relationType = "implements";
         label = "Visual Safety Sanitization";
         baseStrength = 0.85;
+      } else if (types.has("memory_graph") && types.has("research")) {
+        relationType = "synthesizes";
+        label = "Graph RAG Associative Indexing";
+        baseStrength = 0.94;
+      } else if (types.has("memory_graph") && types.has("code")) {
+        relationType = "implements";
+        label = "Architecture Topology Implementation";
+        baseStrength = 0.9;
+      } else if (
+        types.has("memory_graph") &&
+        types.has("multimodal_inspection")
+      ) {
+        relationType = "validates";
+        label = "Visual Entity Grounding";
+        baseStrength = 0.88;
+      } else if (types.has("memory_graph") && types.has("guardrail_policy")) {
+        relationType = "validates";
+        label = "Ontology Security Alignment";
+        baseStrength = 0.86;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

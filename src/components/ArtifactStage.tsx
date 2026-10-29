@@ -34,6 +34,7 @@ import { RegressionEvaluatorCard } from "@/components/GenerativeCards/Regression
 import { RedTeamAuditCard } from "@/components/GenerativeCards/RedTeamAuditCard";
 import { GuardrailPolicyCard } from "@/components/GenerativeCards/GuardrailPolicyCard";
 import { MultiModalInspectionCard } from "@/components/GenerativeCards/MultiModalInspectionCard";
+import { MemoryGraphCard } from "@/components/GenerativeCards/MemoryGraphCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -50,6 +51,7 @@ import { evalSuiteToCsv } from "@/lib/eval/regression-evaluator";
 import { redTeamAuditToCsv } from "@/lib/security/red-team-auditor";
 import { guardrailsPolicyToCsv } from "@/lib/security/semantic-guardrails";
 import { multiModalInspectionToCsv } from "@/lib/multimodal/frame-inspector";
+import { memoryGraphToCsv } from "@/lib/graph/memory-graph-engine";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -225,6 +227,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "memory_graph") {
+      const csvContent = memoryGraphToCsv(artifact.data);
+      const filename = `${(artifact.data.topic || "memory-graph").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -293,6 +303,8 @@ export function ArtifactStage({
         return artifact.data.topic || "Semantic Guardrail Policy";
       case "multimodal_inspection":
         return artifact.data.topic || "Multimodal Vision Inspector";
+      case "memory_graph":
+        return artifact.data.topic || "Memory & Knowledge Graph";
     }
   };
 
@@ -404,7 +416,8 @@ export function ArtifactStage({
             artifact.type === "eval_suite" ||
             artifact.type === "red_team_audit" ||
             artifact.type === "guardrail_policy" ||
-            artifact.type === "multimodal_inspection") && (
+            artifact.type === "multimodal_inspection" ||
+            artifact.type === "memory_graph") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1290,6 +1303,13 @@ export function ArtifactStage({
             {artifact.type === "multimodal_inspection" && (
               <div className="space-y-4">
                 <MultiModalInspectionCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* DYNAMIC MEMORY & KNOWLEDGE GRAPH ARTIFACT */}
+            {artifact.type === "memory_graph" && (
+              <div className="space-y-4">
+                <MemoryGraphCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -2652,6 +2672,147 @@ export function ArtifactStage({
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Memory & Knowledge Graph */}
+        {artifact.type === "memory_graph" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Target: {artifact.data.topic}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Density: {(artifact.data.summary.density * 100).toFixed(1)}% |
+                  Avg Degree: {artifact.data.summary.averageDegree}
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 leading-relaxed">
+                {artifact.data.executiveSummary}
+              </p>
+            </div>
+
+            {/* Metrics Scorecard */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Total Entities
+                </div>
+                <div className="text-base font-bold font-mono text-black">
+                  {artifact.data.summary.totalNodes}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Total Relations
+                </div>
+                <div className="text-base font-bold font-mono text-black">
+                  {artifact.data.summary.totalEdges}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Most Central Node
+                </div>
+                <div className="text-xs font-bold text-black truncate mt-1">
+                  {artifact.data.summary.mostCentralNode}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Dominant Category
+                </div>
+                <div className="text-xs font-bold text-black capitalize mt-1">
+                  {artifact.data.summary.dominantEntityType}
+                </div>
+              </div>
+            </div>
+
+            {/* Entities Hierarchy Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Semantic Entities &amp; Centrality Hierarchy (
+                {artifact.data.nodes.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Entity</th>
+                    <th className="p-1.5">Type</th>
+                    <th className="p-1.5 text-right">Degree</th>
+                    <th className="p-1.5 text-right">Centrality</th>
+                    <th className="p-1.5">Description</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {artifact.data.nodes.map((node) => (
+                    <tr key={node.id}>
+                      <td className="p-1.5 font-bold text-gray-900">
+                        {node.label}
+                      </td>
+                      <td className="p-1.5 font-mono text-[10px] uppercase text-gray-600">
+                        {node.type}
+                      </td>
+                      <td className="p-1.5 text-right font-mono">
+                        {node.degree}
+                      </td>
+                      <td className="p-1.5 text-right font-mono font-bold">
+                        {(node.centralityScore * 100).toFixed(1)}%
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {node.description}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Directed Semantic Relations */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Directed Semantic Relations ({artifact.data.edges.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Source Entity</th>
+                    <th className="p-1.5 text-center">Relation</th>
+                    <th className="p-1.5">Target Entity</th>
+                    <th className="p-1.5 text-right">Weight</th>
+                    <th className="p-1.5">Binding Context</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {artifact.data.edges.map((edge) => {
+                    const src = artifact.data.nodes.find(
+                      (n) => n.id === edge.source,
+                    );
+                    const tgt = artifact.data.nodes.find(
+                      (n) => n.id === edge.target,
+                    );
+                    return (
+                      <tr key={edge.id}>
+                        <td className="p-1.5 font-bold text-gray-900">
+                          {src?.label || edge.source}
+                        </td>
+                        <td className="p-1.5 text-center font-mono text-[10px] text-gray-700">
+                          {edge.relation}
+                        </td>
+                        <td className="p-1.5 font-bold text-gray-900">
+                          {tgt?.label || edge.target}
+                        </td>
+                        <td className="p-1.5 text-right font-mono">
+                          {(edge.weight * 100).toFixed(0)}%
+                        </td>
+                        <td className="p-1.5 text-gray-700">{edge.label}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
