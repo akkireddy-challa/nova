@@ -31,7 +31,8 @@ export interface SpatialCanvasNode {
     | "audio_spectrogram"
     | "prompt_optimizer"
     | "vector_space"
-    | "causal_dag";
+    | "causal_dag"
+    | "bayesian_opt";
   title: string;
   summary: string;
   x: number;
@@ -789,6 +790,42 @@ export function extractSpatialNodes(
         metrics.status = "causal";
         break;
       }
+      case "bayesian_opt": {
+        const bo = data as {
+          title?: string;
+          targetModel?: string;
+          summary?: {
+            bestObjectiveValue?: number;
+            targetObjective?: string;
+            improvementPct?: number;
+            totalTrials?: number;
+          };
+          parameters?: unknown[];
+          trials?: unknown[];
+          technicalNotes?: string;
+        };
+        title = bo.title || "Bayesian Optimization Studio";
+        summary =
+          bo.technicalNotes ||
+          `Bayesian optimization across ${bo.parameters?.length || 0} dimensions achieving ${bo.summary?.bestObjectiveValue || 0} (${bo.summary?.targetObjective || "objective"}).`;
+        tags.push(
+          "BAYESIAN_OPT",
+          "HYPERPARAMETERS",
+          "GAUSSIAN_PROCESS",
+          "SURROGATE",
+        );
+        if (typeof bo.summary?.bestObjectiveValue === "number") {
+          metrics.score = Math.round(bo.summary.bestObjectiveValue);
+        }
+        if (Array.isArray(bo.trials)) {
+          metrics.itemCount = bo.trials.length;
+        }
+        if (Array.isArray(bo.parameters)) {
+          metrics.evidenceCount = bo.parameters.length;
+        }
+        metrics.status = "optimized";
+        break;
+      }
     }
 
     nodes.push({
@@ -1090,6 +1127,18 @@ export function computeSpatialEdges(
         relationType = "validates";
         label = "Causal SCM Validates";
         baseStrength = 0.94;
+      } else if (types.has("bayesian_opt") && types.has("eval_suite")) {
+        relationType = "validates";
+        label = "Hyperparameter Benchmark Tuning";
+        baseStrength = 0.96;
+      } else if (types.has("bayesian_opt") && types.has("pareto_frontier")) {
+        relationType = "validates";
+        label = "Cost-Throughput Frontier Validation";
+        baseStrength = 0.94;
+      } else if (types.has("bayesian_opt") && types.has("prompt_optimizer")) {
+        relationType = "synthesizes";
+        label = "Prompt & Inference Joint Optimization";
+        baseStrength = 0.91;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

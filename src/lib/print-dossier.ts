@@ -264,6 +264,10 @@ export function getArtifactMetadata(
       title = artifact.data.hypothesis || "Causal Inference Studio";
       modeName = "Causal Inference & SCM Studio";
       break;
+    case "bayesian_opt":
+      title = artifact.data.title || "Bayesian Optimization Studio";
+      modeName = "Bayesian Optimization & Hyperparameter Studio";
+      break;
   }
 
   if (mode) {

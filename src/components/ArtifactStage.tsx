@@ -39,6 +39,7 @@ import { AudioSpectrogramCard } from "@/components/GenerativeCards/AudioSpectrog
 import { PromptOptimizerCard } from "@/components/GenerativeCards/PromptOptimizerCard";
 import { VectorSpaceCard } from "@/components/GenerativeCards/VectorSpaceCard";
 import { CausalDagCard } from "@/components/GenerativeCards/CausalDagCard";
+import { BayesianOptCard } from "@/components/GenerativeCards/BayesianOptCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -60,6 +61,7 @@ import { audioSpectrogramToCsv } from "@/lib/audio/spectrogram-inspector";
 import { promptOptimizationToCsv } from "@/lib/optimization/prompt-optimizer";
 import { vectorSpaceToCsv } from "@/lib/vector/vector-space-engine";
 import { causalDagToCsv } from "@/lib/causal/causal-dag-engine";
+import { bayesianOptToCsv } from "@/lib/optimization/bayesian-opt-engine";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -275,6 +277,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "bayesian_opt") {
+      const csvContent = bayesianOptToCsv(artifact.data);
+      const filename = `${(artifact.data.title || "bayesian-opt").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -353,6 +363,8 @@ export function ArtifactStage({
         return artifact.data.datasetTitle || "Vector Space Studio";
       case "causal_dag":
         return artifact.data.hypothesis || "Causal Inference Studio";
+      case "bayesian_opt":
+        return artifact.data.title || "Bayesian Optimization Studio";
     }
   };
 
@@ -469,7 +481,8 @@ export function ArtifactStage({
             artifact.type === "audio_spectrogram" ||
             artifact.type === "prompt_optimizer" ||
             artifact.type === "vector_space" ||
-            artifact.type === "causal_dag") && (
+            artifact.type === "causal_dag" ||
+            artifact.type === "bayesian_opt") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1390,6 +1403,13 @@ export function ArtifactStage({
             {artifact.type === "causal_dag" && (
               <div className="space-y-4">
                 <CausalDagCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* BAYESIAN OPTIMIZATION ARTIFACT */}
+            {artifact.type === "bayesian_opt" && (
+              <div className="space-y-4">
+                <BayesianOptCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -3285,6 +3305,110 @@ export function ArtifactStage({
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Bayesian Optimization Studio */}
+        {artifact.type === "bayesian_opt" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Target: {artifact.data.title} ({artifact.data.targetModel})
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Peak: {artifact.data.summary.bestObjectiveValue} (+
+                  {artifact.data.summary.improvementPct}%) | Trials:{" "}
+                  {artifact.data.summary.totalTrials}
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 leading-relaxed font-sans">
+                {artifact.data.executiveSummary}
+              </p>
+            </div>
+
+            {/* Metrics Scorecard */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Peak Objective
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.bestObjectiveValue}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Baseline Value
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.baselineObjectiveValue}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Improvement Delta
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  +{artifact.data.summary.improvementPct}%
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Next Acquisition
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.nextExpectedAcquisitionValue} (EI)
+                </div>
+              </div>
+            </div>
+
+            {/* Tuned Hyperparameters Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Tuned Hyperparameters ({artifact.data.parameters.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Parameter</th>
+                    <th className="p-1.5">Type</th>
+                    <th className="p-1.5">Domain / Choices</th>
+                    <th className="p-1.5 text-right">Optimal Value</th>
+                    <th className="p-1.5">Unit</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.parameters.map((p) => (
+                    <tr key={p.name}>
+                      <td className="p-1.5 font-bold text-black">{p.name}</td>
+                      <td className="p-1.5 uppercase text-gray-700">
+                        {p.type}
+                      </td>
+                      <td className="p-1.5 text-gray-600">
+                        {p.choices
+                          ? p.choices.join(", ")
+                          : `[${p.min ?? "-"}, ${p.max ?? "-"}]`}
+                      </td>
+                      <td className="p-1.5 text-right font-bold text-black">
+                        {p.optimalValue}
+                      </td>
+                      <td className="p-1.5 text-gray-600">{p.unit}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Production Configuration Snippet */}
+            <div className="border border-gray-400 rounded overflow-hidden print-avoid-break">
+              <div className="p-2 bg-gray-100 border-b border-gray-300 font-mono text-xs text-black font-semibold">
+                Production Runtime Configuration (YAML)
+              </div>
+              <pre className="p-3 text-[11px] font-mono text-black bg-white overflow-x-auto leading-relaxed whitespace-pre-wrap">
+                {artifact.data.configSnippetYaml}
+              </pre>
             </div>
           </div>
         )}

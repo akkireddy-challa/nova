@@ -581,3 +581,31 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with causal DAG metadata and Markdown export format.
   - Created `tests/causal-dag-integration.test.ts` (7 integration tests passing).
 - [qa] [done] All 978 tests passing across 76 test files (4,892 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.3s). Tauri cargo check passed (0.42s). Strictly zero fake data.
+
+## Sprint 29 — Autonomous Bayesian Optimization & Hyperparameter Explorer Studio
+
+- [optimization/engine] [done] Created `src/lib/optimization/bayesian-opt-engine.ts`:
+  - Pure deterministic Gaussian Process (GP) regression surrogate model with RBF covariance kernel (`rbfKernel`).
+  - Gaussian elimination with partial pivoting (`solveLinearSystem`) for exact deterministic covariance matrix inversion and posterior mean/variance updates.
+  - Acquisition functions: Expected Improvement (EI with normal CDF/PDF), Upper Confidence Bound (UCB with tunable exploration parameter $\beta$), Probability of Improvement (PI).
+  - Synthesis engine (`synthesizeBayesianOptimization`) modeling high-dimensional hyperparameter tuning (e.g. speculative draft token length, KV cache block size, batch limits, attention backends) with continuous, discrete, and categorical domains.
+  - RFC 4180 CSV export (`bayesianOptToCsv`) with CRLF line endings.
+  - Executive Markdown report generator (`bayesianOptToMarkdown`) and production runtime YAML/JSON config snippets.
+  - Strictly ZERO pseudo-randomness, strictly ZERO `Math.random()`.
+  - Created `tests/bayesian-opt-engine.test.ts` (11 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/BayesianOptCard.tsx`:
+  - Rich interactive generative UI dashboard for Gaussian Process surrogate modeling and parameter response surfaces.
+  - Interactive SVG response surface canvas (`role="graphics-document"`, `tabindex="0"`, `aria-label`) featuring posterior mean regression curve, shaded 95% Bayesian credible interval ($\mu \pm 1.96\sigma$), evaluated trial markers with optimal ping halo, and proposed next trial indicator.
+  - Scorecard metrics row: Peak Objective Value with net gain %, Acquisition Peak (EI score), Evaluated Trials count, Tuned Dimensions.
+  - Interactive trial inspection drawer displaying observed baseline values, SE uncertainty, and acquisition scores.
+  - 4 view tabs: "Surrogate Response Surface", "Hyperparameter Space", "Sequential Trials", and "Production Config".
+  - 1-click YAML config copy, Markdown report copy, and RFC 4180 CSV download with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`, `sound.playTap()`).
+  - Created `tests/bayesian-opt-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `HyperparameterType`, `HyperparameterParam`, `AcquisitionFunctionType`, `BayesianTrial`, `SurrogateCurvePoint`, `BayesianOptSummary`, `BayesianOptArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "bayesian_opt"; data: BayesianOptArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "bayesian_opt"`), `Sliders` icon, amber badge styling, Peak gauge, and topological edges (`validates`, `synthesizes`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with Bayesian optimization metadata and Markdown export format.
+  - Created `tests/bayesian-opt-integration.test.ts` (7 integration tests passing).
+- [qa] [done] All 1,001 tests passing across 79 test files (4,973 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (2.7s). Tauri cargo check passed (0.45s). Strictly zero fake data.

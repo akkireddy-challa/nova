@@ -872,6 +872,70 @@ export interface CausalDagArtifact {
   technicalNotes?: string;
 }
 
+export type HyperparameterType = "continuous" | "discrete" | "categorical";
+
+export interface HyperparameterParam {
+  name: string;
+  type: HyperparameterType;
+  min?: number;
+  max?: number;
+  step?: number;
+  choices?: string[];
+  optimalValue: number | string;
+  unit: string;
+}
+
+export type AcquisitionFunctionType =
+  "expected_improvement" | "upper_confidence_bound" | "probability_improvement";
+
+export interface BayesianTrial {
+  iteration: number;
+  parameters: Record<string, number | string>;
+  objectiveValue: number;
+  standardError: number;
+  acquisitionValue: number;
+  isOptimal: boolean;
+  status: "evaluated" | "optimal" | "proposed";
+}
+
+export interface SurrogateCurvePoint {
+  x: number;
+  mean: number;
+  stdDev: number;
+  upperConfidenceBound: number;
+  lowerConfidenceBound: number;
+  acquisitionValue: number;
+}
+
+export interface BayesianOptSummary {
+  targetObjective: string;
+  optimizationDirection: "maximize" | "minimize";
+  bestObjectiveValue: number;
+  baselineObjectiveValue: number;
+  improvementPct: number;
+  totalTrials: number;
+  explorationExploitationTradeoff: number;
+  acquisitionFunction: AcquisitionFunctionType;
+  primaryParameter: string;
+  nextSuggestedPoint: Record<string, number | string>;
+  nextExpectedAcquisitionValue: number;
+}
+
+export interface BayesianOptArtifact {
+  id: string;
+  title: string;
+  targetModel: string;
+  createdAt: string;
+  summary: BayesianOptSummary;
+  parameters: HyperparameterParam[];
+  trials: BayesianTrial[];
+  surrogateCurve: SurrogateCurvePoint[];
+  configSnippetYaml: string;
+  configSnippetJson: string;
+  executiveSummary: string;
+  technicalNotes?: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -892,7 +956,8 @@ export type GenerativeArtifact =
   | { type: "audio_spectrogram"; data: AudioSpectrogramArtifact }
   | { type: "prompt_optimizer"; data: PromptOptimizationArtifact }
   | { type: "vector_space"; data: VectorSpaceArtifact }
-  | { type: "causal_dag"; data: CausalDagArtifact };
+  | { type: "causal_dag"; data: CausalDagArtifact }
+  | { type: "bayesian_opt"; data: BayesianOptArtifact };
 
 export interface AgentThought {
   id: string;

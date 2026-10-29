@@ -23,6 +23,7 @@ import type {
   PromptOptimizationArtifact,
   VectorSpaceArtifact,
   CausalDagArtifact,
+  BayesianOptArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -527,6 +528,32 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
         md += `**Counterfactual Scenarios (${cd.counterfactuals.length}):**\n`;
         cd.counterfactuals.forEach((s) => {
           md += `- 🔮 **${s.name}**: ${s.explanation} (Intervention: \`${s.intervention}\`, ITE: ${s.individualTreatmentEffect >= 0 ? "+" : ""}${s.individualTreatmentEffect.toFixed(2)})\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "bayesian_opt": {
+      const bo: BayesianOptArtifact = artifact.data;
+      md += `#### 🎛️ Bayesian Optimization Studio: ${bo.title}\n\n`;
+      md += `*Objective:* **${bo.summary.targetObjective}** • *Optimal Peak:* **${bo.summary.bestObjectiveValue} (+${bo.summary.improvementPct}%)** • *Baseline:* ${bo.summary.baselineObjectiveValue} • *Trials:* ${bo.summary.totalTrials}\n\n`;
+      if (bo.executiveSummary) {
+        md += `> ${bo.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (bo.parameters && bo.parameters.length > 0) {
+        md += `**Tuned Parameters (${bo.parameters.length}):**\n`;
+        bo.parameters.forEach((p) => {
+          md += `- ⚙️ **${p.name}** (\`${p.type}\`): Optimal = **${p.optimalValue} ${p.unit}** (Domain: ${p.choices ? p.choices.join(", ") : `[${p.min ?? "-"}, ${p.max ?? "-"}]`})\n`;
+        });
+        md += "\n";
+      }
+      if (bo.trials && bo.trials.length > 0) {
+        md += `**Evaluated Trials (${bo.trials.length}):**\n`;
+        bo.trials.forEach((t) => {
+          const optMark = t.isOptimal ? " 🏆 (Optimal)" : "";
+          const primaryVal = t.parameters[bo.summary.primaryParameter];
+          md += `- 🧪 **Trial #${t.iteration}** (\`${t.status.toUpperCase()}\`${optMark}): ${t.objectiveValue > 0 ? `${t.objectiveValue.toFixed(1)} output` : "Pending"} (${bo.summary.primaryParameter}=${primaryVal}, EI: ${t.acquisitionValue.toFixed(3)})\n`;
         });
         md += "\n";
       }
