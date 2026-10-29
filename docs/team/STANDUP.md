@@ -151,4 +151,3 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Tab switcher in `DecisionMatrixCard.tsx` toggling between "Matrix Overview" and "Deep Gap Analysis".
   - Created `tests/gap-analysis.test.ts` (26 unit tests passing).
 - [qa] [done] All 480 tests passing across 27 test files (2,538 expect assertions). Zero lint errors, clean Next.js 16 build. Zero fake data.
-
