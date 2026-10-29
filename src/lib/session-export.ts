@@ -15,6 +15,7 @@ import type {
   CompetitiveBattleCardArtifact,
   ParetoFrontierArtifact,
   RegressionEvalArtifact,
+  RedTeamAuditArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -334,6 +335,34 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
                 ? "⚠️"
                 : "❌";
           md += `- ${icon} **${s.title}** (\`${s.scenarioId}\`, ${s.category}): ${s.score}% *[${s.latencyMs}ms]*\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "red_team_audit": {
+      const audit: RedTeamAuditArtifact = artifact.data;
+      md += `#### 🛡️ Dialectic Red-Team Security Audit: ${audit.topic}\n\n`;
+      md += `*Target System:* \`${audit.targetSystem}\` • *Defense Posture:* **${audit.summary.defensePosture}** (${audit.summary.immunityScore}% Immunity)\n\n`;
+      if (audit.executiveSummary) {
+        md += `> ${audit.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (audit.attackChains && audit.attackChains.length > 0) {
+        md += `**Adversarial Attack Chains (${audit.summary.exploitedCount}/${audit.summary.totalAttackChains} Exploited):**\n`;
+        audit.attackChains.forEach((c) => {
+          const icon = c.status === "exploited" ? "🚨" : "🛡️";
+          md += `- ${icon} **${c.vectorName}** (\`${c.chainId}\`, OWASP: ${c.owaspCategory}, Severity: ${c.severity}): ${c.turns.length} Turns - ${c.status === "exploited" ? "**BREACH DETECTED**" : "Neutralized"}\n`;
+        });
+        md += "\n";
+      }
+      const allGuardrails = audit.attackChains
+        .map((c) => c.recommendedGuardrail)
+        .filter(Boolean);
+      if (allGuardrails.length > 0) {
+        md += `**Recommended Remediation Guardrails:**\n`;
+        allGuardrails.forEach((rec) => {
+          md += `- 🔒 ${rec}\n`;
         });
         md += "\n";
       }

@@ -23,7 +23,8 @@ export interface SpatialCanvasNode {
     | "audio_briefing"
     | "battlecard"
     | "pareto_frontier"
-    | "eval_suite";
+    | "eval_suite"
+    | "red_team_audit";
   title: string;
   summary: string;
   x: number;
@@ -561,6 +562,27 @@ export function extractSpatialNodes(
         metrics.status = "evaluated";
         break;
       }
+      case "red_team_audit": {
+        const rta = data as {
+          topic?: string;
+          summary?: { immunityScore?: number };
+          attackChains?: unknown[];
+          executiveSummary?: string;
+        };
+        title = rta.topic || "Dialectic Red-Team Security Audit";
+        summary =
+          rta.executiveSummary ||
+          `Red-team audit with ${rta.attackChains?.length || 0} adversarial penetration vectors.`;
+        tags.push("RED_TEAM", "SECURITY", "VULNERABILITY");
+        if (typeof rta.summary?.immunityScore === "number") {
+          metrics.score = rta.summary.immunityScore;
+        }
+        if (Array.isArray(rta.attackChains)) {
+          metrics.itemCount = rta.attackChains.length;
+        }
+        metrics.status = "audited";
+        break;
+      }
     }
 
     nodes.push({
@@ -734,6 +756,26 @@ export function computeSpatialEdges(
       } else if (types.has("eval_suite") && types.has("battlecard")) {
         relationType = "compares";
         label = "Competitive Moat QA";
+        baseStrength = 0.8;
+      } else if (types.has("red_team_audit") && types.has("eval_suite")) {
+        relationType = "validates";
+        label = "Regression & Threat Audit";
+        baseStrength = 0.9;
+      } else if (types.has("red_team_audit") && types.has("code")) {
+        relationType = "debates";
+        label = "Adversarial Penetration Probe";
+        baseStrength = 0.9;
+      } else if (types.has("red_team_audit") && types.has("simulation")) {
+        relationType = "debates";
+        label = "Chaos Attack Vector Test";
+        baseStrength = 0.85;
+      } else if (types.has("red_team_audit") && types.has("council")) {
+        relationType = "debates";
+        label = "Council Security Review";
+        baseStrength = 0.85;
+      } else if (types.has("red_team_audit") && types.has("research")) {
+        relationType = "validates";
+        label = "Grounded Security Proof";
         baseStrength = 0.8;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";

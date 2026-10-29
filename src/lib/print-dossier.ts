@@ -232,6 +232,10 @@ export function getArtifactMetadata(
       title = artifact.data.topic || "Automated Regression Evaluation Suite";
       modeName = "Dynamic Regression Evaluator";
       break;
+    case "red_team_audit":
+      title = artifact.data.topic || "Dialectic Red-Team Security Audit";
+      modeName = "Adversarial Red-Team Auditor";
+      break;
   }
 
   if (mode) {

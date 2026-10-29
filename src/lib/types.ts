@@ -424,6 +424,59 @@ export interface RegressionEvalArtifact {
   generatedAt: string;
 }
 
+export type OwaspLlmCategory =
+  | "LLM01_Prompt_Injection"
+  | "LLM02_Sensitive_Information_Disclosure"
+  | "LLM03_Supply_Chain_Vulnerabilities"
+  | "LLM04_Data_and_Model_Poisoning"
+  | "LLM06_Excessive_Agency"
+  | "LLM08_Vector_and_Embedding_Weaknesses"
+  | "LLM09_Misinformation"
+  | "LLM10_Unbounded_Consumption";
+
+export type AttackSeverity =
+  "critical" | "high" | "medium" | "low" | "neutralized";
+
+export interface RedTeamProbeTurn {
+  turnNumber: number;
+  attackerPrompt: string;
+  attackTactic: string;
+  targetResponseSnippet: string;
+  detectedBreach: boolean;
+  leakageDetails?: string;
+}
+
+export interface RedTeamAttackChain {
+  chainId: string;
+  vectorName: string;
+  owaspCategory: OwaspLlmCategory;
+  severity: AttackSeverity;
+  status: "neutralized" | "exploited" | "partially_mitigated";
+  turns: RedTeamProbeTurn[];
+  vulnerabilityAnalysis: string;
+  recommendedGuardrail: string;
+}
+
+export interface RedTeamAuditSummary {
+  totalAttackChains: number;
+  neutralizedCount: number;
+  exploitedCount: number;
+  immunityScore: number; // 0 - 100
+  criticalVulnerabilities: number;
+  highVulnerabilities: number;
+  defensePosture: "hardened" | "resilient" | "vulnerable" | "compromised";
+}
+
+export interface RedTeamAuditArtifact {
+  id: string;
+  topic: string;
+  targetSystem: string;
+  attackChains: RedTeamAttackChain[];
+  summary: RedTeamAuditSummary;
+  executiveSummary: string;
+  generatedAt: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -436,7 +489,8 @@ export type GenerativeArtifact =
   | { type: "audio_briefing"; data: AudioBriefingArtifact }
   | { type: "battlecard"; data: CompetitiveBattleCardArtifact }
   | { type: "pareto_frontier"; data: ParetoFrontierArtifact }
-  | { type: "eval_suite"; data: RegressionEvalArtifact };
+  | { type: "eval_suite"; data: RegressionEvalArtifact }
+  | { type: "red_team_audit"; data: RedTeamAuditArtifact };
 
 export interface AgentThought {
   id: string;
