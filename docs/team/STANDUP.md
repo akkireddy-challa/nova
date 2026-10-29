@@ -204,3 +204,37 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Connected `currentMode === "canvas"` in `page.tsx` to render `<SpatialIntelligenceCanvas session={activeSession} onSelectMode={setCurrentMode} />`.
   - Created `tests/canvas-integration.test.ts` (18 integration tests passing).
 - [qa] [done] All 597 tests passing across 33 test files (3,087 expect assertions). Zero lint errors or warnings. Next.js 16 build passed (1,552ms). Tauri cargo check passed (0.37s). Strictly zero fake data.
+
+## Sprint 15 — Multi-Persona Executive Council Studio & Deliberation Matrix
+
+- [persona/engine] [done] Created `src/lib/research/persona-studio.ts`:
+  - Pure deterministic mathematical calculation & multi-persona deliberation engine (`PersonaCouncilArtifact`).
+  - Evaluates architectural, technical, and strategic topics across institutional specialist personas (`tech-architect`, `security-ciso`, `financial-analyst`, `market-analyst`, `academic-critic`).
+  - Derived `calculatePersonaGrade`: exact grade boundaries ("A+" 95-100, "A" 85-94, "B" 75-84, "C" 65-74, "D" 50-64, "F" <50).
+  - Derived `calculatePersonaVerdict`: individual persona sign-off thresholds ("approve" >= 80, "conditional" 60-79, "veto" < 60).
+  - Derived `calculateCouncilAlignmentIndex`: deterministic standard deviation dispersion formula with active veto penalties; exactly 100% on zero variance with 0 vetoes, clamped strictly 0-100.
+  - Derived `determineCouncilVerdict`: pure rule hierarchy determining `unanimous_approval`, `conditional_consensus`, `divided_council`, or `rejected_high_risk`.
+  - Discovers fatal blindspots with critical/warning severity and concrete mitigations when scores breach safety thresholds.
+  - Generates unified strategic compromise blueprint and prioritized actionable execution gates.
+  - Strict RFC 4180 CSV export (`personaCouncilToCsv`) with escaped quotes, commas, newlines, and CRLF (`\r\n`).
+  - Formatted executive markdown briefing report (`personaCouncilToMarkdown`).
+  - Strictly ZERO `Math.random()`, strictly ZERO fake data.
+  - Created `tests/persona-studio.test.ts` (22 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/PersonaCouncilCard.tsx`:
+  - Rich interactive executive council dashboard component.
+  - SVG circular council alignment gauge with color progression (emerald > 75%, amber 50-75%, rose < 50%).
+  - Council verdict banner with color-coded severity badges.
+  - Persona selector carousel / tabs with specialist avatars, role tags, and letter grades.
+  - Individual persona scorecard panel with criteria progress bars, core endorsement highlight, critical objections, and non-negotiables.
+  - Fatal blindspots & red-team risks card with concrete mitigations.
+  - Interactive execution gates checklist with live completion tracking.
+  - 1-click RFC 4180 CSV download and Markdown clipboard copy with acoustic feedback (`sound.playSuccess()`, `sound.playPop()`, `sound.playCheck()`).
+  - Created `tests/persona-studio-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & navigation integration:
+  - Added `"persona"` to `StudioMode` in `src/lib/types.ts` and `GenerativeArtifact` union (`type: "council"`).
+  - Added "Persona Council" to `NAVBAR_MODES` in `src/components/Navbar.tsx` and studio modes in `src/components/Sidebar.tsx` and `src/components/AgentCanvas.tsx`.
+  - Upgraded `ArtifactStage.tsx` with dedicated council preview, CSV download, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction, executive badges, and topological edge discovery for council nodes.
+  - Updated `src/lib/print-dossier.ts` metadata resolver for council artifacts.
+  - Created `tests/persona-integration.test.ts` (14 integration tests passing).
+- [qa] [done] All 638 tests passing across 36 test files (3,353 expect assertions). Zero lint errors or warnings. Next.js 16 build passed (814ms). Tauri cargo check passed (0.37s). Strictly zero fake data.

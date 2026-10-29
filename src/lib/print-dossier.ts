@@ -208,6 +208,10 @@ export function getArtifactMetadata(
       title = artifact.data.topic || "Multi-Agent Dialectical Debate";
       modeName = "Multi-Agent Debate Analysis";
       break;
+    case "council":
+      title = artifact.data.topic || "Multi-Persona Executive Council";
+      modeName = "Executive Council Briefing";
+      break;
   }
 
   if (mode) {
@@ -218,6 +222,7 @@ export function getArtifactMetadata(
       coder: "Technical Architecture",
       matrix: "Comparative Decision Matrix",
       debate: "Multi-Agent Debate Analysis",
+      persona: "Executive Council Studio",
       intelligence: "Intelligence Memory",
       mcp: "Tool & API Integrations",
     };

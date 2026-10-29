@@ -68,6 +68,7 @@ import {
   CheckCircle2,
   Mic,
   Volume2,
+  UserCheck,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import { generateId } from "@/lib/utils";
@@ -417,6 +418,8 @@ export function AgentCanvas({
         return "Ask a question. Nova searches the web and writes a cited answer...";
       case "debate":
         return "Enter a claim or decision to see arguments for and against...";
+      case "persona":
+        return "Enter an architectural or product decision for multi-persona council review...";
       case "planner":
         return "Describe a goal or project to break into a step-by-step plan...";
       case "canvas":
@@ -441,6 +444,11 @@ export function AgentCanvas({
       icon: <Compass className="w-3.5 h-3.5" />,
     },
     { id: "debate", label: "Debate", icon: <Users className="w-3.5 h-3.5" /> },
+    {
+      id: "persona",
+      label: "Council",
+      icon: <UserCheck className="w-3.5 h-3.5" />,
+    },
     {
       id: "planner",
       label: "Plan",

@@ -11,7 +11,8 @@ import { ChatMessage, GenerativeArtifact } from "@/lib/types";
 export interface SpatialCanvasNode {
   id: string;
   messageId: string;
-  artifactType: "research" | "plan" | "chart" | "matrix" | "code" | "debate";
+  artifactType:
+    "research" | "plan" | "chart" | "matrix" | "code" | "debate" | "council";
   title: string;
   summary: string;
   x: number;
@@ -396,6 +397,32 @@ export function extractSpatialNodes(
         metrics.status = "compiled";
         break;
       }
+      case "council": {
+        const cl = data as {
+          topic?: string;
+          councilVerdict?: string;
+          verdictSummary?: string;
+          alignmentIndex?: number;
+          reviews?: unknown[];
+          fatalBlindspots?: unknown[];
+        };
+        title = cl.topic || "Persona Council Deliberation";
+        summary =
+          cl.verdictSummary ||
+          `Council evaluation: ${cl.councilVerdict || "consensus reached"}`;
+        tags.push("COUNCIL", "EXECUTIVE");
+        if (typeof cl.alignmentIndex === "number") {
+          metrics.score = cl.alignmentIndex;
+        }
+        if (Array.isArray(cl.reviews)) {
+          metrics.itemCount = cl.reviews.length;
+        }
+        if (Array.isArray(cl.fatalBlindspots)) {
+          metrics.evidenceCount = cl.fatalBlindspots.length;
+        }
+        metrics.status = "evaluated";
+        break;
+      }
     }
 
     nodes.push({
@@ -470,6 +497,18 @@ export function computeSpatialEdges(
         relationType = "debates";
         label = "Stress Tests";
         baseStrength = 0.85;
+      } else if (types.has("council") && types.has("research")) {
+        relationType = "debates";
+        label = "Executive Council Audit";
+        baseStrength = 0.85;
+      } else if (types.has("council") && types.has("plan")) {
+        relationType = "implements";
+        label = "Authorizes Execution";
+        baseStrength = 0.8;
+      } else if (types.has("council") && types.has("matrix")) {
+        relationType = "compares";
+        label = "Council Scorecard Review";
+        baseStrength = 0.75;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

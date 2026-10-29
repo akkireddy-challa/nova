@@ -19,6 +19,7 @@ import {
   Code2,
   Puzzle,
   LayoutGrid,
+  UserCheck,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 
@@ -54,6 +55,11 @@ export const NAVBAR_MODES: {
     id: "debate",
     label: "Debate",
     icon: <Users className="w-3.5 h-3.5 text-purple-400" />,
+  },
+  {
+    id: "persona",
+    label: "Persona Council",
+    icon: <UserCheck className="w-3.5 h-3.5 text-indigo-400" />,
   },
   {
     id: "planner",
@@ -109,6 +115,11 @@ export function Navbar({
         return {
           label: "Debate",
           icon: <Users className="w-3.5 h-3.5 text-purple-400" />,
+        };
+      case "persona":
+        return {
+          label: "Persona Council",
+          icon: <UserCheck className="w-3.5 h-3.5 text-indigo-400" />,
         };
       case "planner":
         return {
