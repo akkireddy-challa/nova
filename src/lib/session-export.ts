@@ -20,6 +20,7 @@ import type {
   MultiModalInspectionArtifact,
   MemoryGraphArtifact,
   AudioSpectrogramArtifact,
+  PromptOptimizationArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -457,6 +458,23 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
         md += `**Aligned Phonetic Segments (${as.segments.length}):**\n`;
         as.segments.forEach((s) => {
           md += `- 🗣️ **${s.speakerTag}** (${(s.startMs / 1000).toFixed(1)}s - ${(s.endMs / 1000).toFixed(1)}s, ${s.acousticConfidencePct}% conf): "${s.transcriptText}"\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "prompt_optimizer": {
+      const po: PromptOptimizationArtifact = artifact.data;
+      md += `#### ⚡ Prompt Evolution Studio: ${po.targetTask}\n\n`;
+      md += `*Model:* **${po.summary.baseModel}** • *Eval Score:* **${po.summary.optimizedScore.toFixed(1)}% (+${po.summary.netScoreGainPct}%)** • *Token Savings:* **${po.summary.tokenSavingsPct}%** • *Pareto Optimal:* ${po.summary.paretoEfficientCount}\n\n`;
+      if (po.metapromptTemplate) {
+        md += `\`\`\`markdown\n${po.metapromptTemplate}\n\`\`\`\n\n`;
+      }
+      if (po.testCases && po.testCases.length > 0) {
+        md += `**Validation Test Bench (${po.testCases.length}):**\n`;
+        po.testCases.forEach((tc) => {
+          md += `- 🧪 **${tc.input}**: ${tc.baselineScore.toFixed(1)}% → **${tc.optimizedScore.toFixed(1)}%** (\`${tc.status.toUpperCase()}\`) - ${tc.reason}\n`;
         });
         md += "\n";
       }

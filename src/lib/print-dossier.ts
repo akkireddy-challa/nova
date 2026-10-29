@@ -252,6 +252,10 @@ export function getArtifactMetadata(
       title = artifact.data.topic || "Acoustic Spectrogram Inspector";
       modeName = "Acoustic Spectrogram Inspector";
       break;
+    case "prompt_optimizer":
+      title = artifact.data.targetTask || "Prompt Evolution Studio";
+      modeName = "DSPy Prompt Evolution Studio";
+      break;
   }
 
   if (mode) {

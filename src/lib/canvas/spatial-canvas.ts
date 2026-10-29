@@ -28,7 +28,8 @@ export interface SpatialCanvasNode {
     | "guardrail_policy"
     | "multimodal_inspection"
     | "memory_graph"
-    | "audio_spectrogram";
+    | "audio_spectrogram"
+    | "prompt_optimizer";
   title: string;
   summary: string;
   x: number;
@@ -695,6 +696,36 @@ export function extractSpatialNodes(
         metrics.status = "acoustic";
         break;
       }
+      case "prompt_optimizer": {
+        const po = data as {
+          targetTask?: string;
+          summary?: {
+            baseModel?: string;
+            optimizedScore?: number;
+            netScoreGainPct?: number;
+            tokenSavingsPct?: number;
+          };
+          candidates?: unknown[];
+          testCases?: unknown[];
+          technicalNotes?: string;
+        };
+        title = po.targetTask || "Prompt Evolution Studio";
+        summary =
+          po.technicalNotes ||
+          `DSPy evolutionary prompt optimization with ${po.candidates?.length || 0} candidate(s) and +${po.summary?.netScoreGainPct || 0}% score gain.`;
+        tags.push("PROMPT_OPT", "DSPY", "METAPROMPT", "TOKEN_SAVINGS");
+        if (typeof po.summary?.optimizedScore === "number") {
+          metrics.score = Math.round(po.summary.optimizedScore);
+        }
+        if (Array.isArray(po.candidates)) {
+          metrics.itemCount = po.candidates.length;
+        }
+        if (Array.isArray(po.testCases)) {
+          metrics.evidenceCount = po.testCases.length;
+        }
+        metrics.status = "optimized";
+        break;
+      }
     }
 
     nodes.push({
@@ -968,6 +999,14 @@ export function computeSpatialEdges(
         relationType = "validates";
         label = "Acoustic Entity Resolution";
         baseStrength = 0.89;
+      } else if (types.has("prompt_optimizer") && types.has("eval_suite")) {
+        relationType = "validates";
+        label = "Metaprompt Benchmark Verification";
+        baseStrength = 0.94;
+      } else if (types.has("prompt_optimizer") && types.has("research")) {
+        relationType = "synthesizes";
+        label = "Research Prompt Adaptation";
+        baseStrength = 0.91;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

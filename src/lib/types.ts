@@ -688,6 +688,76 @@ export interface AudioSpectrogramArtifact {
   generatedAt: string;
 }
 
+// --- Prompt Optimization & DSPy Evolution Types ---
+export type PromptOptimizationTechnique =
+  | "few_shot_bootstrap"
+  | "chain_of_thought_anchoring"
+  | "constraint_hardening"
+  | "role_grounding"
+  | "token_pruning"
+  | "hybrid_dspy_opt";
+
+export interface PromptCandidate {
+  id: string;
+  iteration: number;
+  label: string;
+  technique: PromptOptimizationTechnique;
+  promptText: string;
+  systemInstruction: string;
+  evalScore: number; // 0 - 100
+  tokenCount: number;
+  latencyMs: number;
+  costPer1kCallsUsd: number;
+  scoreDeltaPct: number;
+  tokenDeltaPct: number;
+  selected: boolean;
+  rationale: string;
+}
+
+export interface PromptTestCase {
+  id: string;
+  input: string;
+  expectedBehavior: string;
+  baselineScore: number;
+  optimizedScore: number;
+  status: "passed" | "improved" | "regressed";
+  reason: string;
+}
+
+export interface PromptParetoStep {
+  iteration: number;
+  candidateId: string;
+  score: number;
+  tokenCount: number;
+  description: string;
+}
+
+export interface PromptOptimizationSummary {
+  baseModel: string;
+  totalIterations: number;
+  baselineScore: number;
+  optimizedScore: number;
+  netScoreGainPct: number;
+  baselineTokens: number;
+  optimizedTokens: number;
+  tokenSavingsPct: number;
+  estimatedCostSavingsPct: number;
+  bestCandidateId: string;
+  paretoEfficientCount: number;
+}
+
+export interface PromptOptimizationArtifact {
+  id: string;
+  targetTask: string;
+  createdAt: string;
+  summary: PromptOptimizationSummary;
+  candidates: PromptCandidate[];
+  testCases: PromptTestCase[];
+  metapromptTemplate: string;
+  paretoLineage: PromptParetoStep[];
+  technicalNotes?: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -705,7 +775,8 @@ export type GenerativeArtifact =
   | { type: "guardrail_policy"; data: SemanticGuardrailArtifact }
   | { type: "multimodal_inspection"; data: MultiModalInspectionArtifact }
   | { type: "memory_graph"; data: MemoryGraphArtifact }
-  | { type: "audio_spectrogram"; data: AudioSpectrogramArtifact };
+  | { type: "audio_spectrogram"; data: AudioSpectrogramArtifact }
+  | { type: "prompt_optimizer"; data: PromptOptimizationArtifact };
 
 export interface AgentThought {
   id: string;
