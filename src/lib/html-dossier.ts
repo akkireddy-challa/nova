@@ -13,6 +13,7 @@ import type {
   CausalDagArtifact,
   BayesianOptArtifact,
   WorkflowOrchestratorArtifact,
+  FormalProverArtifact,
 } from "./types";
 import { sanitizeFileName } from "./session-export";
 import { formatDossierDate } from "./print-dossier";
@@ -137,6 +138,9 @@ export function resolveDossierTitle(
         if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
       case "workflow_orchestrator":
+        if (artifact.data.title?.trim()) return artifact.data.title.trim();
+        break;
+      case "formal_prover":
         if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
     }
@@ -960,6 +964,40 @@ function renderWorkflowOrchestratorSection(
           <p class="perspective-core"><strong>Identifier:</strong> <code>${escapeHtml(state.id)}</code></p>
           <p class="finding-desc">${escapeHtml(state.description)}</p>
           ${state.entryAction ? `<p class="perspective-core"><strong>Entry Hook:</strong> <code>${escapeHtml(state.entryAction)}</code></p>` : ""}
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div></div></section>`;
+  return html;
+}
+
+function renderFormalProverSection(fp: FormalProverArtifact): string {
+  let html = `<section class="dossier-section" id="formal-prover">
+    <div class="section-badge">AUTOMATED THEOREM PROVER STUDIO</div>
+    <h2 class="section-heading">${escapeHtml(fp.title || "Formal Invariant Proof")}</h2>
+    <div class="summary-card">
+      <h3 class="summary-subtitle">Mathematical Correctness &amp; SMT Verification</h3>
+      <p class="summary-text">${escapeHtml(fp.executiveSummary)}</p>
+      <p class="summary-text"><strong>Status:</strong> ${escapeHtml(fp.summary.status.toUpperCase())} | <strong>Soundness:</strong> ${fp.summary.soundnessCompletenessPct}% | <strong>Theorems Verified:</strong> ${fp.summary.provenTheorems}/${fp.summary.totalTheorems} | <strong>Proof Depth:</strong> ${fp.summary.proofDepth} | <strong>Solver:</strong> ${escapeHtml(fp.summary.satSolverType)}</p>
+    </div>
+
+    <div class="findings-list">
+      <h3 class="summary-subtitle">Deductive Proof Tree AST (${fp.proofTree.length} Steps)</h3>
+      <div class="perspectives-grid">`;
+
+  fp.proofTree.forEach((node) => {
+    html += `
+      <div class="perspective-card">
+        <div class="perspective-header">
+          <span class="perspective-persona">${escapeHtml(node.name)}</span>
+          <span class="perspective-stance">${escapeHtml(node.kind.toUpperCase())}</span>
+        </div>
+        <div class="perspective-body">
+          <p class="perspective-core"><strong>Formula:</strong> <code>${escapeHtml(node.formula)}</code></p>
+          <p class="finding-desc">${escapeHtml(node.description)}</p>
+          <p class="perspective-core"><strong>Rule:</strong> ${escapeHtml(node.inferenceRule)} | <strong>Depth:</strong> ${node.depth}</p>
         </div>
       </div>
     `;
@@ -2449,6 +2487,9 @@ export function generateStandaloneHtmlDossier(
         break;
       case "workflow_orchestrator":
         contentHtml = renderWorkflowOrchestratorSection(artifact.data);
+        break;
+      case "formal_prover":
+        contentHtml = renderFormalProverSection(artifact.data);
         break;
     }
   } else if (session) {

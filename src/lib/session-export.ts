@@ -25,6 +25,7 @@ import type {
   CausalDagArtifact,
   BayesianOptArtifact,
   WorkflowOrchestratorArtifact,
+  FormalProverArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -582,6 +583,30 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
             ? ` (Saga: \`${t.compensationAction}\`)`
             : "";
           md += `- 🔗 **${t.event}**: \`${t.source}\` → \`${t.target}\`${comp}\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "formal_prover": {
+      const fp: FormalProverArtifact = artifact.data;
+      md += `#### 🛡️ Automated Theorem Prover Studio: ${fp.title}\n\n`;
+      md += `*Solver:* \`${fp.summary.satSolverType}\` • *Status:* **${fp.summary.status.toUpperCase()}** • *Soundness:* **${fp.summary.soundnessCompletenessPct}%** • *Theorems Verified:* ${fp.summary.provenTheorems}/${fp.summary.totalTheorems} • *Proof Depth:* ${fp.summary.proofDepth}\n\n`;
+      if (fp.executiveSummary) {
+        md += `> ${fp.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (fp.proofTree && fp.proofTree.length > 0) {
+        md += `**Deductive Proof Tree AST (${fp.proofTree.length} Steps):**\n`;
+        fp.proofTree.forEach((node) => {
+          md += `- 📜 **${node.name}** (\`${node.kind.toUpperCase()}\`): \`${node.formula}\` (Rule: ${node.inferenceRule}, Depth: ${node.depth})\n`;
+        });
+        md += "\n";
+      }
+      if (fp.hoareInvariants && fp.hoareInvariants.length > 0) {
+        md += `**Hoare Logic Inductive Invariants (${fp.hoareInvariants.length}):**\n`;
+        fp.hoareInvariants.forEach((inv) => {
+          md += `- 🔒 **${inv.property}**: \`{${inv.precondition}}\` → \`${inv.operation}\` → \`{${inv.postcondition}}\` (${inv.holds ? "✅ Holds" : "❌ Violated"})\n`;
         });
         md += "\n";
       }

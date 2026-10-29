@@ -636,3 +636,30 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with workflow orchestrator metadata and Markdown export format.
   - Created `tests/orchestrator-integration.test.ts` (7 integration tests passing).
 - [qa] [done] All 1,020 tests passing across 82 test files (5,046 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (2.0s). Tauri cargo check passed (0.44s). Strictly zero fake data.
+
+## Sprint 31 — Autonomous Symbolic Logic, Automated Theorem Prover & Formal Invariant Verification Studio
+
+- [formal/engine] [done] Created `src/lib/formal/formal-prover-engine.ts`:
+  - Pure deterministic Davis-Putnam-Logemann-Loveland (DPLL) Boolean SAT solver (`dpllSolve`) with unit propagation, pure literal elimination, and backtracking decision heuristics.
+  - Forward-chaining Horn clause deductive inference and Hoare logic calculus ({P} C {Q}) verification condition evaluator (`verifyHoareTriple`) validating inductive invariance, initiation, and consecution.
+  - Formal theorem synthesis (`synthesizeFormalProof`) constructing deductive proof trees with mathematical axioms, hypotheses, intermediate lemmas, and terminal Q.E.D. closure or counterexample extraction.
+  - Standard formal specification generators: SMT-LIB 2.6 benchmark code format (`generateSmtLib2`) and Lean 4 theorem definition script (`generateLean4Theorem`).
+  - RFC 4180 CSV export (`formalProverToCsv`) with CRLF line endings and executive Markdown formal proof report (`formalProverToMarkdown`).
+  - Strictly ZERO pseudo-randomness, strictly ZERO `Math.random()`.
+  - Created `tests/formal-prover-engine.test.ts` (13 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/FormalProverCard.tsx`:
+  - Rich interactive generative UI dashboard for automated theorem proving and formal invariant verification.
+  - Interactive SVG proof tree AST canvas (`role="graphics-document"`, zoom/pan controls 60%-180%, reset zoom) displaying directed dependency edges, color-coded node categories (Axiom, Hypothesis, Lemma, Induction Step, Q.E.D., Counterexample), and verified status badges.
+  - Scorecard metrics row: Verified Theorems, Soundness Guarantee % (100% Sound), Inductive Hoare Invariants count, and Verification Latency in ms.
+  - Interactive node inspection drawer displaying formal formula in monospace notation, applied inference rule, semantic description, and parent antecedents.
+  - 5 view tabs: "Proof Tree AST", "Hoare Invariants", "Deduction Steps", "SMT-LIB & Lean 4", and "Counterexamples".
+  - 1-click SMT-LIB copy, Lean 4 copy, Markdown dossier copy, and RFC 4180 CSV download with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`).
+  - Created `tests/formal-prover-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `ProofNodeKind`, `VerificationStatus`, `ProofTreeNode`, `HoareInvariant`, `ProofCounterexample`, `FormalProverSummary`, `FormalProverArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "formal_prover"; data: FormalProverArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "formal_prover"`), `ShieldCheck` icon, emerald badge styling, Soundness gauge (`100% Sound`), and topological domain edges (`validates`, `debates`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with formal prover metadata and Markdown export format.
+  - Created `tests/formal-prover-integration.test.ts` (6 integration tests passing).
+- [qa] [done] All 1,044 tests passing across 85 test files (5,124 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.7s). Tauri cargo check passed (0.44s). Strictly zero fake data.
