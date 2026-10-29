@@ -16,6 +16,7 @@ import type {
   ParetoFrontierArtifact,
   RegressionEvalArtifact,
   RedTeamAuditArtifact,
+  SemanticGuardrailArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -363,6 +364,31 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
         md += `**Recommended Remediation Guardrails:**\n`;
         allGuardrails.forEach((rec) => {
           md += `- 🔒 ${rec}\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "guardrail_policy": {
+      const gp: SemanticGuardrailArtifact = artifact.data;
+      md += `#### 🛡️ Semantic Guardrail Policy: ${gp.topic}\n\n`;
+      md += `*Target Channel:* \`${gp.targetChannel}\` • *Policy Version:* \`${gp.policyVersion}\` • *Risk Grade:* **${gp.summary.riskGrade}** (${gp.summary.cleanTokensPct}% Clean Tokens)\n\n`;
+      if (gp.executiveSummary) {
+        md += `> ${gp.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (gp.appliedRules && gp.appliedRules.length > 0) {
+        md += `**Enforced Guardrail Rules (${gp.appliedRules.length}):**\n`;
+        gp.appliedRules.forEach((r) => {
+          md += `- 🔒 **${r.name}** (\`${r.ruleId}\`, Action: ${r.action}): ${r.triggerCount} triggers\n`;
+        });
+        md += "\n";
+      }
+      if (gp.violations && gp.violations.length > 0) {
+        md += `**Intercepted Violations (${gp.summary.totalViolations}):**\n`;
+        gp.violations.forEach((v) => {
+          const icon = v.severity === "critical" ? "🚨" : "⚠️";
+          md += `- ${icon} **${v.description}** (\`${v.type}\`, [${v.offsetStart}-${v.offsetEnd}]): substituted with \`${v.redactedReplacement}\`\n`;
         });
         md += "\n";
       }

@@ -104,6 +104,9 @@ export function resolveDossierTitle(
       case "red_team_audit":
         if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
         break;
+      case "guardrail_policy":
+        if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
+        break;
     }
   }
   if (session?.title?.trim()) {

@@ -236,6 +236,10 @@ export function getArtifactMetadata(
       title = artifact.data.topic || "Dialectic Red-Team Security Audit";
       modeName = "Adversarial Red-Team Auditor";
       break;
+    case "guardrail_policy":
+      title = artifact.data.topic || "Semantic Guardrail Policy";
+      modeName = "Semantic Guardrail Policy";
+      break;
   }
 
   if (mode) {

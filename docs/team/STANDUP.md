@@ -399,3 +399,30 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with red-team audit metadata and Markdown export format.
   - Created `tests/red-team-integration.test.ts` (10 integration tests passing).
 - [qa] [done] All 809 tests passing across 54 test files (4,214 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (823ms). Tauri cargo check passed (0.47s). Strictly zero fake data.
+
+## Sprint 22 — Enterprise Semantic Guardrail Policy Synthesizer & Output Sanitizer Engine
+
+- [security/engine] [done] Created `src/lib/security/semantic-guardrails.ts`:
+  - Pure deterministic runtime semantic guardrail policy synthesizer and output sanitizer.
+  - PII/Secrets scrubbing: OpenAI, Anthropic, AWS, GitHub credentials and bearer tokens (`[REDACTED_API_KEY]`), email addresses (`[REDACTED_EMAIL]`), phone numbers (`[REDACTED_PHONE]`), and payment card PANs with Luhn Checksum validation (`validateLuhnChecksum`, `[REDACTED_CARD_PAN]`).
+  - Cryptographic token canary interception (`CANARY-[A-Z0-9]{8,16}`, `[BLOCKED_CANARY_LEAK]`) detecting system prompt leakage in live streaming tokens.
+  - Domain boundary enforcement (`[WARNED_DOMAIN_CLAIM]`) flagging unauthenticated execution commands and clinical diagnosis without disclaimers.
+  - Deterministic compliance risk grade calculation (`computePolicyRiskGrade`: A+, A, B, C, F) and summary metrics (`calculateGuardrailSummary`: clean token percentage, total violations, redacted tokens, blocked streams).
+  - Strict RFC 4180 CSV export (`guardrailsPolicyToCsv`) with CRLF line endings and executive Markdown reporting (`guardrailsPolicyToMarkdown`).
+  - Strictly ZERO pseudo-random numbers, strictly ZERO fake data.
+  - Created `tests/semantic-guardrails.test.ts` (18 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/GuardrailPolicyCard.tsx`:
+  - Rich interactive generative UI dashboard for semantic guardrail policies.
+  - Risk Grade badge with animated pulse dot and dynamic status styling (emerald for A+/A, teal for B, amber for C, rose for F).
+  - Metric scorecard: Clean Tokens (%), Total Violations, Redacted Tokens, Blocked Payloads.
+  - 3 view tabs: "Sanitized Output" (stream view with active redaction chips), "Policy Rules" (rule table with severity, action: block/redact/warn/audit, and trigger counts), and "Interceptions" (expandable drawers with byte offsets, matched pattern, and redacted substitution).
+  - 1-click RFC 4180 CSV export and Markdown clipboard copy with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`, `sound.playTap()`).
+  - Created `tests/guardrail-policy-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `PolicyViolationType`, `ViolationSeverity`, `PolicyViolation`, `GuardrailRule`, `GuardrailAuditSummary`, `SemanticGuardrailArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "guardrail_policy"; data: SemanticGuardrailArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "guardrail_policy"`), `Lock` icon, emerald badge styling, clean token throughput gauge, and topological edges (`validates`, `implements`, `debates`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with guardrail policy metadata and Markdown export format.
+  - Created `tests/guardrail-policy-integration.test.ts` (10 integration tests passing).
+- [qa] [done] All 842 tests passing across 57 test files (4,313 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (2.8s). Tauri cargo check passed (0.48s). Strictly zero fake data.
