@@ -331,3 +331,49 @@ export interface EvalSuiteRun {
   conflictResolutionScore: number;
   results: EvalScenarioResult[];
 }
+
+// --- Multi-Agent Swarm Orchestration Types ---
+export type SwarmAgentRole = "scout" | "analyst" | "critic" | "synthesizer";
+export type SwarmStageStatus = "pending" | "active" | "completed" | "failed";
+
+export interface SwarmAgentState {
+  role: SwarmAgentRole;
+  name: string;
+  title: string;
+  status: SwarmStageStatus;
+  currentTask?: string;
+  findingsCount?: number;
+  latencyMs?: number;
+}
+
+export interface AgentSwarmEvent {
+  id: string;
+  timestamp: string;
+  role: SwarmAgentRole;
+  type:
+    | "task_started"
+    | "sources_gathered"
+    | "analysis_computed"
+    | "evidence_audited"
+    | "synthesis_ready"
+    | "error";
+  message: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface SwarmExecutionStage {
+  role: SwarmAgentRole;
+  goal: string;
+  status: SwarmStageStatus;
+  dependencies: SwarmAgentRole[];
+}
+
+export interface SwarmExecutionPlan {
+  mission: string;
+  stages: Array<{
+    role: SwarmAgentRole;
+    goal: string;
+    status: SwarmStageStatus;
+    dependencies: SwarmAgentRole[];
+  }>;
+}

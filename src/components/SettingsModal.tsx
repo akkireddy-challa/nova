@@ -17,7 +17,9 @@ import {
   AlertCircle,
   Globe,
   Cpu,
+  Gauge,
 } from "lucide-react";
+import { LocalEngineBenchmarkModal } from "./LocalEngineBenchmarkModal";
 import { sound } from "@/lib/sound";
 import type {
   ProviderStatus,
@@ -170,6 +172,7 @@ export function SettingsModal({
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
   const [pinging, setPinging] = useState<Record<string, boolean>>({});
   const [copiedPreset, setCopiedPreset] = useState<string | null>(null);
+  const [isBenchmarkOpen, setIsBenchmarkOpen] = useState(false);
 
   const fetchStatuses = useCallback(async () => {
     setIsLoadingStatus(true);
@@ -555,11 +558,21 @@ export function SettingsModal({
 
           {/* Section 3: Preset Guidance for Local LLM Engines */}
           <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Server className="w-4 h-4 text-teal-400" />
-              <span className="font-semibold text-slate-100 text-sm">
-                Local LLM Presets & Self-Hosting
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Server className="w-4 h-4 text-teal-400" />
+                <span className="font-semibold text-slate-100 text-sm">
+                  Local LLM Presets & Self-Hosting
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBenchmarkOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-teal-500/10 border border-teal-500/30 text-teal-300 hover:bg-teal-500/20 transition cursor-pointer"
+              >
+                <Gauge className="w-3.5 h-3.5 text-teal-400" />
+                <span>Benchmark Engine</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -670,6 +683,11 @@ export function SettingsModal({
           </button>
         </div>
       </div>
+
+      <LocalEngineBenchmarkModal
+        isOpen={isBenchmarkOpen}
+        onClose={() => setIsBenchmarkOpen(false)}
+      />
     </div>
   );
 }
