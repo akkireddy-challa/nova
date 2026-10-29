@@ -27,7 +27,8 @@ export interface SpatialCanvasNode {
     | "red_team_audit"
     | "guardrail_policy"
     | "multimodal_inspection"
-    | "memory_graph";
+    | "memory_graph"
+    | "audio_spectrogram";
   title: string;
   summary: string;
   x: number;
@@ -665,6 +666,35 @@ export function extractSpatialNodes(
         metrics.status = "indexed";
         break;
       }
+      case "audio_spectrogram": {
+        const as = data as {
+          topic?: string;
+          summary?: {
+            durationSeconds?: number;
+            snrDb?: number;
+            averageAcousticConfidencePct?: number;
+          };
+          segments?: unknown[];
+          spectralBands?: unknown[];
+          executiveSummary?: string;
+        };
+        title = as.topic || "Acoustic Spectrogram Inspector";
+        summary =
+          as.executiveSummary ||
+          `Acoustic spectrogram inspection with ${as.segments?.length || 0} time-aligned speaker segment(s).`;
+        tags.push("AUDIO", "SPECTROGRAM", "ACOUSTIC", "DIARIZATION");
+        if (typeof as.summary?.snrDb === "number") {
+          metrics.score = Math.round(as.summary.snrDb);
+        }
+        if (Array.isArray(as.segments)) {
+          metrics.itemCount = as.segments.length;
+        }
+        if (Array.isArray(as.spectralBands)) {
+          metrics.evidenceCount = as.spectralBands.length;
+        }
+        metrics.status = "acoustic";
+        break;
+      }
     }
 
     nodes.push({
@@ -923,6 +953,21 @@ export function computeSpatialEdges(
         relationType = "validates";
         label = "Ontology Security Alignment";
         baseStrength = 0.86;
+      } else if (
+        types.has("audio_spectrogram") &&
+        types.has("multimodal_inspection")
+      ) {
+        relationType = "validates";
+        label = "Audio-Visual Grounding Alignment";
+        baseStrength = 0.95;
+      } else if (types.has("audio_spectrogram") && types.has("research")) {
+        relationType = "synthesizes";
+        label = "Acoustic Evidence Ingestion";
+        baseStrength = 0.92;
+      } else if (types.has("audio_spectrogram") && types.has("memory_graph")) {
+        relationType = "validates";
+        label = "Acoustic Entity Resolution";
+        baseStrength = 0.89;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

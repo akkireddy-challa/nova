@@ -35,6 +35,7 @@ import { RedTeamAuditCard } from "@/components/GenerativeCards/RedTeamAuditCard"
 import { GuardrailPolicyCard } from "@/components/GenerativeCards/GuardrailPolicyCard";
 import { MultiModalInspectionCard } from "@/components/GenerativeCards/MultiModalInspectionCard";
 import { MemoryGraphCard } from "@/components/GenerativeCards/MemoryGraphCard";
+import { AudioSpectrogramCard } from "@/components/GenerativeCards/AudioSpectrogramCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -52,6 +53,7 @@ import { redTeamAuditToCsv } from "@/lib/security/red-team-auditor";
 import { guardrailsPolicyToCsv } from "@/lib/security/semantic-guardrails";
 import { multiModalInspectionToCsv } from "@/lib/multimodal/frame-inspector";
 import { memoryGraphToCsv } from "@/lib/graph/memory-graph-engine";
+import { audioSpectrogramToCsv } from "@/lib/audio/spectrogram-inspector";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -235,6 +237,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "audio_spectrogram") {
+      const csvContent = audioSpectrogramToCsv(artifact.data);
+      const filename = `${(artifact.data.topic || "audio-spectrogram").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -305,6 +315,8 @@ export function ArtifactStage({
         return artifact.data.topic || "Multimodal Vision Inspector";
       case "memory_graph":
         return artifact.data.topic || "Memory & Knowledge Graph";
+      case "audio_spectrogram":
+        return artifact.data.topic || "Acoustic Spectrogram Inspector";
     }
   };
 
@@ -417,7 +429,8 @@ export function ArtifactStage({
             artifact.type === "red_team_audit" ||
             artifact.type === "guardrail_policy" ||
             artifact.type === "multimodal_inspection" ||
-            artifact.type === "memory_graph") && (
+            artifact.type === "memory_graph" ||
+            artifact.type === "audio_spectrogram") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1310,6 +1323,13 @@ export function ArtifactStage({
             {artifact.type === "memory_graph" && (
               <div className="space-y-4">
                 <MemoryGraphCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* ACOUSTIC SPECTROGRAM INSPECTION ARTIFACT */}
+            {artifact.type === "audio_spectrogram" && (
+              <div className="space-y-4">
+                <AudioSpectrogramCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -2811,6 +2831,102 @@ export function ArtifactStage({
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Audio Spectrogram */}
+        {artifact.type === "audio_spectrogram" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Target: {artifact.data.topic}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  SNR: {artifact.data.summary.snrDb} dB | Avg Conf:{" "}
+                  {artifact.data.summary.averageAcousticConfidencePct}%
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 leading-relaxed">
+                {artifact.data.executiveSummary}
+              </p>
+            </div>
+
+            {/* Metrics Scorecard */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Duration
+                </div>
+                <div className="text-base font-bold font-mono text-black">
+                  {artifact.data.summary.durationSeconds}s
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Dominant F0
+                </div>
+                <div className="text-base font-bold font-mono text-black">
+                  {artifact.data.summary.dominantFrequencyHz} Hz
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Speech/Silence
+                </div>
+                <div className="text-xs font-bold text-black truncate mt-1">
+                  {artifact.data.summary.speechToSilenceRatio}x
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Audio Format
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.sampleRateHz} Hz (
+                  {artifact.data.summary.channelCount === 2 ? "Stereo" : "Mono"}
+                  )
+                </div>
+              </div>
+            </div>
+
+            {/* Aligned Segments Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Aligned Phonetic Segments ({artifact.data.segments.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Segment</th>
+                    <th className="p-1.5">Speaker</th>
+                    <th className="p-1.5">Time Range</th>
+                    <th className="p-1.5 text-right">Conf</th>
+                    <th className="p-1.5">Transcript</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {artifact.data.segments.map((seg) => (
+                    <tr key={seg.id}>
+                      <td className="p-1.5 font-mono text-[10px]">{seg.id}</td>
+                      <td className="p-1.5 font-bold text-gray-900">
+                        {seg.speakerTag}
+                      </td>
+                      <td className="p-1.5 font-mono text-[10px]">
+                        {(seg.startMs / 1000).toFixed(1)}s -{" "}
+                        {(seg.endMs / 1000).toFixed(1)}s
+                      </td>
+                      <td className="p-1.5 text-right font-mono font-bold">
+                        {seg.acousticConfidencePct}%
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {seg.transcriptText}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

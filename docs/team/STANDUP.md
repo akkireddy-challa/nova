@@ -476,3 +476,28 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with memory graph metadata and Markdown export format.
   - Created `tests/memory-graph-integration.test.ts` (7 integration tests passing).
 - [qa] [done] All 892 tests passing across 64 test files (4,514 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.3s). Tauri cargo check passed (0.46s). Strictly zero fake data.
+
+## Sprint 25 — Autonomous Audio Spectrogram & Acoustic Grounding Inspector
+
+- [audio/engine] [done] Created `src/lib/audio/spectrogram-inspector.ts`:
+  - Pure deterministic acoustic summary calculation (`calculateAcousticSummary`): duration, average acoustic confidence %, SNR (dB), speech-to-silence ratio, and dominant fundamental frequency F0 (Hz).
+  - Deterministic amplitude waveform envelope computation (`computeWaveformEnvelope`) mapping active speaker segments and ambient noise floor.
+  - Aligned speaker segment formulation with formant resonance tracking (F1, F2, F3) and verifiable evidence binding.
+  - Strict RFC 4180 CSV export (`audioSpectrogramToCsv`) with CRLF line endings and formatted executive Markdown reporting (`audioSpectrogramToMarkdown`).
+  - Strictly ZERO pseudo-randomness, strictly ZERO fake telemetry.
+  - Created `tests/spectrogram-inspector.test.ts` (8 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/AudioSpectrogramCard.tsx`:
+  - Rich interactive generative UI dashboard for audio spectrogram inspection and acoustic grounding.
+  - Interactive SVG spectrogram canvas with `role="graphics-document"`, frequency axis labels (200Hz to 8kHz), spectral heatmap gradient overlay, and waveform amplitude bars with scrubbable segment playhead.
+  - Segment detail drawer with speaker diarization tags, acoustic confidence gauge, formant resonance metrics, and verified citation evidence.
+  - 3 view tabs: "Waveform & Waterfall", "Phonetic Segments", and "Spectral Bands".
+  - 1-click RFC 4180 CSV export and Markdown report copy with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`, `sound.playTap()`).
+  - Created `tests/spectrogram-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `AcousticSegment`, `SpectralBand`, `AcousticSummary`, `AudioSpectrogramArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "audio_spectrogram"; data: AudioSpectrogramArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "audio_spectrogram"`), `Activity` icon, amber/orange styling, SNR gauge, and topological edges (`validates`, `synthesizes`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with audio spectrogram metadata and Markdown export format.
+  - Created `tests/spectrogram-integration.test.ts` (7 integration tests passing).
+- [qa] [done] All 912 tests passing across 67 test files (4,647 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (3.8s). Tauri cargo check passed (0.47s). Strictly zero fake data.

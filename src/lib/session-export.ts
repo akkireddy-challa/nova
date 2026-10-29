@@ -19,6 +19,7 @@ import type {
   SemanticGuardrailArtifact,
   MultiModalInspectionArtifact,
   MemoryGraphArtifact,
+  AudioSpectrogramArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -439,6 +440,23 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
           const src = kg.nodes.find((n) => n.id === e.source);
           const tgt = kg.nodes.find((n) => n.id === e.target);
           md += `- 🔗 **${src?.label || e.source}** \`${e.relation}\` **${tgt?.label || e.target}** (${(e.weight * 100).toFixed(0)}%): ${e.label}\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "audio_spectrogram": {
+      const as: AudioSpectrogramArtifact = artifact.data;
+      md += `#### 🎙️ Acoustic Spectrogram: ${as.topic}\n\n`;
+      md += `*SNR:* **${as.summary.snrDb} dB** • *Duration:* ${as.summary.durationSeconds}s • *Acoustic Conf:* **${as.summary.averageAcousticConfidencePct}%** • *F0:* ${as.summary.dominantFrequencyHz} Hz\n\n`;
+      if (as.executiveSummary) {
+        md += `> ${as.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (as.segments && as.segments.length > 0) {
+        md += `**Aligned Phonetic Segments (${as.segments.length}):**\n`;
+        as.segments.forEach((s) => {
+          md += `- 🗣️ **${s.speakerTag}** (${(s.startMs / 1000).toFixed(1)}s - ${(s.endMs / 1000).toFixed(1)}s, ${s.acousticConfidencePct}% conf): "${s.transcriptText}"\n`;
         });
         md += "\n";
       }

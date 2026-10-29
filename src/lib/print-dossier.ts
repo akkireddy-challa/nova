@@ -248,6 +248,10 @@ export function getArtifactMetadata(
       title = artifact.data.topic || "Memory & Knowledge Graph";
       modeName = "Graph RAG Memory Studio";
       break;
+    case "audio_spectrogram":
+      title = artifact.data.topic || "Acoustic Spectrogram Inspector";
+      modeName = "Acoustic Spectrogram Inspector";
+      break;
   }
 
   if (mode) {
