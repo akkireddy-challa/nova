@@ -35,7 +35,8 @@ export interface SpatialCanvasNode {
     | "bayesian_opt"
     | "workflow_orchestrator"
     | "formal_prover"
-    | "epistemic_consensus";
+    | "epistemic_consensus"
+    | "game_theory";
   title: string;
   summary: string;
   x: number;
@@ -937,6 +938,42 @@ export function extractSpatialNodes(
         metrics.status = "verified";
         break;
       }
+      case "game_theory": {
+        const gt = data as {
+          title?: string;
+          summary?: {
+            gameName?: string;
+            gameClass?: string;
+            totalPureNashCount?: number;
+            priceOfAnarchy?: number;
+            priceOfStability?: number;
+          };
+          equilibria?: unknown[];
+          shapleyValues?: unknown[];
+          technicalNotes?: string;
+        };
+        title = gt.title || "Game Theory & Strategic Equilibrium Studio";
+        summary =
+          gt.technicalNotes ||
+          `Strategic mechanism equilibrium analysis (PoA: ${gt.summary?.priceOfAnarchy || 1.0}x, Pure Nash: ${gt.summary?.totalPureNashCount || 0}).`;
+        tags.push(
+          "GAME_THEORY",
+          "NASH_EQUILIBRIUM",
+          "SHAPLEY_VALUES",
+          "MECHANISM_DESIGN",
+        );
+        if (typeof gt.summary?.priceOfAnarchy === "number") {
+          metrics.score = Math.round(gt.summary.priceOfAnarchy * 10);
+        }
+        if (Array.isArray(gt.equilibria)) {
+          metrics.itemCount = gt.equilibria.length;
+        }
+        if (Array.isArray(gt.shapleyValues)) {
+          metrics.evidenceCount = gt.shapleyValues.length;
+        }
+        metrics.status = "verified";
+        break;
+      }
     }
 
     nodes.push({
@@ -1303,6 +1340,22 @@ export function computeSpatialEdges(
         relationType = "validates";
         label = "Formal Invariant Epistemic Consensus";
         baseStrength = 0.97;
+      } else if (types.has("game_theory") && types.has("epistemic_consensus")) {
+        relationType = "validates";
+        label = "Bayesian Truth Serum Mechanism Stability";
+        baseStrength = 0.99;
+      } else if (types.has("game_theory") && types.has("council")) {
+        relationType = "synthesizes";
+        label = "Strategic Council Equilibrium";
+        baseStrength = 0.98;
+      } else if (types.has("game_theory") && types.has("matrix")) {
+        relationType = "synthesizes";
+        label = "Normal Form Payoff Matrix Synthesis";
+        baseStrength = 0.97;
+      } else if (types.has("game_theory") && types.has("formal_prover")) {
+        relationType = "validates";
+        label = "Strategic Invariant Verification";
+        baseStrength = 0.96;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

@@ -27,6 +27,7 @@ import type {
   WorkflowOrchestratorArtifact,
   FormalProverArtifact,
   EpistemicConsensusArtifact,
+  GameTheoryArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -634,6 +635,35 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
           md += `- 🔄 **Round ${r.round}**: Entropy ${r.shannonEntropyBits} bits, JSD ${r.jensenShannonDivergence}, Median ${(r.medianEndorsement * 100).toFixed(0)}% — ${r.keyShiftArgument}\n`;
         });
         md += "\n";
+      }
+      break;
+    }
+
+    case "game_theory": {
+      const gt: GameTheoryArtifact = artifact.data;
+      md += `#### 🎮 Game-Theoretic Strategic Equilibrium: ${gt.title}\n\n`;
+      md += `*Class:* \`${gt.summary.gameClass}\` • *Price of Anarchy (PoA):* **${gt.summary.priceOfAnarchy}x** • *Price of Stability (PoS):* **${gt.summary.priceOfStability}x** • *Pure Nash Count:* **${gt.summary.totalPureNashCount}**\n\n`;
+      if (gt.executiveSummary) {
+        md += `> ${gt.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (gt.payoffMatrix && gt.payoffMatrix.length > 0) {
+        md += `**Strategy Payoff Matrix (${gt.payoffMatrix.length} profiles):**\n`;
+        gt.payoffMatrix.forEach((cell) => {
+          const ne = cell.isNashEquilibrium ? " ⭐ [NASH]" : "";
+          const po = cell.isParetoOptimal ? " 🟢 [PARETO]" : "";
+          md += `- **${cell.rowStrategy}** × **${cell.colStrategy}**: (${cell.player1Payoff}, ${cell.player2Payoff}) → Welfare ${cell.player1Payoff + cell.player2Payoff} pts${ne}${po}\n`;
+        });
+        md += "\n";
+      }
+      if (gt.shapleyValues && gt.shapleyValues.length > 0) {
+        md += `**Cooperative Shapley Value Attribution (${gt.shapleyValues.length}):**\n`;
+        gt.shapleyValues.forEach((sv) => {
+          md += `- ⚖️ **${sv.playerName}** (${sv.cooperativeRole}): Marginal +${sv.marginalContributionValue} pts → Share **${sv.shapleySharePct}%**\n`;
+        });
+        md += "\n";
+      }
+      if (gt.summary.strategicRecommendation) {
+        md += `**Strategic Recommendation:**\n> ${gt.summary.strategicRecommendation}\n\n`;
       }
       break;
     }

@@ -15,6 +15,7 @@ import type {
   WorkflowOrchestratorArtifact,
   FormalProverArtifact,
   EpistemicConsensusArtifact,
+  GameTheoryArtifact,
 } from "./types";
 import { sanitizeFileName } from "./session-export";
 import { formatDossierDate } from "./print-dossier";
@@ -145,6 +146,9 @@ export function resolveDossierTitle(
         if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
       case "epistemic_consensus":
+        if (artifact.data.title?.trim()) return artifact.data.title.trim();
+        break;
+      case "game_theory":
         if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
     }
@@ -1044,6 +1048,76 @@ function renderEpistemicConsensusSection(
   });
 
   html += `</div></div></section>`;
+  return html;
+}
+
+function renderGameTheorySection(gt: GameTheoryArtifact): string {
+  let html = `<section class="dossier-section" id="game-theory">
+    <div class="section-badge">STRATEGIC GAME THEORY &amp; MECHANISM DESIGN</div>
+    <h2 class="section-heading">${escapeHtml(gt.title || "Game-Theoretic Strategic Equilibrium Report")}</h2>
+    <div class="summary-card">
+      <h3 class="summary-subtitle">Normal Form Equilibrium &amp; Cooperative Attribution</h3>
+      <p class="summary-text">${escapeHtml(gt.executiveSummary)}</p>
+      <p class="summary-text"><strong>Class:</strong> ${escapeHtml(gt.summary.gameClass)} | <strong>Price of Anarchy (PoA):</strong> ${gt.summary.priceOfAnarchy}x | <strong>Price of Stability (PoS):</strong> ${gt.summary.priceOfStability}x | <strong>Pure Nash Count:</strong> ${gt.summary.totalPureNashCount}</p>
+    </div>
+
+    <div class="findings-list">
+      <h3 class="summary-subtitle">Strategy Payoff Matrix</h3>
+      <table class="matrix-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="border-bottom: 2px solid #334155; text-align: left;">
+            <th style="padding: 8px;">Strategy Profile</th>
+            <th style="padding: 8px;">Payoffs (P1, P2)</th>
+            <th style="padding: 8px;">Social Welfare</th>
+            <th style="padding: 8px;">Nash Equilibrium</th>
+            <th style="padding: 8px;">Pareto Status</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+  gt.payoffMatrix.forEach((cell) => {
+    html += `
+          <tr style="border-bottom: 1px solid #1e293b;">
+            <td style="padding: 8px;"><strong>${escapeHtml(cell.rowStrategy)}</strong> × <strong>${escapeHtml(cell.colStrategy)}</strong></td>
+            <td style="padding: 8px; font-family: monospace;">(${cell.player1Payoff}, ${cell.player2Payoff})</td>
+            <td style="padding: 8px; font-family: monospace;">${cell.player1Payoff + cell.player2Payoff} pts</td>
+            <td style="padding: 8px;">${cell.isNashEquilibrium ? '<span class="badge badge-high">⭐ NASH</span>' : '<span style="color: #64748b;">Suboptimal</span>'}</td>
+            <td style="padding: 8px;">${cell.isParetoOptimal ? '<span class="badge badge-meta">PARETO OPT</span>' : '<span style="color: #64748b;">Dominated</span>'}</td>
+          </tr>
+    `;
+  });
+
+  html += `</tbody></table></div>`;
+
+  html += `<div class="findings-list">
+      <h3 class="summary-subtitle">Cooperative Shapley Value Attribution (${gt.shapleyValues.length})</h3>
+      <div class="perspectives-grid">`;
+
+  gt.shapleyValues.forEach((sv) => {
+    html += `
+      <div class="perspective-card">
+        <div class="perspective-header">
+          <span class="perspective-persona">${escapeHtml(sv.playerName)}</span>
+          <span class="perspective-stance">${sv.shapleySharePct}%</span>
+        </div>
+        <div class="perspective-body">
+          <p class="perspective-core"><strong>Role:</strong> ${escapeHtml(sv.cooperativeRole)}</p>
+          <p class="perspective-core"><strong>Marginal Contribution:</strong> +${sv.marginalContributionValue} pts</p>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div></div>`;
+
+  if (gt.summary.strategicRecommendation) {
+    html += `<div class="recommendation-card" style="margin-top: 20px;">
+      <h3 class="rec-title">Strategic Mechanism Recommendation</h3>
+      <p class="rec-text">${escapeHtml(gt.summary.strategicRecommendation)}</p>
+    </div>`;
+  }
+
+  html += `</section>`;
   return html;
 }
 
@@ -2533,6 +2607,9 @@ export function generateStandaloneHtmlDossier(
         break;
       case "epistemic_consensus":
         contentHtml = renderEpistemicConsensusSection(artifact.data);
+        break;
+      case "game_theory":
+        contentHtml = renderGameTheorySection(artifact.data);
         break;
     }
   } else if (session) {

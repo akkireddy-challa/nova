@@ -280,6 +280,11 @@ export function getArtifactMetadata(
       title = artifact.data.title || "Epistemic Consensus Studio";
       modeName = "Bayesian Truth Serum Consensus";
       break;
+    case "game_theory":
+      title =
+        artifact.data.title || "Game Theory & Strategic Equilibrium Studio";
+      modeName = "Strategic Mechanism Design Studio";
+      break;
   }
 
   if (mode) {

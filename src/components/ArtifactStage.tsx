@@ -43,6 +43,7 @@ import { BayesianOptCard } from "@/components/GenerativeCards/BayesianOptCard";
 import { WorkflowOrchestratorCard } from "@/components/GenerativeCards/WorkflowOrchestratorCard";
 import { FormalProverCard } from "@/components/GenerativeCards/FormalProverCard";
 import { EpistemicConsensusCard } from "@/components/GenerativeCards/EpistemicConsensusCard";
+import { GameTheoryCard } from "@/components/GenerativeCards/GameTheoryCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -68,6 +69,7 @@ import { bayesianOptToCsv } from "@/lib/optimization/bayesian-opt-engine";
 import { workflowOrchestratorToCsv } from "@/lib/workflow/orchestrator-engine";
 import { formalProverToCsv } from "@/lib/formal/formal-prover-engine";
 import { consensusToCsv } from "@/lib/consensus/consensus-engine";
+import { gameTheoryToCsv } from "@/lib/gametheory/game-theory-engine";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -315,6 +317,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "game_theory") {
+      const csvContent = gameTheoryToCsv(artifact.data);
+      const filename = `${(artifact.data.title || "game-theory").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -401,6 +411,10 @@ export function ArtifactStage({
         return artifact.data.title || "Formal Verification Studio";
       case "epistemic_consensus":
         return artifact.data.title || "Epistemic Consensus Studio";
+      case "game_theory":
+        return (
+          artifact.data.title || "Game Theory & Strategic Equilibrium Studio"
+        );
     }
   };
 
@@ -521,7 +535,8 @@ export function ArtifactStage({
             artifact.type === "bayesian_opt" ||
             artifact.type === "workflow_orchestrator" ||
             artifact.type === "formal_prover" ||
-            artifact.type === "epistemic_consensus") && (
+            artifact.type === "epistemic_consensus" ||
+            artifact.type === "game_theory") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1470,6 +1485,13 @@ export function ArtifactStage({
             {artifact.type === "epistemic_consensus" && (
               <div className="space-y-4">
                 <EpistemicConsensusCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* GAME THEORY & STRATEGIC MECHANISM DESIGN ARTIFACT */}
+            {artifact.type === "game_theory" && (
+              <div className="space-y-4">
+                <GameTheoryCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -3814,7 +3836,106 @@ export function ArtifactStage({
           </div>
         )}
 
-        {/* Content Section: Code */}
+        {/* Content Section: Game Theory & Strategic Mechanism Design Studio */}
+        {artifact.type === "game_theory" && (
+          <div className="space-y-6 print-avoid-break">
+            <div className="p-4 border border-gray-300 rounded bg-gray-50 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold uppercase text-black">
+                  Game-Theoretic Strategic Equilibrium Analysis
+                </span>
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-gray-200 text-black border border-gray-400">
+                  POA: {artifact.data.summary.priceOfAnarchy} | PURE NASH:{" "}
+                  {artifact.data.summary.totalPureNashCount}
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 font-sans leading-relaxed">
+                {artifact.data.executiveSummary}
+              </p>
+              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-gray-200 text-center font-mono text-[10px]">
+                <div>Class: {artifact.data.summary.gameClass}</div>
+                <div>PoA: {artifact.data.summary.priceOfAnarchy}x</div>
+                <div>PoS: {artifact.data.summary.priceOfStability}x</div>
+                <div>Shapley: {artifact.data.shapleyValues.length} Agents</div>
+              </div>
+            </div>
+
+            {/* Payoff Matrix Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Strategy Payoff Matrix
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Strategy Profile (P1 × P2)</th>
+                    <th className="p-1.5">Payoffs (P1, P2)</th>
+                    <th className="p-1.5">Welfare</th>
+                    <th className="p-1.5">Nash Eq</th>
+                    <th className="p-1.5">Pareto Opt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.payoffMatrix.map((cell) => (
+                    <tr key={`${cell.rowStrategy}-${cell.colStrategy}`}>
+                      <td className="p-1.5 font-bold text-black">
+                        {cell.rowStrategy} × {cell.colStrategy}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        ({cell.player1Payoff}, {cell.player2Payoff})
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {cell.player1Payoff + cell.player2Payoff}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {cell.isNashEquilibrium ? "YES (Nash)" : "No"}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {cell.isParetoOptimal ? "YES" : "No"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Cooperative Shapley Values Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Cooperative Shapley Value Attribution (
+                {artifact.data.shapleyValues.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Agent</th>
+                    <th className="p-1.5">Role</th>
+                    <th className="p-1.5">Marginal Value</th>
+                    <th className="p-1.5">Shapley Allocation</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.shapleyValues.map((sv) => (
+                    <tr key={sv.playerId}>
+                      <td className="p-1.5 font-bold text-black">
+                        {sv.playerName}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {sv.cooperativeRole}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        +{sv.marginalContributionValue} pts
+                      </td>
+                      <td className="p-1.5 font-bold text-black">
+                        {sv.shapleySharePct}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
         {artifact.type === "code" && (
           <div className="space-y-4">
             <div className="p-3 border border-gray-300 rounded bg-gray-50 text-xs text-gray-900 font-sans print-avoid-break">
