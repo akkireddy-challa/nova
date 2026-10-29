@@ -20,7 +20,8 @@ export interface SpatialCanvasNode {
     | "debate"
     | "council"
     | "simulation"
-    | "audio_briefing";
+    | "audio_briefing"
+    | "battlecard";
   title: string;
   summary: string;
   x: number;
@@ -486,6 +487,32 @@ export function extractSpatialNodes(
         metrics.status = "synthesized";
         break;
       }
+      case "battlecard": {
+        const bc = data as {
+          topic?: string;
+          targetSector?: string;
+          novaMoatScore?: number;
+          competitorProfiles?: unknown[];
+          dimensions?: unknown[];
+          strategicSummary?: string;
+        };
+        title = bc.topic || "Competitive Moat Battle-Card";
+        summary =
+          bc.strategicSummary ||
+          `Competitive evaluation in ${bc.targetSector || "target sector"}.`;
+        tags.push("BATTLECARD", "COMPETITIVE", "MOAT");
+        if (typeof bc.novaMoatScore === "number") {
+          metrics.score = bc.novaMoatScore;
+        }
+        if (Array.isArray(bc.competitorProfiles)) {
+          metrics.itemCount = bc.competitorProfiles.length;
+        }
+        if (Array.isArray(bc.dimensions)) {
+          metrics.evidenceCount = bc.dimensions.length;
+        }
+        metrics.status = "benchmarked";
+        break;
+      }
     }
 
     nodes.push({
@@ -595,6 +622,26 @@ export function computeSpatialEdges(
       } else if (types.has("audio_briefing") && types.has("simulation")) {
         relationType = "synthesizes";
         label = "Chaos Simulation Narration";
+        baseStrength = 0.85;
+      } else if (types.has("battlecard") && types.has("matrix")) {
+        relationType = "compares";
+        label = "Competitive Feature Audit";
+        baseStrength = 0.85;
+      } else if (types.has("battlecard") && types.has("research")) {
+        relationType = "validates";
+        label = "Empirical Moat Proof";
+        baseStrength = 0.85;
+      } else if (types.has("battlecard") && types.has("debate")) {
+        relationType = "debates";
+        label = "Objection Stress Test";
+        baseStrength = 0.8;
+      } else if (types.has("battlecard") && types.has("plan")) {
+        relationType = "implements";
+        label = "GTM Execution Alignment";
+        baseStrength = 0.8;
+      } else if (types.has("battlecard") && types.has("council")) {
+        relationType = "debates";
+        label = "Council Strategic Review";
         baseStrength = 0.85;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";

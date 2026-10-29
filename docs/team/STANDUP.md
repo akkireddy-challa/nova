@@ -296,3 +296,30 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with audio briefing narration transcripts.
   - Created `tests/audio-integration.test.ts` (10 integration tests passing).
 - [qa] [done] All 704 tests passing across 42 test files (3,791 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (1,446ms). Tauri cargo check passed (0.40s). Strictly zero fake data.
+
+## Sprint 18 — Competitive Feature Matrix & Battle-Card Generator
+
+- [competitive/engine] [done] Created `src/lib/competitive/battle-card.ts`:
+  - Pure deterministic calculation of weighted competitive dimensions, normalized moat defensibility scores (`calculateMoatScore`), dimension gap and advantage analysis (`calculateDimensionScore`), and dynamic win theme extraction (`extractWinThemes`).
+  - Pre-configured enterprise competitor profiles (`DEFAULT_COMPETITORS`: LegacyCorp Orchestrator, FastAgent Cloud, OpenStack AutoGen) with market positioning, claimed strengths, architectural weaknesses, landmine discovery questions, and objection handling scripts.
+  - Standard competitive dimensions (`DEFAULT_DIMENSIONS`) across architecture, governance, UX, and performance.
+  - Strict RFC 4180 CSV export (`battleCardToCsv`) with escaped quotes, commas, newlines, and CRLF (`\r\n`).
+  - Formatted executive markdown battle-card dossier (`battleCardToMarkdown`).
+  - Strictly ZERO `Math.random()`, strictly ZERO fake data.
+  - Created `tests/battle-card.test.ts` (14 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/CompetitiveBattleCard.tsx`:
+  - Rich interactive competitive battle-card dashboard component.
+  - Circular Moat Index gauge with color-coded defensibility badges (Dominant Moat >= 80%, Strong Advantage >= 65%, Competitive Parity < 65%).
+  - Multi-tab navigation: "Feature Matrix", "Competitor Battle-Cards", "Win Themes".
+  - Feature comparison table with ratings (1-5 colored badges: emerald for leader, teal for strong, blue for parity, amber/rose for gap), advantage notes, and expandable competitor breakdown rows.
+  - Competitor selector carousel with tier badges, claimed strengths vs architectural weaknesses side-by-side callout, "Landmines to Lay" (discovery questions that expose competitor flaws), and "Objection Handling Matrix" (accordion / card grid with counter-arguments and empirical proofs).
+  - 1-click RFC 4180 CSV download and Markdown clipboard copy with acoustic feedback (`sound.playSuccess()`, `sound.playPop()`, `sound.playTap()`).
+  - Created `tests/battle-card-ui.test.ts` (4 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `CompetitorObjection`, `CompetitorProfile`, `CompetitiveDimension`, `CompetitiveBattleCardArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "battlecard"; data: CompetitiveBattleCardArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated battle-card preview card, 1-click CSV download, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "battlecard"`), `ShieldCheck` icon, rose badge styling, moat score metrics, and topological edges (`compares`, `validates`, `debates`, `implements`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with battle-card metadata and Markdown export format.
+  - Created `tests/battle-card-integration.test.ts` (8 integration tests passing).
+- [qa] [done] All 730 tests passing across 45 test files (3,884 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (792ms). Tauri cargo check passed (0.49s). Strictly zero fake data.

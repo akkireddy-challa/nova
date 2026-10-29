@@ -220,6 +220,10 @@ export function getArtifactMetadata(
       title = artifact.data.title || "Multimodal Audio Briefing";
       modeName = "Audio Narration Briefing";
       break;
+    case "battlecard":
+      title = artifact.data.topic || "Competitive Moat Battle-Card";
+      modeName = "Competitive Intelligence Battle-Card";
+      break;
   }
 
   if (mode) {
