@@ -642,6 +642,52 @@ export interface MemoryGraphArtifact {
   methodologyNotes?: string;
 }
 
+export interface AcousticSegment {
+  id: string;
+  startMs: number;
+  endMs: number;
+  speakerTag: string;
+  transcriptText: string;
+  acousticConfidencePct: number; // 0 - 100
+  pitchHz?: number; // fundamental frequency F0
+  formants?: {
+    f1Hz: number;
+    f2Hz: number;
+    f3Hz: number;
+  };
+  verifiableEvidence?: string;
+}
+
+export interface SpectralBand {
+  bandName: string;
+  rangeHz: string;
+  energyPct: number; // 0 - 100
+  harmonicClarity: "pure" | "rich" | "turbulent" | "attenuated";
+}
+
+export interface AcousticSummary {
+  durationSeconds: number;
+  snrDb: number; // Signal-to-Noise Ratio in dB
+  averageAcousticConfidencePct: number; // 0 - 100
+  speechToSilenceRatio: number;
+  sampleRateHz: number;
+  dominantFrequencyHz: number;
+  channelCount: number;
+}
+
+export interface AudioSpectrogramArtifact {
+  id: string;
+  topic: string;
+  audioSource: string;
+  summary: AcousticSummary;
+  segments: AcousticSegment[];
+  spectralBands: SpectralBand[];
+  waveformEnvelope: number[]; // normalized amplitude points (0.0 to 1.0)
+  executiveSummary: string;
+  technicalNotes?: string;
+  generatedAt: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -658,7 +704,8 @@ export type GenerativeArtifact =
   | { type: "red_team_audit"; data: RedTeamAuditArtifact }
   | { type: "guardrail_policy"; data: SemanticGuardrailArtifact }
   | { type: "multimodal_inspection"; data: MultiModalInspectionArtifact }
-  | { type: "memory_graph"; data: MemoryGraphArtifact };
+  | { type: "memory_graph"; data: MemoryGraphArtifact }
+  | { type: "audio_spectrogram"; data: AudioSpectrogramArtifact };
 
 export interface AgentThought {
   id: string;

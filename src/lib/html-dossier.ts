@@ -113,6 +113,9 @@ export function resolveDossierTitle(
       case "memory_graph":
         if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
         break;
+      case "audio_spectrogram":
+        if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
+        break;
     }
   }
   if (session?.title?.trim()) {
