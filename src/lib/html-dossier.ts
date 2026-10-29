@@ -92,6 +92,9 @@ export function resolveDossierTitle(
       case "audio_briefing":
         if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
+      case "battlecard":
+        if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
+        break;
     }
   }
   if (session?.title?.trim()) {

@@ -12,6 +12,7 @@ import type {
   PersonaCouncilArtifact,
   ResilienceSimulationArtifact,
   AudioBriefingArtifact,
+  CompetitiveBattleCardArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -75,7 +76,7 @@ function formatDate(dateStr?: string): string {
 /**
  * Formats artifact details into GitHub Flavored Markdown.
  */
-function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
+export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
   let md = "";
 
   switch (artifact.type) {
@@ -276,6 +277,23 @@ function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
           md += `##### Chapter ${ch.chapterIndex}: ${ch.title} (${ch.speaker})\n`;
           md += `${ch.text}\n\n`;
         });
+      }
+      break;
+    }
+
+    case "battlecard": {
+      const card: CompetitiveBattleCardArtifact = artifact.data;
+      md += `#### ⚔️ Competitive Moat Battle-Card: ${card.topic}\n\n`;
+      md += `*Target Sector:* ${card.targetSector} • *Nova Moat Score:* ${card.novaMoatScore}/100\n\n`;
+      if (card.strategicSummary) {
+        md += `> ${card.strategicSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (card.keyWinThemes && card.keyWinThemes.length > 0) {
+        md += `**Key Win Themes:**\n`;
+        card.keyWinThemes.forEach((w) => {
+          md += `- ${w}\n`;
+        });
+        md += "\n";
       }
       break;
     }

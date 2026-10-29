@@ -28,6 +28,7 @@ import { DebateCard } from "@/components/GenerativeCards/DebateCard";
 import { PersonaCouncilCard } from "@/components/GenerativeCards/PersonaCouncilCard";
 import { ResilienceSimulationCard } from "@/components/GenerativeCards/ResilienceSimulationCard";
 import { AudioBriefingCard } from "@/components/GenerativeCards/AudioBriefingCard";
+import { CompetitiveBattleCard } from "@/components/GenerativeCards/CompetitiveBattleCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -38,6 +39,7 @@ import {
   audioBriefingToCsv,
   formatDurationTimestamp,
 } from "@/lib/audio/voice-briefing";
+import { battleCardToCsv } from "@/lib/competitive/battle-card";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -165,6 +167,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "battlecard") {
+      const csvContent = battleCardToCsv(artifact.data);
+      const filename = `${(artifact.data.topic || "competitive-battlecard").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -221,6 +231,8 @@ export function ArtifactStage({
         return artifact.data.title || "Resilience Simulation";
       case "audio_briefing":
         return artifact.data.title || "Audio Briefing";
+      case "battlecard":
+        return artifact.data.topic || "Competitive Battle-Card";
     }
   };
 
@@ -322,11 +334,12 @@ export function ArtifactStage({
             <span className="hidden sm:inline">Print / PDF</span>
           </button>
 
-          {/* Download CSV button for debate, council, simulation, and audio_briefing */}
+          {/* Download CSV button for debate, council, simulation, audio_briefing, and battlecard */}
           {(artifact.type === "debate" ||
             artifact.type === "council" ||
             artifact.type === "simulation" ||
-            artifact.type === "audio_briefing") && (
+            artifact.type === "audio_briefing" ||
+            artifact.type === "battlecard") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1172,6 +1185,13 @@ export function ArtifactStage({
                 <AudioBriefingCard briefing={artifact.data} />
               </div>
             )}
+
+            {/* COMPETITIVE BATTLE-CARD ARTIFACT */}
+            {artifact.type === "battlecard" && (
+              <div className="space-y-4">
+                <CompetitiveBattleCard battleCard={artifact.data} />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1881,6 +1901,85 @@ export function ArtifactStage({
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Battle-Card */}
+        {artifact.type === "battlecard" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Target Sector: {artifact.data.targetSector}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Moat Defensibility Index: {artifact.data.novaMoatScore}%
+                </span>
+              </div>
+              {artifact.data.strategicSummary && (
+                <p className="text-xs text-gray-800 leading-relaxed italic">
+                  &ldquo;{artifact.data.strategicSummary}&rdquo;
+                </p>
+              )}
+            </div>
+
+            {/* Win Themes */}
+            {artifact.data.keyWinThemes &&
+              artifact.data.keyWinThemes.length > 0 && (
+                <div className="space-y-2 print-avoid-break">
+                  <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                    Decisive Win Themes
+                  </h2>
+                  <ul className="space-y-1 text-xs text-gray-800">
+                    {artifact.data.keyWinThemes.map((w, i) => (
+                      <li key={i}>
+                        <strong>{i + 1}.</strong> {w}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+            {/* Dimension Matrix Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Competitive Dimension Scorecard
+              </h2>
+              <table className="w-full text-left text-xs border border-gray-400 border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-gray-400 text-black font-bold">
+                    <th className="p-1.5 border-r border-gray-300">
+                      Dimension
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Category
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Nova
+                    </th>
+                    <th className="p-1.5">Advantage Note</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-300">
+                  {artifact.data.dimensions.map((d) => (
+                    <tr key={d.dimensionKey} className="text-gray-900">
+                      <td className="p-1.5 font-semibold border-r border-gray-300">
+                        {d.label}
+                      </td>
+                      <td className="p-1.5 text-center uppercase font-mono text-[10px] border-r border-gray-300">
+                        {d.category}
+                      </td>
+                      <td className="p-1.5 text-center font-bold text-black border-r border-gray-300">
+                        {d.novaRating}/5
+                      </td>
+                      <td className="p-1.5 text-[11px] text-gray-700">
+                        {d.novaNote}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

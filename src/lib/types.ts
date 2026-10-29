@@ -294,6 +294,45 @@ export interface AudioBriefingArtifact {
   generatedAt: string;
 }
 
+export interface CompetitorObjection {
+  objection: string;
+  counterArgument: string;
+  evidenceProof: string;
+}
+
+export interface CompetitorProfile {
+  name: string;
+  tier: "primary" | "secondary" | "emerging";
+  summary: string;
+  marketPosition: string;
+  strengths: string[];
+  weaknesses: string[];
+  landmineQuestions: string[];
+  objectionHandling: CompetitorObjection[];
+}
+
+export interface CompetitiveDimension {
+  dimensionKey: string;
+  label: string;
+  category: "architecture" | "governance" | "performance" | "ux" | "cost";
+  weight: number; // 0.1 to 1.0
+  novaRating: number; // 1 to 5
+  novaNote: string;
+  competitorRatings: Record<string, { rating: number; note: string }>;
+}
+
+export interface CompetitiveBattleCardArtifact {
+  id: string;
+  topic: string;
+  targetSector: string;
+  novaMoatScore: number; // 0-100
+  competitorProfiles: CompetitorProfile[];
+  dimensions: CompetitiveDimension[];
+  keyWinThemes: string[];
+  strategicSummary: string;
+  generatedAt: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -303,7 +342,8 @@ export type GenerativeArtifact =
   | { type: "debate"; data: DebateArtifact }
   | { type: "council"; data: PersonaCouncilArtifact }
   | { type: "simulation"; data: ResilienceSimulationArtifact }
-  | { type: "audio_briefing"; data: AudioBriefingArtifact };
+  | { type: "audio_briefing"; data: AudioBriefingArtifact }
+  | { type: "battlecard"; data: CompetitiveBattleCardArtifact };
 
 export interface AgentThought {
   id: string;
