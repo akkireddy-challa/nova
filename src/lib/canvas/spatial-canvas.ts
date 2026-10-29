@@ -33,7 +33,8 @@ export interface SpatialCanvasNode {
     | "vector_space"
     | "causal_dag"
     | "bayesian_opt"
-    | "workflow_orchestrator";
+    | "workflow_orchestrator"
+    | "formal_prover";
   title: string;
   summary: string;
   x: number;
@@ -858,6 +859,47 @@ export function extractSpatialNodes(
         metrics.status = "verified";
         break;
       }
+      case "formal_prover": {
+        const fp = data as {
+          title?: string;
+          summary?: {
+            conjecture?: string;
+            status?: string;
+            totalTheorems?: number;
+            provenTheorems?: number;
+            soundnessCompletenessPct?: number;
+            proofDepth?: number;
+          };
+          proofTree?: unknown[];
+          hoareInvariants?: unknown[];
+          technicalNotes?: string;
+        };
+        title = fp.title || "Formal Verification Studio";
+        summary =
+          fp.technicalNotes ||
+          `Automated theorem proving verifying ${fp.summary?.provenTheorems || 0}/${fp.summary?.totalTheorems || 0} lemmas (${fp.summary?.soundnessCompletenessPct || 100}% sound DPLL SMT).`;
+        tags.push(
+          "FORMAL_VERIFICATION",
+          "THEOREM_PROVER",
+          "HOARE_LOGIC",
+          "SMT_LIB",
+          "LEAN4",
+        );
+        if (typeof fp.summary?.soundnessCompletenessPct === "number") {
+          metrics.score = Math.round(fp.summary.soundnessCompletenessPct);
+        }
+        if (Array.isArray(fp.proofTree)) {
+          metrics.itemCount = fp.proofTree.length;
+        }
+        if (Array.isArray(fp.hoareInvariants)) {
+          metrics.evidenceCount = fp.hoareInvariants.length;
+        }
+        metrics.status =
+          fp.summary?.status === "counterexample_found"
+            ? "audited"
+            : "verified";
+        break;
+      }
     }
 
     nodes.push({
@@ -1186,6 +1228,25 @@ export function computeSpatialEdges(
         relationType = "synthesizes";
         label = "Code Deployment Pipeline";
         baseStrength = 0.93;
+      } else if (types.has("formal_prover") && types.has("code")) {
+        relationType = "validates";
+        label = "Formal Code Correctness Proof";
+        baseStrength = 0.98;
+      } else if (
+        types.has("formal_prover") &&
+        types.has("workflow_orchestrator")
+      ) {
+        relationType = "validates";
+        label = "FSM Invariant & Deadlock Freedom";
+        baseStrength = 0.97;
+      } else if (types.has("formal_prover") && types.has("red_team_audit")) {
+        relationType = "debates";
+        label = "Formal Invariant vs Attack Chains";
+        baseStrength = 0.95;
+      } else if (types.has("formal_prover") && types.has("eval_suite")) {
+        relationType = "validates";
+        label = "Automated Proof Regression Check";
+        baseStrength = 0.94;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

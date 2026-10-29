@@ -272,6 +272,10 @@ export function getArtifactMetadata(
       title = artifact.data.title || "Workflow Orchestrator Studio";
       modeName = "Event-Driven Workflow Orchestrator";
       break;
+    case "formal_prover":
+      title = artifact.data.title || "Formal Verification Studio";
+      modeName = "Automated Theorem Prover & SMT Verification";
+      break;
   }
 
   if (mode) {

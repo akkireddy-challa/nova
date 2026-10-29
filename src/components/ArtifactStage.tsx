@@ -41,6 +41,7 @@ import { VectorSpaceCard } from "@/components/GenerativeCards/VectorSpaceCard";
 import { CausalDagCard } from "@/components/GenerativeCards/CausalDagCard";
 import { BayesianOptCard } from "@/components/GenerativeCards/BayesianOptCard";
 import { WorkflowOrchestratorCard } from "@/components/GenerativeCards/WorkflowOrchestratorCard";
+import { FormalProverCard } from "@/components/GenerativeCards/FormalProverCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -64,6 +65,7 @@ import { vectorSpaceToCsv } from "@/lib/vector/vector-space-engine";
 import { causalDagToCsv } from "@/lib/causal/causal-dag-engine";
 import { bayesianOptToCsv } from "@/lib/optimization/bayesian-opt-engine";
 import { workflowOrchestratorToCsv } from "@/lib/workflow/orchestrator-engine";
+import { formalProverToCsv } from "@/lib/formal/formal-prover-engine";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -295,6 +297,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "formal_prover") {
+      const csvContent = formalProverToCsv(artifact.data);
+      const filename = `${(artifact.data.title || "formal-proof").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -377,6 +387,8 @@ export function ArtifactStage({
         return artifact.data.title || "Bayesian Optimization Studio";
       case "workflow_orchestrator":
         return artifact.data.title || "Workflow Orchestrator Studio";
+      case "formal_prover":
+        return artifact.data.title || "Formal Verification Studio";
     }
   };
 
@@ -495,7 +507,8 @@ export function ArtifactStage({
             artifact.type === "vector_space" ||
             artifact.type === "causal_dag" ||
             artifact.type === "bayesian_opt" ||
-            artifact.type === "workflow_orchestrator") && (
+            artifact.type === "workflow_orchestrator" ||
+            artifact.type === "formal_prover") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1430,6 +1443,13 @@ export function ArtifactStage({
             {artifact.type === "workflow_orchestrator" && (
               <div className="space-y-4">
                 <WorkflowOrchestratorCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* FORMAL THEOREM PROVER & INVARIANT VERIFICATION ARTIFACT */}
+            {artifact.type === "formal_prover" && (
+              <div className="space-y-4">
+                <FormalProverCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -3548,6 +3568,111 @@ export function ArtifactStage({
                       </td>
                       <td className="p-1.5 text-gray-600">
                         {t.compensationAction || "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Formal Theorem Prover Studio */}
+        {artifact.type === "formal_prover" && (
+          <div className="space-y-6 print-avoid-break">
+            <div className="p-4 border border-gray-300 rounded bg-gray-50 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold uppercase text-black">
+                  Conjecture Verification Status
+                </span>
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-gray-200 text-black border border-gray-400">
+                  {artifact.data.summary.status.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 font-sans leading-relaxed">
+                {artifact.data.executiveSummary}
+              </p>
+              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-gray-200 text-center font-mono text-[10px]">
+                <div>
+                  Theorems: {artifact.data.summary.provenTheorems}/
+                  {artifact.data.summary.totalTheorems}
+                </div>
+                <div>Solver: {artifact.data.summary.satSolverType}</div>
+                <div>Depth: {artifact.data.summary.proofDepth}</div>
+                <div>
+                  Soundness: {artifact.data.summary.soundnessCompletenessPct}%
+                </div>
+              </div>
+            </div>
+
+            {/* Deductive Proof Tree Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Deductive Proof Tree AST ({artifact.data.proofTree.length}{" "}
+                Steps)
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Step / Name</th>
+                    <th className="p-1.5">Kind</th>
+                    <th className="p-1.5">Inference Rule</th>
+                    <th className="p-1.5">Formal Formula</th>
+                    <th className="p-1.5 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.proofTree.map((node) => (
+                    <tr key={node.id}>
+                      <td className="p-1.5 font-bold text-black">
+                        {node.name}
+                      </td>
+                      <td className="p-1.5 text-gray-700">{node.kind}</td>
+                      <td className="p-1.5 text-gray-700">
+                        {node.inferenceRule}
+                      </td>
+                      <td className="p-1.5 text-black break-all">
+                        {node.formula}
+                      </td>
+                      <td className="p-1.5 text-right font-bold text-black">
+                        {node.isVerified ? "VERIFIED" : "PENDING"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Hoare Logic Invariants Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Hoare Logic Invariants ({artifact.data.hoareInvariants.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Property</th>
+                    <th className="p-1.5">Pre &#123;P&#125;</th>
+                    <th className="p-1.5">Op C</th>
+                    <th className="p-1.5">Post &#123;Q&#125;</th>
+                    <th className="p-1.5 text-right">Holds</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.hoareInvariants.map((inv) => (
+                    <tr key={inv.id}>
+                      <td className="p-1.5 font-bold text-black">
+                        {inv.property}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {inv.precondition}
+                      </td>
+                      <td className="p-1.5 text-gray-700">{inv.operation}</td>
+                      <td className="p-1.5 text-gray-700">
+                        {inv.postcondition}
+                      </td>
+                      <td className="p-1.5 text-right font-bold text-black">
+                        {inv.holds ? "HOLDS" : "VIOLATED"}
                       </td>
                     </tr>
                   ))}

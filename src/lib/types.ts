@@ -1009,6 +1009,83 @@ export interface WorkflowOrchestratorArtifact {
   technicalNotes?: string;
 }
 
+// --- Formal Verification & Automated Theorem Prover Types ---
+export type ProofNodeKind =
+  | "axiom"
+  | "hypothesis"
+  | "lemma"
+  | "induction_step"
+  | "qed"
+  | "counterexample";
+
+export type VerificationStatus =
+  | "proven_qed"
+  | "counterexample_found"
+  | "conditionally_verified"
+  | "inconclusive";
+
+export interface ProofTreeNode {
+  id: string;
+  name: string;
+  kind: ProofNodeKind;
+  formula: string;
+  inferenceRule: string;
+  isVerified: boolean;
+  depth: number;
+  dependencies: string[];
+  x: number;
+  y: number;
+  description: string;
+}
+
+export interface HoareInvariant {
+  id: string;
+  property: string;
+  precondition: string;
+  operation: string;
+  postcondition: string;
+  inductiveInvariant: string;
+  holds: boolean;
+  smtConstraint: string;
+  justification: string;
+}
+
+export interface ProofCounterexample {
+  variable: string;
+  violatingValue: string | number | boolean;
+  preconditionState: string;
+  failureTrace: string;
+  severity: "critical" | "warning";
+}
+
+export interface FormalProverSummary {
+  conjecture: string;
+  status: VerificationStatus;
+  totalTheorems: number;
+  provenTheorems: number;
+  counterexamplesCount: number;
+  proofDepth: number;
+  satSolverType:
+    "DPLL_SMT" | "Horn_Clause_Resolution" | "Inductive_Hoare_Engine";
+  soundnessCompletenessPct: number;
+  verificationTimeMs: number;
+  lean4TargetReady: boolean;
+}
+
+export interface FormalProverArtifact {
+  id: string;
+  title: string;
+  createdAt: string;
+  summary: FormalProverSummary;
+  proofTree: ProofTreeNode[];
+  hoareInvariants: HoareInvariant[];
+  counterexamples: ProofCounterexample[];
+  smtLibCode: string;
+  lean4Code: string;
+  executiveSummary: string;
+  technicalNotes?: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -1031,7 +1108,8 @@ export type GenerativeArtifact =
   | { type: "vector_space"; data: VectorSpaceArtifact }
   | { type: "causal_dag"; data: CausalDagArtifact }
   | { type: "bayesian_opt"; data: BayesianOptArtifact }
-  | { type: "workflow_orchestrator"; data: WorkflowOrchestratorArtifact };
+  | { type: "workflow_orchestrator"; data: WorkflowOrchestratorArtifact }
+  | { type: "formal_prover"; data: FormalProverArtifact };
 
 export interface AgentThought {
   id: string;
