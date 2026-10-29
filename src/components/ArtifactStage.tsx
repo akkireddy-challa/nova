@@ -24,6 +24,11 @@ import {
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import { KnowledgeGraphCard } from "@/components/GenerativeCards/KnowledgeGraphCard";
+import { DebateCard } from "@/components/GenerativeCards/DebateCard";
+import {
+  analyzeDialecticDebate,
+  debateToCsv,
+} from "@/lib/research/dialectic-debate";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -113,6 +118,15 @@ export function ArtifactStage({
     if (artifact.type === "matrix") {
       const csvContent = matrixToCsv(artifact.data, matrixWeights);
       const filename = `${(artifact.data.topic || "decision-matrix").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
+    if (artifact.type === "debate") {
+      const analysis = analyzeDialecticDebate(artifact.data);
+      const csvContent = debateToCsv(artifact.data, analysis);
+      const filename = `${(artifact.data.topic || "dialectic-debate").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
       downloadCsvData(filename, csvContent);
       sound.playSuccess();
       return;
@@ -268,6 +282,20 @@ export function ArtifactStage({
             <Printer className="w-3.5 h-3.5 text-teal-400" />
             <span className="hidden sm:inline">Print / PDF</span>
           </button>
+
+          {/* Download CSV button for debate */}
+          {artifact.type === "debate" && (
+            <button
+              type="button"
+              onClick={handleDownload}
+              title="Download CSV"
+              aria-label="Download CSV"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-indigo-300 hover:bg-slate-800 transition cursor-pointer text-xs font-medium"
+            >
+              <Download className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline">Download CSV</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -1064,39 +1092,7 @@ export function ArtifactStage({
             {/* DEBATE ARTIFACT */}
             {artifact.type === "debate" && (
               <div className="space-y-4">
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-                  <span className="text-[10.5px] font-mono text-teal-400 uppercase font-semibold">
-                    Verdict
-                  </span>
-                  <p className="text-xs text-slate-200 mt-1 leading-relaxed">
-                    {artifact.data.synthesisVerdict}
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  {artifact.data.perspectives.map((persp, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-200">
-                          {persp.agentName}
-                        </span>
-                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-teal-400">
-                          {persp.stance}
-                        </span>
-                      </div>
-                      <div className="space-y-1 text-xs text-slate-300">
-                        {persp.arguments.map((arg, i) => (
-                          <p key={i} className="leading-relaxed">
-                            • {arg}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <DebateCard debate={artifact.data} />
               </div>
             )}
           </div>
@@ -1585,13 +1581,25 @@ export function ArtifactStage({
         {/* Content Section: Debate */}
         {artifact.type === "debate" && (
           <div className="space-y-6">
-            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-1">
-              <span className="text-[10px] font-mono font-bold uppercase text-gray-700 block">
-                Synthesis Verdict & Consensus
-              </span>
-              <p className="text-xs font-semibold text-black leading-relaxed">
-                {artifact.data.synthesisVerdict}
-              </p>
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div>
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700 block">
+                  Synthesis Verdict
+                </span>
+                <p className="text-xs font-semibold text-black leading-relaxed mt-0.5">
+                  {artifact.data.synthesisVerdict}
+                </p>
+              </div>
+              {artifact.data.consensusSummary && (
+                <div className="pt-2 border-t border-gray-200">
+                  <span className="text-[10px] font-mono font-bold uppercase text-gray-600 block">
+                    Consensus Summary
+                  </span>
+                  <p className="text-xs text-gray-800 leading-relaxed mt-0.5">
+                    {artifact.data.consensusSummary}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -1612,11 +1620,28 @@ export function ArtifactStage({
                         {persp.stance}
                       </span>
                     </div>
-                    <ul className="list-disc pl-5 space-y-1 text-xs text-gray-800">
-                      {persp.arguments.map((arg, i) => (
-                        <li key={i}>{arg}</li>
-                      ))}
-                    </ul>
+                    <div>
+                      <span className="text-[10px] font-mono uppercase font-bold text-gray-600 block mb-1">
+                        Core Arguments
+                      </span>
+                      <ul className="list-disc pl-5 space-y-1 text-xs text-gray-800">
+                        {persp.arguments.map((arg, i) => (
+                          <li key={i}>{arg}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    {persp.caveats && persp.caveats.length > 0 && (
+                      <div className="pt-1.5 border-t border-gray-200">
+                        <span className="text-[10px] font-mono uppercase font-bold text-gray-600 block mb-1">
+                          Caveats &amp; Blind Spots
+                        </span>
+                        <ul className="list-disc pl-5 space-y-1 text-xs text-gray-700">
+                          {persp.caveats.map((cav, i) => (
+                            <li key={i}>{cav}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
