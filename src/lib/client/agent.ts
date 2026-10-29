@@ -109,6 +109,12 @@ export function summarizeArtifact(artifact: GenerativeArtifact): string {
       return `Debate "${artifact.data.topic}". Verdict: ${artifact.data.synthesisVerdict}`;
     case "chart":
       return `Chart "${artifact.data.title}". Insight: ${artifact.data.insight}`;
+    case "council":
+      return `Executive council "${artifact.data.topic}". Verdict: ${artifact.data.councilVerdict} (Alignment: ${artifact.data.alignmentIndex}%). Summary: ${artifact.data.verdictSummary}`;
+    case "simulation":
+      return `Chaos resilience simulation "${artifact.data.title}". Resilience score: ${artifact.data.summary.resilienceScore}/100. Diagnosis: ${artifact.data.summary.bottleneckDiagnosis}`;
+    case "audio_briefing":
+      return `Audio briefing "${artifact.data.title}". ${artifact.data.chapters.length} chapters, ${Math.round(artifact.data.totalDurationMs / 1000)}s total duration.`;
     default:
       return "";
   }

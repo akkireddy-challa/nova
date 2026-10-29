@@ -9,6 +9,9 @@ import type {
   ChartArtifact,
   CodeArtifact,
   DebateArtifact,
+  PersonaCouncilArtifact,
+  ResilienceSimulationArtifact,
+  AudioBriefingArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -237,6 +240,42 @@ function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
       }
       if (debate.synthesisVerdict) {
         md += `**Synthesis Verdict:** ${debate.synthesisVerdict}\n\n`;
+      }
+      break;
+    }
+
+    case "council": {
+      const council: PersonaCouncilArtifact = artifact.data;
+      md += `#### 🏛️ Executive Council: ${council.topic}\n\n`;
+      md += `**Verdict:** ${council.councilVerdict} (Alignment: ${council.alignmentIndex}%)\n\n`;
+      if (council.verdictSummary) {
+        md += `> ${council.verdictSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (council.strategicCompromise) {
+        md += `**Strategic Compromise:** ${council.strategicCompromise}\n\n`;
+      }
+      break;
+    }
+
+    case "simulation": {
+      const sim: ResilienceSimulationArtifact = artifact.data;
+      md += `#### ⚡ Resilience Chaos Simulation: ${sim.title}\n\n`;
+      md += `**Resilience Score:** ${sim.summary.resilienceScore}/100 (Peak P99: ${sim.summary.peakP99LatencyMs}ms)\n\n`;
+      if (sim.summary.bottleneckDiagnosis) {
+        md += `> ${sim.summary.bottleneckDiagnosis.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      break;
+    }
+
+    case "audio_briefing": {
+      const briefing: AudioBriefingArtifact = artifact.data;
+      md += `#### 🎧 Audio Briefing: ${briefing.title}\n\n`;
+      md += `*Total Duration:* ${Math.round(briefing.totalDurationMs / 1000)}s • *Word Count:* ${briefing.totalWordCount}\n\n`;
+      if (briefing.chapters && briefing.chapters.length > 0) {
+        briefing.chapters.forEach((ch) => {
+          md += `##### Chapter ${ch.chapterIndex}: ${ch.title} (${ch.speaker})\n`;
+          md += `${ch.text}\n\n`;
+        });
       }
       break;
     }

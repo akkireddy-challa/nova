@@ -83,6 +83,15 @@ export function resolveDossierTitle(
       case "debate":
         if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
         break;
+      case "council":
+        if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
+        break;
+      case "simulation":
+        if (artifact.data.title?.trim()) return artifact.data.title.trim();
+        break;
+      case "audio_briefing":
+        if (artifact.data.title?.trim()) return artifact.data.title.trim();
+        break;
     }
   }
   if (session?.title?.trim()) {

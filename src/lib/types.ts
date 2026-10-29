@@ -266,6 +266,34 @@ export interface ResilienceSimulationArtifact {
   generatedAt: string;
 }
 
+export interface AudioChapterSegment {
+  id: string;
+  chapterIndex: number;
+  title: string;
+  speaker: string;
+  text: string;
+  estimatedDurationMs: number;
+  startTimeMs: number;
+  endTimeMs: number;
+  keyTakeaways: string[];
+}
+
+export interface WaveformBar {
+  index: number;
+  heightPct: number; // 15 to 100
+  energyLevel: "low" | "medium" | "high";
+}
+
+export interface AudioBriefingArtifact {
+  title: string;
+  totalDurationMs: number;
+  totalWordCount: number;
+  chapters: AudioChapterSegment[];
+  waveform: WaveformBar[];
+  fullNarrationScript: string;
+  generatedAt: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -274,7 +302,8 @@ export type GenerativeArtifact =
   | { type: "code"; data: CodeArtifact }
   | { type: "debate"; data: DebateArtifact }
   | { type: "council"; data: PersonaCouncilArtifact }
-  | { type: "simulation"; data: ResilienceSimulationArtifact };
+  | { type: "simulation"; data: ResilienceSimulationArtifact }
+  | { type: "audio_briefing"; data: AudioBriefingArtifact };
 
 export interface AgentThought {
   id: string;

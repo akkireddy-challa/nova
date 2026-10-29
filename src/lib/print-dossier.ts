@@ -216,6 +216,10 @@ export function getArtifactMetadata(
       title = artifact.data.title || "Resilience Chaos Simulation";
       modeName = "Resilience & Chaos Simulation";
       break;
+    case "audio_briefing":
+      title = artifact.data.title || "Multimodal Audio Briefing";
+      modeName = "Audio Narration Briefing";
+      break;
   }
 
   if (mode) {
