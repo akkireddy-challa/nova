@@ -528,3 +528,29 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with prompt optimizer metadata and Markdown export format.
   - Created `tests/prompt-optimizer-integration.test.ts` (7 integration tests passing).
 - [qa] [done] All 936 tests passing across 70 test files (4,736 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.6s). Tauri cargo check passed (0.46s). Strictly zero fake data.
+
+## Sprint 27 — Autonomous Offline Vector Space & Semantic Cluster Visualizer Studio
+
+- [vector/engine] [done] Created `src/lib/vector/vector-space-engine.ts`:
+  - Pure deterministic linear algebra primitives: `dotProduct`, `vectorMagnitude`, `cosineSimilarity` (-1.0 to 1.0), `cosineDistance`, `euclideanDistance2D`.
+  - Cluster centroid, radius, and silhouette score computation (`computeClusterCentroid`, `computeSilhouetteScore`).
+  - Deterministic high-dimensional projection & synthesis (`synthesizeVectorSpace`) projecting embeddings (3072d) into 2D PCA semantic coordinates with cluster assignments, query cosine distances, and outlier detection.
+  - RFC 4180 CSV export (`vectorSpaceToCsv`) with CRLF line endings and executive Markdown report generator (`vectorSpaceToMarkdown`).
+  - Strictly ZERO pseudo-randomness, strictly ZERO `Math.random()`.
+  - Created `tests/vector-space-engine.test.ts` (10 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/VectorSpaceCard.tsx`:
+  - Rich interactive generative UI dashboard for semantic vector space exploration, dimensionality reduction, and chunk inspection.
+  - Interactive SVG scatter plot canvas (`role="graphics-document"`, `tabindex="0"`, `aria-label`) with coordinate grid, centroid halos with cluster color gradients, convex radius boundaries, and clickable vector data points.
+  - Scorecard metrics row: Total Indexed Vectors, Silhouette Score gauge, 2D Explained Variance Ratio, Outlier Anomalies count.
+  - Selected point inspection drawer showing 2D coordinates, cosine similarity meter to active query, token length, cluster membership, and raw chunk text with 1-click copy.
+  - 3 view tabs: "2D Cluster Projection", "Semantic Clusters", and "Vector Index Table" (`responsive-table` pattern).
+  - 1-click RFC 4180 CSV download and Markdown report copy with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`, `sound.playTap()`).
+  - Created `tests/vector-space-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `VectorDimensionReductionMethod`, `VectorEmbeddingPoint`, `VectorCluster`, `VectorSpaceSummary`, `VectorSpaceArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "vector_space"; data: VectorSpaceArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "vector_space"`), `Compass` icon, teal badge styling, silhouette score gauge, and topological edges (`validates`, `synthesizes`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with vector space metadata and Markdown export format.
+  - Created `tests/vector-space-integration.test.ts` (7 integration tests passing).
+- [qa] [done] All 958 tests passing across 73 test files (4,816 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (891ms). Tauri cargo check passed (0.44s). Strictly zero fake data.

@@ -37,6 +37,7 @@ import { MultiModalInspectionCard } from "@/components/GenerativeCards/MultiModa
 import { MemoryGraphCard } from "@/components/GenerativeCards/MemoryGraphCard";
 import { AudioSpectrogramCard } from "@/components/GenerativeCards/AudioSpectrogramCard";
 import { PromptOptimizerCard } from "@/components/GenerativeCards/PromptOptimizerCard";
+import { VectorSpaceCard } from "@/components/GenerativeCards/VectorSpaceCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -56,6 +57,7 @@ import { multiModalInspectionToCsv } from "@/lib/multimodal/frame-inspector";
 import { memoryGraphToCsv } from "@/lib/graph/memory-graph-engine";
 import { audioSpectrogramToCsv } from "@/lib/audio/spectrogram-inspector";
 import { promptOptimizationToCsv } from "@/lib/optimization/prompt-optimizer";
+import { vectorSpaceToCsv } from "@/lib/vector/vector-space-engine";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -255,6 +257,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "vector_space") {
+      const csvContent = vectorSpaceToCsv(artifact.data);
+      const filename = `${(artifact.data.datasetTitle || "vector-space").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -329,6 +339,8 @@ export function ArtifactStage({
         return artifact.data.topic || "Acoustic Spectrogram Inspector";
       case "prompt_optimizer":
         return artifact.data.targetTask || "Prompt Evolution Studio";
+      case "vector_space":
+        return artifact.data.datasetTitle || "Vector Space Studio";
     }
   };
 
@@ -443,7 +455,8 @@ export function ArtifactStage({
             artifact.type === "multimodal_inspection" ||
             artifact.type === "memory_graph" ||
             artifact.type === "audio_spectrogram" ||
-            artifact.type === "prompt_optimizer") && (
+            artifact.type === "prompt_optimizer" ||
+            artifact.type === "vector_space") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1350,6 +1363,13 @@ export function ArtifactStage({
             {artifact.type === "prompt_optimizer" && (
               <div className="space-y-4">
                 <PromptOptimizerCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* VECTOR SPACE & SEMANTIC CLUSTER ARTIFACT */}
+            {artifact.type === "vector_space" && (
+              <div className="space-y-4">
+                <VectorSpaceCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -3044,6 +3064,101 @@ export function ArtifactStage({
                         {tc.status}
                       </td>
                       <td className="p-1.5 text-gray-700">{tc.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Vector Space & Semantic Clustering */}
+        {artifact.type === "vector_space" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Dataset: {artifact.data.datasetTitle}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  {artifact.data.summary.embeddingDimension}d → 2D{" "}
+                  {artifact.data.summary.reductionMethod.toUpperCase()} |
+                  Silhouette: {artifact.data.summary.silhouetteScore.toFixed(3)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 leading-relaxed font-sans">
+                {artifact.data.executiveSummary}
+              </p>
+            </div>
+
+            {/* Metrics Scorecard */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Indexed Vectors
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.totalVectors} vectors
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Silhouette Score
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.silhouetteScore.toFixed(3)}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Explained Variance
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {(artifact.data.summary.explainedVarianceRatio * 100).toFixed(
+                    1,
+                  )}
+                  % in 2D
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Outlier Anomalies
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.outlierCount} flagged
+                </div>
+              </div>
+            </div>
+
+            {/* Semantic Clusters Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Semantic Clusters ({artifact.data.clusters.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Cluster ID</th>
+                    <th className="p-1.5">Cluster Label</th>
+                    <th className="p-1.5 text-center">Vectors</th>
+                    <th className="p-1.5 text-center">Centroid (X, Y)</th>
+                    <th className="p-1.5">Key Concepts</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.clusters.map((c) => (
+                    <tr key={c.id}>
+                      <td className="p-1.5 font-bold text-black">
+                        Cluster {c.id}
+                      </td>
+                      <td className="p-1.5 font-bold text-black">{c.label}</td>
+                      <td className="p-1.5 text-center">{c.pointCount}</td>
+                      <td className="p-1.5 text-center">
+                        ({c.centroidX.toFixed(2)}, {c.centroidY.toFixed(2)})
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {c.topKeywords.join(", ")}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -9,6 +9,7 @@ import type {
   CodeArtifact,
   DebateArtifact,
   PromptOptimizationArtifact,
+  VectorSpaceArtifact,
 } from "./types";
 import { sanitizeFileName } from "./session-export";
 import { formatDossierDate } from "./print-dossier";
@@ -120,6 +121,10 @@ export function resolveDossierTitle(
       case "prompt_optimizer":
         if (artifact.data.targetTask?.trim())
           return artifact.data.targetTask.trim();
+        break;
+      case "vector_space":
+        if (artifact.data.datasetTitle?.trim())
+          return artifact.data.datasetTitle.trim();
         break;
     }
   }
@@ -800,6 +805,42 @@ function renderPromptOptimizationSection(
         <div class="perspective-body">
           <p class="perspective-core"><strong>Score:</strong> ${c.evalScore.toFixed(1)}% | <strong>Tokens:</strong> ${c.tokenCount} | <strong>Technique:</strong> ${escapeHtml(c.technique)}</p>
           <p class="finding-desc">${escapeHtml(c.rationale)}</p>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div></div></section>`;
+  return html;
+}
+
+/**
+ * Renders the Vector Space & Semantic Cluster Visualizer section HTML.
+ */
+function renderVectorSpaceSection(vs: VectorSpaceArtifact): string {
+  let html = `<section class="dossier-section" id="vector-space">
+    <div class="section-badge">VECTOR SPACE &amp; SEMANTIC CLUSTER STUDIO</div>
+    <h2 class="section-heading">${escapeHtml(vs.datasetTitle || "Vector Space")}</h2>
+    <div class="summary-card">
+      <h3 class="summary-subtitle">Dimensionality Reduction Overview</h3>
+      <p class="summary-text">${escapeHtml(vs.executiveSummary)}</p>
+      <p class="summary-text"><strong>Dimensionality:</strong> ${vs.summary.embeddingDimension}d → 2D ${escapeHtml(vs.summary.reductionMethod.toUpperCase())} | <strong>Silhouette Score:</strong> ${vs.summary.silhouetteScore.toFixed(3)} | <strong>Explained Variance:</strong> ${(vs.summary.explainedVarianceRatio * 100).toFixed(1)}%</p>
+    </div>
+
+    <div class="findings-list">
+      <h3 class="summary-subtitle">Semantic Clusters (${vs.clusters.length})</h3>
+      <div class="perspectives-grid">`;
+
+  vs.clusters.forEach((c) => {
+    html += `
+      <div class="perspective-card">
+        <div class="perspective-header">
+          <span class="perspective-persona">${escapeHtml(c.label)}</span>
+          <span class="perspective-stance">${c.pointCount} Vectors</span>
+        </div>
+        <div class="perspective-body">
+          <p class="perspective-core"><strong>Centroid:</strong> (${c.centroidX.toFixed(2)}, ${c.centroidY.toFixed(2)}) | <strong>Radius:</strong> ${c.radius.toFixed(2)} | <strong>Avg Tokens:</strong> ${c.averageTokenCount}</p>
+          <p class="finding-desc"><strong>Top Concepts:</strong> ${escapeHtml(c.topKeywords.join(", "))}</p>
         </div>
       </div>
     `;
@@ -2277,6 +2318,9 @@ export function generateStandaloneHtmlDossier(
         break;
       case "prompt_optimizer":
         contentHtml = renderPromptOptimizationSection(artifact.data);
+        break;
+      case "vector_space":
+        contentHtml = renderVectorSpaceSection(artifact.data);
         break;
     }
   } else if (session) {

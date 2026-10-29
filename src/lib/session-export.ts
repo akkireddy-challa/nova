@@ -21,6 +21,7 @@ import type {
   MemoryGraphArtifact,
   AudioSpectrogramArtifact,
   PromptOptimizationArtifact,
+  VectorSpaceArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -475,6 +476,23 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
         md += `**Validation Test Bench (${po.testCases.length}):**\n`;
         po.testCases.forEach((tc) => {
           md += `- 🧪 **${tc.input}**: ${tc.baselineScore.toFixed(1)}% → **${tc.optimizedScore.toFixed(1)}%** (\`${tc.status.toUpperCase()}\`) - ${tc.reason}\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "vector_space": {
+      const vs: VectorSpaceArtifact = artifact.data;
+      md += `#### 🧭 Vector Space Studio: ${vs.datasetTitle}\n\n`;
+      md += `*Method:* **${vs.summary.embeddingDimension}d → 2D ${vs.summary.reductionMethod.toUpperCase()}** • *Silhouette:* **${vs.summary.silhouetteScore.toFixed(3)}** • *Explained Variance:* **${(vs.summary.explainedVarianceRatio * 100).toFixed(1)}%** • *Vectors:* ${vs.summary.totalVectors} • *Clusters:* ${vs.summary.clusterCount}\n\n`;
+      if (vs.executiveSummary) {
+        md += `> ${vs.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (vs.clusters && vs.clusters.length > 0) {
+        md += `**Semantic Clusters (${vs.clusters.length}):**\n`;
+        vs.clusters.forEach((c) => {
+          md += `- 🏷️ **${c.label}** (${c.pointCount} vectors, centroid: [${c.centroidX.toFixed(2)}, ${c.centroidY.toFixed(2)}]): \`${c.topKeywords.join(", ")}\`\n`;
         });
         md += "\n";
       }
