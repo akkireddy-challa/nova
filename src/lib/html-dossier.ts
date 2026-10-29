@@ -11,6 +11,7 @@ import type {
   PromptOptimizationArtifact,
   VectorSpaceArtifact,
   CausalDagArtifact,
+  BayesianOptArtifact,
 } from "./types";
 import { sanitizeFileName } from "./session-export";
 import { formatDossierDate } from "./print-dossier";
@@ -130,6 +131,9 @@ export function resolveDossierTitle(
       case "causal_dag":
         if (artifact.data.hypothesis?.trim())
           return artifact.data.hypothesis.trim();
+        break;
+      case "bayesian_opt":
+        if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
     }
   }
@@ -883,6 +887,39 @@ function renderCausalDagSection(cd: CausalDagArtifact): string {
           <p class="perspective-core"><strong>Intervention:</strong> <code>${escapeHtml(cf.intervention)}</code></p>
           <p class="perspective-core"><strong>Factual:</strong> ${escapeHtml(cf.factualOutcome)} → <strong>Counterfactual:</strong> ${escapeHtml(cf.counterfactualOutcome)}</p>
           <p class="finding-desc">${escapeHtml(cf.explanation)}</p>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div></div></section>`;
+  return html;
+}
+
+function renderBayesianOptSection(bo: BayesianOptArtifact): string {
+  let html = `<section class="dossier-section" id="bayesian-opt">
+    <div class="section-badge">BAYESIAN OPTIMIZATION STUDIO</div>
+    <h2 class="section-heading">${escapeHtml(bo.title || "Hyperparameter Optimization")}</h2>
+    <div class="summary-card">
+      <h3 class="summary-subtitle">Optimization Objective &amp; Peak Results</h3>
+      <p class="summary-text">${escapeHtml(bo.executiveSummary)}</p>
+      <p class="summary-text"><strong>Target Objective:</strong> ${escapeHtml(bo.summary.targetObjective)} | <strong>Peak Value:</strong> ${bo.summary.bestObjectiveValue} (+${bo.summary.improvementPct}%) | <strong>Baseline:</strong> ${bo.summary.baselineObjectiveValue} | <strong>Total Trials:</strong> ${bo.summary.totalTrials}</p>
+    </div>
+
+    <div class="findings-list">
+      <h3 class="summary-subtitle">Tuned Hyperparameters (${bo.parameters.length})</h3>
+      <div class="perspectives-grid">`;
+
+  bo.parameters.forEach((param) => {
+    html += `
+      <div class="perspective-card">
+        <div class="perspective-header">
+          <span class="perspective-persona">${escapeHtml(param.name)}</span>
+          <span class="perspective-stance">${escapeHtml(param.type.toUpperCase())}</span>
+        </div>
+        <div class="perspective-body">
+          <p class="perspective-core"><strong>Optimal:</strong> <code>${escapeHtml(String(param.optimalValue))} ${escapeHtml(param.unit)}</code></p>
+          <p class="perspective-core"><strong>Domain:</strong> ${escapeHtml(param.choices ? param.choices.join(", ") : `[${param.min ?? "-"}, ${param.max ?? "-"}]`)}</p>
         </div>
       </div>
     `;
@@ -2366,6 +2403,9 @@ export function generateStandaloneHtmlDossier(
         break;
       case "causal_dag":
         contentHtml = renderCausalDagSection(artifact.data);
+        break;
+      case "bayesian_opt":
+        contentHtml = renderBayesianOptSection(artifact.data);
         break;
     }
   } else if (session) {
