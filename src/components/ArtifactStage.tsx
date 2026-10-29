@@ -27,12 +27,17 @@ import { KnowledgeGraphCard } from "@/components/GenerativeCards/KnowledgeGraphC
 import { DebateCard } from "@/components/GenerativeCards/DebateCard";
 import { PersonaCouncilCard } from "@/components/GenerativeCards/PersonaCouncilCard";
 import { ResilienceSimulationCard } from "@/components/GenerativeCards/ResilienceSimulationCard";
+import { AudioBriefingCard } from "@/components/GenerativeCards/AudioBriefingCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
 } from "@/lib/research/dialectic-debate";
 import { personaCouncilToCsv } from "@/lib/research/persona-studio";
 import { simulationToCsv } from "@/lib/research/resilience-simulator";
+import {
+  audioBriefingToCsv,
+  formatDurationTimestamp,
+} from "@/lib/audio/voice-briefing";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -152,6 +157,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "audio_briefing") {
+      const csvContent = audioBriefingToCsv(artifact.data);
+      const filename = `${(artifact.data.title || "audio-briefing").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -202,6 +215,12 @@ export function ArtifactStage({
         return artifact.data.topic || "Comparison";
       case "debate":
         return artifact.data.topic || "Debate";
+      case "council":
+        return artifact.data.topic || "Persona Council";
+      case "simulation":
+        return artifact.data.title || "Resilience Simulation";
+      case "audio_briefing":
+        return artifact.data.title || "Audio Briefing";
     }
   };
 
@@ -303,10 +322,11 @@ export function ArtifactStage({
             <span className="hidden sm:inline">Print / PDF</span>
           </button>
 
-          {/* Download CSV button for debate, council, and simulation */}
+          {/* Download CSV button for debate, council, simulation, and audio_briefing */}
           {(artifact.type === "debate" ||
             artifact.type === "council" ||
-            artifact.type === "simulation") && (
+            artifact.type === "simulation" ||
+            artifact.type === "audio_briefing") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1145,6 +1165,13 @@ export function ArtifactStage({
                 />
               </div>
             )}
+
+            {/* AUDIO BRIEFING ARTIFACT */}
+            {artifact.type === "audio_briefing" && (
+              <div className="space-y-4">
+                <AudioBriefingCard briefing={artifact.data} />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1807,6 +1834,53 @@ export function ArtifactStage({
                   ),
                 )}
               </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Audio Briefing */}
+        {artifact.type === "audio_briefing" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Total Duration:{" "}
+                  {formatDurationTimestamp(artifact.data.totalDurationMs)}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  {artifact.data.chapters.length} Chapters |{" "}
+                  {artifact.data.totalWordCount} words
+                </span>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Chapter Script &amp; Takeaways
+              </h2>
+              {artifact.data.chapters.map((ch) => (
+                <div
+                  key={ch.id}
+                  className="p-3 border border-gray-300 rounded space-y-1.5 print-avoid-break"
+                >
+                  <div className="flex items-center justify-between text-xs font-bold text-black">
+                    <span>
+                      Chapter {ch.chapterIndex}: {ch.title}
+                    </span>
+                    <span className="text-[10px] font-mono text-gray-600">
+                      {ch.speaker} (
+                      {formatDurationTimestamp(ch.estimatedDurationMs)})
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-800 leading-relaxed italic">
+                    &ldquo;{ch.text}&rdquo;
+                  </p>
+                  {ch.keyTakeaways && ch.keyTakeaways.length > 0 && (
+                    <div className="text-[11px] text-gray-700">
+                      <strong>Takeaways:</strong> {ch.keyTakeaways.join("; ")}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}

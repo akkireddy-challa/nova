@@ -268,3 +268,31 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts` metadata resolver for simulation artifacts.
   - Created `tests/simulation-integration.test.ts` (9 integration tests passing).
 - [qa] [done] All 669 tests passing across 39 test files (3,464 expect assertions). Zero lint errors or warnings. Next.js 16 build passed cleanly (1,577ms). Tauri cargo check passed (0.36s). Strictly zero fake data.
+
+## Sprint 17 — Interactive Multimodal Audio Briefing Generator & Voice Briefing Bar
+
+- [audio/engine] [done] Created `src/lib/audio/voice-briefing.ts`:
+  - Pure deterministic audio narration synthesis engine (`estimateSpeechDurationMs`, `formatDurationTimestamp`, `formatVttTimestamp`, `generateDeterministicWaveform`, `synthesizeNarrationChapters`, `generateAudioBriefing`).
+  - Standard speech cadence calculation (150 WPM) with exact millisecond bounds, zero drift, and deterministic audio wave bars.
+  - Multi-artifact narration synthesis supporting Research Reports, Persona Councils, Resilience Simulations, Dialectic Debates, Decision Matrices, and custom queries.
+  - Export utilities: Strict RFC 4180 CSV (`audioBriefingToCsv`), WebVTT subtitle track (`audioBriefingToVtt`), and structured Markdown transcript (`audioBriefingToMarkdown`).
+  - Strict ZERO `Math.random()`, strictly ZERO fake data.
+  - Created `tests/voice-briefing.test.ts` (15 unit tests passing).
+- [frontend/bar] [done] Created `src/components/AudioBriefingBar.tsx`:
+  - Docked glassmorphism bottom audio player with smooth timeline scrubber and chapter navigation.
+  - Dynamic SVG waveform visualizer with active playhead progression and hover inspection.
+  - Chapter drawer with speaker badges, time ranges, and key takeaway bullets.
+  - Playback speed cycle multiplier (1.0x, 1.25x, 1.5x, 2.0x) with browser SpeechSynthesisUtterance rate binding and simulated playback fallback.
+  - Export drawer for CSV, WebVTT, and Markdown transcript downloads with acoustic feedback (`sound.playPop()`, `sound.playTap()`, `sound.playSuccess()`, `sound.playCheck()`).
+  - Created `tests/audio-briefing-ui.test.ts` (10 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/AudioBriefingCard.tsx`:
+  - Rich interactive generative UI card for inline chat and artifact stage preview.
+  - Waveform visualizer, interactive chapter list, speaker avatars, and 1-click export actions.
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `AudioChapterSegment`, `WaveformBar`, `AudioBriefingArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "audio_briefing"; data: AudioBriefingArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated audio briefing card, CSV export, and print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "audio_briefing"`), `Headphones` icon, amber badge styling, duration metrics, and topological edges (`synthesizes`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with audio briefing narration transcripts.
+  - Created `tests/audio-integration.test.ts` (10 integration tests passing).
+- [qa] [done] All 704 tests passing across 42 test files (3,791 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (1,446ms). Tauri cargo check passed (0.40s). Strictly zero fake data.

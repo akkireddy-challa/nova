@@ -27,6 +27,7 @@ import {
   ArrowRight,
   UserCheck,
   Activity,
+  Headphones,
 } from "lucide-react";
 import type { Session, StudioMode, GenerativeArtifact } from "@/lib/types";
 import { sound } from "@/lib/sound";
@@ -839,6 +840,8 @@ function getNodeCardStyling(type: SpatialCanvasNode["artifactType"]): string {
       return "border border-indigo-500/40 bg-slate-900/90 hover:border-indigo-400/80 text-indigo-300";
     case "simulation":
       return "border border-emerald-500/40 bg-slate-900/90 hover:border-emerald-400/80 text-emerald-300";
+    case "audio_briefing":
+      return "border border-amber-500/40 bg-slate-900/90 hover:border-amber-400/80 text-amber-300";
     default:
       return "border border-slate-800 bg-slate-900/90 text-slate-300";
   }
@@ -862,6 +865,8 @@ function getNodeIcon(type: SpatialCanvasNode["artifactType"]) {
       return <UserCheck className="w-3.5 h-3.5 text-indigo-400" />;
     case "simulation":
       return <Activity className="w-3.5 h-3.5 text-emerald-400" />;
+    case "audio_briefing":
+      return <Headphones className="w-3.5 h-3.5 text-amber-400" />;
   }
 }
 
@@ -883,6 +888,8 @@ function getMiniMapDotColor(type: SpatialCanvasNode["artifactType"]): string {
       return "bg-indigo-500";
     case "simulation":
       return "bg-emerald-500";
+    case "audio_briefing":
+      return "bg-amber-500";
     default:
       return "bg-slate-400";
   }
@@ -906,6 +913,8 @@ function getItemCountLabel(type: SpatialCanvasNode["artifactType"]): string {
       return "evaluations";
     case "simulation":
       return "telemetry steps";
+    case "audio_briefing":
+      return "chapters";
     default:
       return "items";
   }
@@ -959,6 +968,12 @@ function renderNodeGauge(node: SpatialCanvasNode) {
       return (
         <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
           {`Resilience ${node.metrics?.score ?? 0}%`}
+        </span>
+      );
+    case "audio_briefing":
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-950/80 text-amber-300 border border-amber-800/60">
+          {`Audio ${node.metrics?.score ?? 0}s`}
         </span>
       );
   }

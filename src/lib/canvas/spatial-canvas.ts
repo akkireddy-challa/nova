@@ -19,7 +19,8 @@ export interface SpatialCanvasNode {
     | "code"
     | "debate"
     | "council"
-    | "simulation";
+    | "simulation"
+    | "audio_briefing";
   title: string;
   summary: string;
   x: number;
@@ -460,6 +461,31 @@ export function extractSpatialNodes(
         metrics.status = "simulated";
         break;
       }
+      case "audio_briefing": {
+        const ab = data as {
+          title?: string;
+          totalDurationMs?: number;
+          totalWordCount?: number;
+          chapters?: unknown[];
+          fullNarrationScript?: string;
+        };
+        title = ab.title || "Multimodal Audio Briefing";
+        summary =
+          ab.fullNarrationScript ||
+          `Audio briefing with ${ab.chapters?.length || 0} chapters.`;
+        tags.push("AUDIO", "BRIEFING");
+        if (typeof ab.totalDurationMs === "number") {
+          metrics.score = Math.round(ab.totalDurationMs / 1000); // duration in seconds
+        }
+        if (Array.isArray(ab.chapters)) {
+          metrics.itemCount = ab.chapters.length;
+        }
+        if (typeof ab.totalWordCount === "number") {
+          metrics.evidenceCount = ab.totalWordCount;
+        }
+        metrics.status = "synthesized";
+        break;
+      }
     }
 
     nodes.push({
@@ -558,6 +584,18 @@ export function computeSpatialEdges(
         relationType = "compares";
         label = "Council Chaos Validation";
         baseStrength = 0.8;
+      } else if (types.has("audio_briefing") && types.has("research")) {
+        relationType = "synthesizes";
+        label = "Audio Narration Briefing";
+        baseStrength = 0.9;
+      } else if (types.has("audio_briefing") && types.has("council")) {
+        relationType = "synthesizes";
+        label = "Executive Council Narration";
+        baseStrength = 0.9;
+      } else if (types.has("audio_briefing") && types.has("simulation")) {
+        relationType = "synthesizes";
+        label = "Chaos Simulation Narration";
+        baseStrength = 0.85;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";
