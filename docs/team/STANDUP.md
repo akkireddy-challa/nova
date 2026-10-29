@@ -689,3 +689,31 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with consensus metadata and Markdown export format.
   - Created `tests/consensus-integration.test.ts` (6 integration tests passing).
 - [qa] [done] All 1,064 tests passing across 88 test files (5,206 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.4s). Tauri cargo check passed (0.48s). Strictly zero fake data.
+
+## Sprint 33 — Autonomous Game Theory, Strategic Nash Equilibrium & Mechanism Design Studio
+
+- [gametheory/engine] [done] Created `src/lib/gametheory/game-theory-engine.ts`:
+  - Pure deterministic Normal Form Game solver: Pure Strategy Nash Equilibrium (PNE) discovery (`findPureNashEquilibria`) via mutual best-response verification across all strategy profiles.
+  - 2x2 Mixed Strategy Nash Equilibrium (MNE) solver (`compute2x2MixedNash`) utilizing indifference condition algebra ($p, q \in (0, 1)$).
+  - Iterated Elimination of Strictly Dominated Strategies (IESDS) trace generating formal step-by-step dominance reduction proofs.
+  - Inefficiency metrics: Price of Anarchy (PoA = Social Optimum / Worst Nash) and Price of Stability (PoS = Social Optimum / Best Nash) (`computePriceOfAnarchy`).
+  - Cooperative Game Theory: Axiomatic Shapley Value Profit & Risk Attribution (`computeShapleyValues`) computing marginal contributions across all $N!$ arrival permutations.
+  - Deterministic game synthesis (`synthesizeGameTheory`), RFC 4180 CSV export (`gameTheoryToCsv`), and executive Markdown report generator (`gameTheoryToMarkdown`).
+  - Strictly ZERO pseudo-randomness, strictly ZERO `Math.random()`.
+  - Created `tests/game-theory-engine.test.ts` (8 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/GameTheoryCard.tsx`:
+  - Rich interactive generative UI dashboard for strategic mechanism design and game-theoretic equilibrium analysis.
+  - Interactive SVG Payoff Matrix Heatmap canvas (`role="graphics-document"`, zoom/pan controls 60%-180%, reset zoom) displaying bimatrix payoffs with diagonal split cells, Pure Nash badges (★), and Pareto Optimum highlights.
+  - Scorecard metrics row: Price of Anarchy (PoA), Price of Stability (PoS), Pure Nash Count, and Mixed Equilibrium Status.
+  - Interactive cell inspection drawer displaying profile coordinates, individual player payoffs, aggregate social welfare, Nash stability indicator, and strategic notes.
+  - 5 view tabs: "Payoff Matrix Heatmap", "Nash Equilibria", "Cooperative Shapley Values", "IESDS Elimination Trace", and "Strategic Mechanism Design".
+  - 1-click Markdown dossier copy and RFC 4180 CSV download with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`).
+  - Created `tests/game-theory-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `GameClassType`, `StrategyPayoffCell`, `NashEquilibriumResult`, `ShapleyValueEntry`, `GameTheorySummary`, `GameTheoryArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "game_theory"; data: GameTheoryArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "game_theory"`), `Gamepad2` icon, amber badge styling, PoA gauge (`PoA: 2.0x`), and topological domain edges (`synthesizes`, `validates`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with game theory metadata and Markdown export format.
+  - Created `tests/game-theory-integration.test.ts` (6 integration tests passing).
+- [qa] [done] All 1,083 tests passing across 91 test files (5,293 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.2s). Tauri cargo check passed (0.42s). Strictly zero fake data.

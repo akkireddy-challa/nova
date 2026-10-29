@@ -1149,6 +1149,67 @@ export interface EpistemicConsensusArtifact {
   technicalNotes?: string;
 }
 
+// --- Game Theory & Strategic Mechanism Design Types ---
+export type GameClassType =
+  "non_zero_sum" | "zero_sum" | "cooperative" | "bayesian_incomplete_info";
+
+export interface StrategyPayoffCell {
+  rowStrategy: string;
+  colStrategy: string;
+  player1Payoff: number;
+  player2Payoff: number;
+  isNashEquilibrium: boolean;
+  isParetoOptimal: boolean;
+  notes?: string;
+}
+
+export interface NashEquilibriumResult {
+  id: string;
+  type: "pure" | "mixed";
+  player1StrategyProbabilities: Record<string, number>;
+  player2StrategyProbabilities: Record<string, number>;
+  expectedPayoffPlayer1: number;
+  expectedPayoffPlayer2: number;
+  stabilityIndexPct: number;
+  description: string;
+}
+
+export interface ShapleyValueEntry {
+  playerId: string;
+  playerName: string;
+  marginalContributionValue: number;
+  shapleySharePct: number;
+  cooperativeRole: string;
+}
+
+export interface GameTheorySummary {
+  gameName: string;
+  gameClass: GameClassType;
+  player1Name: string;
+  player2Name: string;
+  totalPureNashCount: number;
+  hasMixedNash: boolean;
+  priceOfAnarchy: number;
+  priceOfStability: number;
+  dominantStrategyPlayer1: string | null;
+  dominantStrategyPlayer2: string | null;
+  strategicRecommendation: string;
+}
+
+export interface GameTheoryArtifact {
+  id: string;
+  title: string;
+  createdAt: string;
+  summary: GameTheorySummary;
+  payoffMatrix: StrategyPayoffCell[];
+  equilibria: NashEquilibriumResult[];
+  shapleyValues: ShapleyValueEntry[];
+  iesdsEliminationSteps: string[];
+  mathematicalNotes: string;
+  executiveSummary: string;
+  technicalNotes?: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -1173,7 +1234,8 @@ export type GenerativeArtifact =
   | { type: "bayesian_opt"; data: BayesianOptArtifact }
   | { type: "workflow_orchestrator"; data: WorkflowOrchestratorArtifact }
   | { type: "formal_prover"; data: FormalProverArtifact }
-  | { type: "epistemic_consensus"; data: EpistemicConsensusArtifact };
+  | { type: "epistemic_consensus"; data: EpistemicConsensusArtifact }
+  | { type: "game_theory"; data: GameTheoryArtifact };
 
 export interface AgentThought {
   id: string;
