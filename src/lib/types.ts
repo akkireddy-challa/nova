@@ -585,6 +585,63 @@ export interface MultiModalInspectionArtifact {
   generatedAt: string;
 }
 
+export type GraphEntityType =
+  | "concept"
+  | "technology"
+  | "organization"
+  | "methodology"
+  | "person"
+  | "standard";
+
+export type GraphRelationType =
+  | "relies_on"
+  | "supersedes"
+  | "fails_over_to"
+  | "validates"
+  | "implements"
+  | "competes_with"
+  | "contradicts";
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: GraphEntityType;
+  description: string;
+  centralityScore: number; // 0.0 to 1.0 (degree / normalized importance)
+  degree: number; // number of incident edges
+  metadata?: Record<string, string>;
+}
+
+export interface GraphEdge {
+  id: string;
+  source: string; // source node id
+  target: string; // target node id
+  relation: GraphRelationType;
+  label: string;
+  weight: number; // 0.1 to 1.0 (confidence / connection strength)
+  bidirectional?: boolean;
+}
+
+export interface MemoryGraphSummary {
+  totalNodes: number;
+  totalEdges: number;
+  density: number; // totalEdges / maxEdges
+  averageDegree: number;
+  dominantEntityType: GraphEntityType;
+  mostCentralNode: string; // label of highest centrality node
+}
+
+export interface MemoryGraphArtifact {
+  id: string;
+  topic: string;
+  executiveSummary: string;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  summary: MemoryGraphSummary;
+  generatedAt: string;
+  methodologyNotes?: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -600,7 +657,8 @@ export type GenerativeArtifact =
   | { type: "eval_suite"; data: RegressionEvalArtifact }
   | { type: "red_team_audit"; data: RedTeamAuditArtifact }
   | { type: "guardrail_policy"; data: SemanticGuardrailArtifact }
-  | { type: "multimodal_inspection"; data: MultiModalInspectionArtifact };
+  | { type: "multimodal_inspection"; data: MultiModalInspectionArtifact }
+  | { type: "memory_graph"; data: MemoryGraphArtifact };
 
 export interface AgentThought {
   id: string;

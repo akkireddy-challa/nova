@@ -18,6 +18,7 @@ import type {
   RedTeamAuditArtifact,
   SemanticGuardrailArtifact,
   MultiModalInspectionArtifact,
+  MemoryGraphArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -412,6 +413,32 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
               md += `  - 📌 *"${c.claim}"* (Box: \`${c.boxId}\`, Source: ${c.verifiableSource})\n`;
             });
           }
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "memory_graph": {
+      const kg: MemoryGraphArtifact = artifact.data;
+      md += `#### 🕸️ Memory & Knowledge Graph: ${kg.topic}\n\n`;
+      md += `*Graph Density:* **${(kg.summary.density * 100).toFixed(1)}%** • *Entities:* ${kg.summary.totalNodes} • *Relations:* ${kg.summary.totalEdges} • *Avg Degree:* ${kg.summary.averageDegree} • *Authority:* **${kg.summary.mostCentralNode}**\n\n`;
+      if (kg.executiveSummary) {
+        md += `> ${kg.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (kg.nodes && kg.nodes.length > 0) {
+        md += `**Semantic Entities (${kg.nodes.length}):**\n`;
+        kg.nodes.forEach((n) => {
+          md += `- 🏷️ **${n.label}** (\`${n.type}\`, degree: ${n.degree}, centrality: ${(n.centralityScore * 100).toFixed(1)}%): ${n.description}\n`;
+        });
+        md += "\n";
+      }
+      if (kg.edges && kg.edges.length > 0) {
+        md += `**Directed Relations (${kg.edges.length}):**\n`;
+        kg.edges.forEach((e) => {
+          const src = kg.nodes.find((n) => n.id === e.source);
+          const tgt = kg.nodes.find((n) => n.id === e.target);
+          md += `- 🔗 **${src?.label || e.source}** \`${e.relation}\` **${tgt?.label || e.target}** (${(e.weight * 100).toFixed(0)}%): ${e.label}\n`;
         });
         md += "\n";
       }
