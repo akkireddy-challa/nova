@@ -128,3 +128,26 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Interactive live benchmark modal with auto-discovered local runtimes status cards (Ollama, LM Studio, vLLM), model selector, reactive "Run Benchmark" button, live Speedometer / TPS meter (`⚡ 48 tokens/sec`), TTFT latency badge (`⏱️ 180ms TTFT`), and Hardware Cost Savings counter.
   - Integrated into `SettingsModal.tsx` with "Benchmark Engine" action button.
 - [tests] [done] Created `tests/local-engine-benchmark.test.ts` (20 unit tests) covering local runtime probing (Ollama, LM Studio with `owned_by`, vLLM, generic format, and unreachable fallback), engine discovery, cost savings calculation, benchmark metrics computation, and route request validation. All 20 tests pass. Zero fake data / Math.random.
+
+## Sprint 12 — Swarm Live Canvas Integration, Interactive Knowledge Graph & Competitive Gap Analysis
+
+- [swarm/canvas] [done] Created `src/lib/client/swarm-client.ts` and deeply integrated `MultiAgentSwarmHUD` into `src/components/AgentCanvas.tsx`:
+  - Added dedicated "Swarm Mode" toggle button in the chat control bar next to the thinking budget selector with live pulsating indicator.
+  - Dynamically classifies live streaming thoughts into 4 specialist agent roles (`Scout`, `Analyst`, `Critic`, `Synthesizer`).
+  - Converts trace thoughts into structured `AgentSwarmEvent` items with wall-clock latency, extracted findings count, and state transitions (`pending` -> `active` -> `completed` / `failed`).
+  - Displays interactive, collapsible `MultiAgentSwarmHUD` both during live execution and in historical assistant messages.
+  - Created `tests/swarm-client.test.ts` (15 unit tests passing).
+- [knowledge-graph] [done] Created `src/lib/research/knowledge-graph.ts`, `src/components/GenerativeCards/KnowledgeGraphCard.tsx`, and updated `src/components/ArtifactStage.tsx`:
+  - Implemented `extractKnowledgeGraph` extracting source citations, key concepts, named entities, and findings into a structured graph with directed "cites", "mentions", and "relates_to" edges.
+  - Deterministic 2D concentric orbit layout with bounded coordinates (zero `Math.random()`).
+  - Interactive SVG canvas with zoom, pan, node degree metrics, hover highlight, clickable node inspector drawer with external source links, filter pills, and 1-click SVG/JSON export.
+  - Added dedicated "Graph" tab with `<Network />` icon to `ArtifactStage.tsx`.
+  - Created `tests/knowledge-graph.test.ts` (16 unit tests passing).
+- [gap-analysis] [done] Created `src/lib/research/gap-analysis.ts`, `src/components/GenerativeCards/GapAnalysisCard.tsx`, and upgraded `src/components/GenerativeCards/DecisionMatrixCard.tsx`:
+  - Pure deterministic analysis computing criteria statistics (means, score spreads, leaders, laggards).
+  - Identifies differentiating moats (leads >= 15% or score >= 9.0) and critical vulnerabilities (deficits >= 20% or score <= 4.0).
+  - Generates tactical prioritized action items and RFC 4180 CSV / Markdown exports.
+  - Interactive card featuring comparative feature bars, Recharts radar topology, moat trophies, and vulnerability badges.
+  - Tab switcher in `DecisionMatrixCard.tsx` toggling between "Matrix Overview" and "Deep Gap Analysis".
+  - Created `tests/gap-analysis.test.ts` (26 unit tests passing).
+- [qa] [done] All 480 tests passing across 27 test files (2,538 expect assertions). Zero lint errors, clean Next.js 16 build. Zero fake data.
