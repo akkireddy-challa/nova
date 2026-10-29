@@ -12,6 +12,7 @@ import type {
   VectorSpaceArtifact,
   CausalDagArtifact,
   BayesianOptArtifact,
+  WorkflowOrchestratorArtifact,
 } from "./types";
 import { sanitizeFileName } from "./session-export";
 import { formatDossierDate } from "./print-dossier";
@@ -133,6 +134,9 @@ export function resolveDossierTitle(
           return artifact.data.hypothesis.trim();
         break;
       case "bayesian_opt":
+        if (artifact.data.title?.trim()) return artifact.data.title.trim();
+        break;
+      case "workflow_orchestrator":
         if (artifact.data.title?.trim()) return artifact.data.title.trim();
         break;
     }
@@ -920,6 +924,42 @@ function renderBayesianOptSection(bo: BayesianOptArtifact): string {
         <div class="perspective-body">
           <p class="perspective-core"><strong>Optimal:</strong> <code>${escapeHtml(String(param.optimalValue))} ${escapeHtml(param.unit)}</code></p>
           <p class="perspective-core"><strong>Domain:</strong> ${escapeHtml(param.choices ? param.choices.join(", ") : `[${param.min ?? "-"}, ${param.max ?? "-"}]`)}</p>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div></div></section>`;
+  return html;
+}
+
+function renderWorkflowOrchestratorSection(
+  wf: WorkflowOrchestratorArtifact,
+): string {
+  let html = `<section class="dossier-section" id="workflow-orchestrator">
+    <div class="section-badge">WORKFLOW ORCHESTRATOR STUDIO</div>
+    <h2 class="section-heading">${escapeHtml(wf.title || "Finite State Machine Workflow")}</h2>
+    <div class="summary-card">
+      <h3 class="summary-subtitle">Orchestrator Architecture &amp; Reliability</h3>
+      <p class="summary-text">${escapeHtml(wf.executiveSummary)}</p>
+      <p class="summary-text"><strong>Workflow:</strong> ${escapeHtml(wf.summary.workflowName)} | <strong>Resilience Grade:</strong> ${escapeHtml(wf.summary.resilienceGrade)} | <strong>States:</strong> ${wf.summary.totalStates} | <strong>Transitions:</strong> ${wf.summary.totalTransitions} | <strong>Reachability:</strong> ${wf.summary.reachabilityScorePct}%</p>
+    </div>
+
+    <div class="findings-list">
+      <h3 class="summary-subtitle">Orchestrated Finite States (${wf.states.length})</h3>
+      <div class="perspectives-grid">`;
+
+  wf.states.forEach((state) => {
+    html += `
+      <div class="perspective-card">
+        <div class="perspective-header">
+          <span class="perspective-persona">${escapeHtml(state.name)}</span>
+          <span class="perspective-stance">${escapeHtml(state.type.toUpperCase())}</span>
+        </div>
+        <div class="perspective-body">
+          <p class="perspective-core"><strong>Identifier:</strong> <code>${escapeHtml(state.id)}</code></p>
+          <p class="finding-desc">${escapeHtml(state.description)}</p>
+          ${state.entryAction ? `<p class="perspective-core"><strong>Entry Hook:</strong> <code>${escapeHtml(state.entryAction)}</code></p>` : ""}
         </div>
       </div>
     `;
@@ -2406,6 +2446,9 @@ export function generateStandaloneHtmlDossier(
         break;
       case "bayesian_opt":
         contentHtml = renderBayesianOptSection(artifact.data);
+        break;
+      case "workflow_orchestrator":
+        contentHtml = renderWorkflowOrchestratorSection(artifact.data);
         break;
     }
   } else if (session) {

@@ -24,6 +24,7 @@ import type {
   VectorSpaceArtifact,
   CausalDagArtifact,
   BayesianOptArtifact,
+  WorkflowOrchestratorArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -554,6 +555,33 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
           const optMark = t.isOptimal ? " 🏆 (Optimal)" : "";
           const primaryVal = t.parameters[bo.summary.primaryParameter];
           md += `- 🧪 **Trial #${t.iteration}** (\`${t.status.toUpperCase()}\`${optMark}): ${t.objectiveValue > 0 ? `${t.objectiveValue.toFixed(1)} output` : "Pending"} (${bo.summary.primaryParameter}=${primaryVal}, EI: ${t.acquisitionValue.toFixed(3)})\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "workflow_orchestrator": {
+      const wf: WorkflowOrchestratorArtifact = artifact.data;
+      md += `#### ⚡ Workflow Orchestrator Studio: ${wf.title}\n\n`;
+      md += `*Engine:* \`${wf.summary.workflowName}\` • *Resilience Grade:* **${wf.summary.resilienceGrade}** • *Reachability:* **${wf.summary.reachabilityScorePct}%** • *States:* ${wf.summary.totalStates} • *Transitions:* ${wf.summary.totalTransitions}\n\n`;
+      if (wf.executiveSummary) {
+        md += `> ${wf.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (wf.states && wf.states.length > 0) {
+        md += `**Orchestrated Finite States (${wf.states.length}):**\n`;
+        wf.states.forEach((s) => {
+          md += `- 🏷️ **${s.name}** (\`${s.id}\`, \`${s.type.toUpperCase()}\`): ${s.description}\n`;
+        });
+        md += "\n";
+      }
+      if (wf.transitions && wf.transitions.length > 0) {
+        md += `**Event-Driven State Transitions (${wf.transitions.length}):**\n`;
+        wf.transitions.forEach((t) => {
+          const comp = t.compensationAction
+            ? ` (Saga: \`${t.compensationAction}\`)`
+            : "";
+          md += `- 🔗 **${t.event}**: \`${t.source}\` → \`${t.target}\`${comp}\n`;
         });
         md += "\n";
       }

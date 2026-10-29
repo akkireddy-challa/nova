@@ -40,6 +40,7 @@ import { PromptOptimizerCard } from "@/components/GenerativeCards/PromptOptimize
 import { VectorSpaceCard } from "@/components/GenerativeCards/VectorSpaceCard";
 import { CausalDagCard } from "@/components/GenerativeCards/CausalDagCard";
 import { BayesianOptCard } from "@/components/GenerativeCards/BayesianOptCard";
+import { WorkflowOrchestratorCard } from "@/components/GenerativeCards/WorkflowOrchestratorCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -62,6 +63,7 @@ import { promptOptimizationToCsv } from "@/lib/optimization/prompt-optimizer";
 import { vectorSpaceToCsv } from "@/lib/vector/vector-space-engine";
 import { causalDagToCsv } from "@/lib/causal/causal-dag-engine";
 import { bayesianOptToCsv } from "@/lib/optimization/bayesian-opt-engine";
+import { workflowOrchestratorToCsv } from "@/lib/workflow/orchestrator-engine";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -285,6 +287,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "workflow_orchestrator") {
+      const csvContent = workflowOrchestratorToCsv(artifact.data);
+      const filename = `${(artifact.data.title || "workflow").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -365,6 +375,8 @@ export function ArtifactStage({
         return artifact.data.hypothesis || "Causal Inference Studio";
       case "bayesian_opt":
         return artifact.data.title || "Bayesian Optimization Studio";
+      case "workflow_orchestrator":
+        return artifact.data.title || "Workflow Orchestrator Studio";
     }
   };
 
@@ -482,7 +494,8 @@ export function ArtifactStage({
             artifact.type === "prompt_optimizer" ||
             artifact.type === "vector_space" ||
             artifact.type === "causal_dag" ||
-            artifact.type === "bayesian_opt") && (
+            artifact.type === "bayesian_opt" ||
+            artifact.type === "workflow_orchestrator") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1410,6 +1423,13 @@ export function ArtifactStage({
             {artifact.type === "bayesian_opt" && (
               <div className="space-y-4">
                 <BayesianOptCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* WORKFLOW ORCHESTRATOR ARTIFACT */}
+            {artifact.type === "workflow_orchestrator" && (
+              <div className="space-y-4">
+                <WorkflowOrchestratorCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -3409,6 +3429,130 @@ export function ArtifactStage({
               <pre className="p-3 text-[11px] font-mono text-black bg-white overflow-x-auto leading-relaxed whitespace-pre-wrap">
                 {artifact.data.configSnippetYaml}
               </pre>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Workflow Orchestrator Studio */}
+        {artifact.type === "workflow_orchestrator" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Workflow: {artifact.data.title} (
+                  {artifact.data.summary.workflowName})
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Grade {artifact.data.summary.resilienceGrade} | Reachability:{" "}
+                  {artifact.data.summary.reachabilityScorePct}% | Deadlocks:{" "}
+                  {artifact.data.summary.deadlocksDetected}
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 leading-relaxed font-sans">
+                {artifact.data.executiveSummary}
+              </p>
+            </div>
+
+            {/* Metrics Scorecard */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Orchestrated States
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.totalStates}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Event Transitions
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.totalTransitions}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Reachability Score
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.reachabilityScorePct}%
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Deadlocks Detected
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.deadlocksDetected}
+                </div>
+              </div>
+            </div>
+
+            {/* Orchestrated States Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Finite States ({artifact.data.states.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">State ID</th>
+                    <th className="p-1.5">Name</th>
+                    <th className="p-1.5">Type</th>
+                    <th className="p-1.5">Description</th>
+                    <th className="p-1.5">Entry / Exit Hooks</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.states.map((s) => (
+                    <tr key={s.id}>
+                      <td className="p-1.5 font-bold text-black">{s.id}</td>
+                      <td className="p-1.5 text-black">{s.name}</td>
+                      <td className="p-1.5 uppercase text-gray-700">
+                        {s.type}
+                      </td>
+                      <td className="p-1.5 text-gray-600">{s.description}</td>
+                      <td className="p-1.5 text-gray-600">
+                        {s.entryAction ? `entry: ${s.entryAction}` : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Event Transitions Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Event Transitions ({artifact.data.transitions.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Event</th>
+                    <th className="p-1.5">Source → Target</th>
+                    <th className="p-1.5">Guard</th>
+                    <th className="p-1.5">Compensation Saga</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.transitions.map((t) => (
+                    <tr key={t.id}>
+                      <td className="p-1.5 font-bold text-black">{t.event}</td>
+                      <td className="p-1.5 text-black">
+                        {t.source} → {t.target}
+                      </td>
+                      <td className="p-1.5 text-gray-600">
+                        {t.guardCondition || "Unconditional"}
+                      </td>
+                      <td className="p-1.5 text-gray-600">
+                        {t.compensationAction || "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

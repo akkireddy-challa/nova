@@ -32,7 +32,8 @@ export interface SpatialCanvasNode {
     | "prompt_optimizer"
     | "vector_space"
     | "causal_dag"
-    | "bayesian_opt";
+    | "bayesian_opt"
+    | "workflow_orchestrator";
   title: string;
   summary: string;
   x: number;
@@ -826,6 +827,37 @@ export function extractSpatialNodes(
         metrics.status = "optimized";
         break;
       }
+      case "workflow_orchestrator": {
+        const wf = data as {
+          title?: string;
+          summary?: {
+            workflowName?: string;
+            totalStates?: number;
+            totalTransitions?: number;
+            reachabilityScorePct?: number;
+            resilienceGrade?: string;
+          };
+          states?: unknown[];
+          transitions?: unknown[];
+          technicalNotes?: string;
+        };
+        title = wf.title || "Workflow Orchestrator Studio";
+        summary =
+          wf.technicalNotes ||
+          `Finite state machine with ${wf.states?.length || 0} states and ${wf.transitions?.length || 0} transitions (${wf.summary?.reachabilityScorePct || 100}% reachability).`;
+        tags.push("WORKFLOW", "FINITE_STATE_MACHINE", "ORCHESTRATOR", "SAGAS");
+        if (typeof wf.summary?.reachabilityScorePct === "number") {
+          metrics.score = Math.round(wf.summary.reachabilityScorePct);
+        }
+        if (Array.isArray(wf.states)) {
+          metrics.itemCount = wf.states.length;
+        }
+        if (Array.isArray(wf.transitions)) {
+          metrics.evidenceCount = wf.transitions.length;
+        }
+        metrics.status = "verified";
+        break;
+      }
     }
 
     nodes.push({
@@ -1139,6 +1171,21 @@ export function computeSpatialEdges(
         relationType = "synthesizes";
         label = "Prompt & Inference Joint Optimization";
         baseStrength = 0.91;
+      } else if (types.has("workflow_orchestrator") && types.has("plan")) {
+        relationType = "implements";
+        label = "Plan Execution Orchestration";
+        baseStrength = 0.97;
+      } else if (
+        types.has("workflow_orchestrator") &&
+        types.has("eval_suite")
+      ) {
+        relationType = "validates";
+        label = "Workflow Regression Verification";
+        baseStrength = 0.94;
+      } else if (types.has("workflow_orchestrator") && types.has("code")) {
+        relationType = "synthesizes";
+        label = "Code Deployment Pipeline";
+        baseStrength = 0.93;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";
