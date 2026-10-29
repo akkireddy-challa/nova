@@ -1210,6 +1210,82 @@ export interface GameTheoryArtifact {
   technicalNotes?: string;
 }
 
+// --- Control Flow Graph & Symbolic AST Decompiler Types ---
+export type InstructionOpcode =
+  | "CONST"
+  | "LOAD"
+  | "STORE"
+  | "BINOP"
+  | "BRANCH_IF"
+  | "JUMP"
+  | "CALL"
+  | "PHI"
+  | "RETURN";
+
+export interface BasicBlockInstruction {
+  id: string;
+  opcode: InstructionOpcode;
+  targetVar?: string;
+  operands: string[];
+  rawText: string;
+}
+
+export interface BasicBlockNode {
+  id: string;
+  label: string;
+  isEntry: boolean;
+  isExit: boolean;
+  instructions: BasicBlockInstruction[];
+  predecessorIds: string[];
+  successorIds: string[];
+  immediateDominatorId: string | null;
+  dominanceFrontier: string[];
+  isLoopHeader?: boolean;
+  x: number;
+  y: number;
+}
+
+export interface CfgEdge {
+  id: string;
+  fromBlockId: string;
+  toBlockId: string;
+  kind: "unconditional" | "true_branch" | "false_branch" | "back_edge";
+  conditionText?: string;
+}
+
+export interface DefUseChainEntry {
+  variable: string;
+  definitionBlockId: string;
+  definitionInstruction: string;
+  useBlockIds: string[];
+  isDeadStore: boolean;
+}
+
+export interface CfgSummary {
+  functionName: string;
+  totalBasicBlocks: number;
+  totalEdges: number;
+  cyclomaticComplexity: number;
+  complexityGrade: "Simple" | "Moderate" | "Complex" | "High Risk";
+  naturalLoopCount: number;
+  hasDeadCode: boolean;
+  ssaVariableCount: number;
+  optimizationNotes: string;
+}
+
+export interface AstControlFlowArtifact {
+  id: string;
+  title: string;
+  createdAt: string;
+  summary: CfgSummary;
+  basicBlocks: BasicBlockNode[];
+  edges: CfgEdge[];
+  defUseChains: DefUseChainEntry[];
+  decompiledCode: string;
+  executiveSummary: string;
+  technicalNotes?: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -1235,7 +1311,8 @@ export type GenerativeArtifact =
   | { type: "workflow_orchestrator"; data: WorkflowOrchestratorArtifact }
   | { type: "formal_prover"; data: FormalProverArtifact }
   | { type: "epistemic_consensus"; data: EpistemicConsensusArtifact }
-  | { type: "game_theory"; data: GameTheoryArtifact };
+  | { type: "game_theory"; data: GameTheoryArtifact }
+  | { type: "ast_control_flow"; data: AstControlFlowArtifact };
 
 export interface AgentThought {
   id: string;

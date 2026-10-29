@@ -717,3 +717,31 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with game theory metadata and Markdown export format.
   - Created `tests/game-theory-integration.test.ts` (6 integration tests passing).
 - [qa] [done] All 1,083 tests passing across 91 test files (5,293 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.2s). Tauri cargo check passed (0.42s). Strictly zero fake data.
+
+## Sprint 34 — Autonomous Control Flow Graph (CFG) & Symbolic AST Decompiler Studio
+
+- [ast/engine] [done] Created `src/lib/ast/cfg-decompiler-engine.ts`:
+  - Pure deterministic McCabe Cyclomatic Complexity computation ($M = E - N + 2P$) and software risk tier grading (`calculateCyclomaticComplexity`, `getComplexityGrade`).
+  - Iterative fixed-point dataflow dominator analysis (`computeDominators`), immediate dominator tree synthesis (`computeImmediateDominators`), and dominance frontier calculation (`computeDominanceFrontiers`) via $DF(X) = \{ Y \mid \exists P \in Pred(Y) \text{ s.t. } X \in Dom(P) \land X \notin StrictDom(Y) \}$.
+  - Canonical natural loop detection (`detectNaturalLoops`) via back-edge identification ($A \to B$ where $B \in Dom(A)$) and loop body graph traversal.
+  - Variable Definition-Use (Def-Use) chain tracking identifying active variables and unasserted dead store vulnerabilities.
+  - Static Single Assignment (SSA) phi-node placement and structured TypeScript decompilation (`synthesizeControlFlowGraph`).
+  - RFC 4180 CSV export (`cfgToCsv`) and formatted Markdown report generator (`cfgToMarkdown`).
+  - Strictly ZERO pseudo-randomness, strictly ZERO `Math.random()`.
+  - Created `tests/cfg-decompiler-engine.test.ts` (8 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/AstControlFlowCard.tsx`:
+  - Rich interactive generative UI dashboard for control flow analysis and symbolic AST decompilation.
+  - Interactive SVG Control Flow Graph canvas (`role="graphics-document"`, zoom/pan controls 60%-180%, reset zoom) with color-coded basic blocks (Entry: Sky, Normal: Slate, Loop Header: Amber, Revert Handler: Rose, Exit: Indigo), instructions preview, and directed Bézier curve arcs with loop back-edge styling.
+  - Scorecard metrics row: Cyclomatic Complexity ($M = 3$), Basic Blocks count, Natural Loops count, and Dead Store Security Alert.
+  - Interactive block inspection drawer displaying block identifier, predecessors, successors, immediate dominator (idom), dominance frontier, and full disassembled instructions with opcodes and operands.
+  - 5 view tabs: "Control Flow Graph Canvas", "Basic Blocks", "Dominator Tree & Loops", "SSA & Def-Use Chains", and "Decompiler Pseudocode".
+  - 1-click Markdown dossier copy, RFC 4180 CSV download, and decompiled code copy with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`).
+  - Created `tests/cfg-decompiler-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `InstructionOpcode`, `BasicBlockInstruction`, `BasicBlockNode`, `CfgEdge`, `DefUseChainEntry`, `CfgSummary`, `AstControlFlowArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "ast_control_flow"; data: AstControlFlowArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "ast_control_flow"`), `GitBranch` icon, sky badge styling, Cyclomatic gauge (`M = 3`), and topological domain edges (`implements`, `validates`, `synthesizes`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with CFG decompiler metadata and Markdown export format.
+  - Created `tests/cfg-decompiler-integration.test.ts` (6 integration tests passing).
+- [qa] [done] All 1,102 tests passing across 94 test files (5,384 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.2s). Tauri cargo check passed (0.47s). Strictly zero fake data.

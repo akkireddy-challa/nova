@@ -44,6 +44,7 @@ import { WorkflowOrchestratorCard } from "@/components/GenerativeCards/WorkflowO
 import { FormalProverCard } from "@/components/GenerativeCards/FormalProverCard";
 import { EpistemicConsensusCard } from "@/components/GenerativeCards/EpistemicConsensusCard";
 import { GameTheoryCard } from "@/components/GenerativeCards/GameTheoryCard";
+import { AstControlFlowCard } from "@/components/GenerativeCards/AstControlFlowCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -70,6 +71,7 @@ import { workflowOrchestratorToCsv } from "@/lib/workflow/orchestrator-engine";
 import { formalProverToCsv } from "@/lib/formal/formal-prover-engine";
 import { consensusToCsv } from "@/lib/consensus/consensus-engine";
 import { gameTheoryToCsv } from "@/lib/gametheory/game-theory-engine";
+import { cfgToCsv } from "@/lib/ast/cfg-decompiler-engine";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -325,6 +327,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "ast_control_flow") {
+      const csvContent = cfgToCsv(artifact.data);
+      const filename = `${(artifact.data.title || "control-flow").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -415,6 +425,8 @@ export function ArtifactStage({
         return (
           artifact.data.title || "Game Theory & Strategic Equilibrium Studio"
         );
+      case "ast_control_flow":
+        return artifact.data.title || "Control Flow Graph & Decompiler Studio";
     }
   };
 
@@ -536,7 +548,8 @@ export function ArtifactStage({
             artifact.type === "workflow_orchestrator" ||
             artifact.type === "formal_prover" ||
             artifact.type === "epistemic_consensus" ||
-            artifact.type === "game_theory") && (
+            artifact.type === "game_theory" ||
+            artifact.type === "ast_control_flow") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1492,6 +1505,13 @@ export function ArtifactStage({
             {artifact.type === "game_theory" && (
               <div className="space-y-4">
                 <GameTheoryCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* CONTROL FLOW GRAPH & SYMBOLIC AST DECOMPILER ARTIFACT */}
+            {artifact.type === "ast_control_flow" && (
+              <div className="space-y-4">
+                <AstControlFlowCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -3933,6 +3953,85 @@ export function ArtifactStage({
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Control Flow Graph & Decompiler Studio */}
+        {artifact.type === "ast_control_flow" && (
+          <div className="space-y-6 print-avoid-break">
+            <div className="p-4 border border-gray-300 rounded bg-gray-50 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold uppercase text-black">
+                  Control Flow Graph &amp; Symbolic Decompiler Analysis
+                </span>
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-gray-200 text-black border border-gray-400">
+                  CYCLOMATIC: M = {artifact.data.summary.cyclomaticComplexity} (
+                  {artifact.data.summary.complexityGrade})
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 font-sans leading-relaxed">
+                {artifact.data.executiveSummary}
+              </p>
+              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-gray-200 text-center font-mono text-[10px]">
+                <div>Blocks: {artifact.data.summary.totalBasicBlocks}</div>
+                <div>Edges: {artifact.data.summary.totalEdges}</div>
+                <div>Loops: {artifact.data.summary.naturalLoopCount}</div>
+                <div>
+                  Dead Code:{" "}
+                  {artifact.data.summary.hasDeadCode ? "DETECTED" : "None"}
+                </div>
+              </div>
+            </div>
+
+            {/* Basic Blocks Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Basic Blocks &amp; Dominance Tree (
+                {artifact.data.basicBlocks.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Block</th>
+                    <th className="p-1.5">Label</th>
+                    <th className="p-1.5">Predecessors</th>
+                    <th className="p-1.5">Successors</th>
+                    <th className="p-1.5">idom</th>
+                    <th className="p-1.5">Frontier</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.basicBlocks.map((b) => (
+                    <tr key={b.id}>
+                      <td className="p-1.5 font-bold text-black">{b.id}</td>
+                      <td className="p-1.5 text-gray-700">{b.label}</td>
+                      <td className="p-1.5 text-gray-700">
+                        {b.predecessorIds.join(", ") || "-"}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {b.successorIds.join(", ") || "-"}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {b.immediateDominatorId || "none"}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {b.dominanceFrontier.join(", ") || "∅"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Decompiled Code */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Reconstructed Decompiled Pseudocode
+              </h3>
+              <pre className="p-3 bg-gray-100 border border-gray-300 rounded font-mono text-[10px] text-gray-800 overflow-x-auto">
+                <code>{artifact.data.decompiledCode}</code>
+              </pre>
             </div>
           </div>
         )}
