@@ -35,6 +35,7 @@ import {
   Lock,
   Eye,
   Network,
+  Sparkles,
 } from "lucide-react";
 import type { Session, StudioMode, GenerativeArtifact } from "@/lib/types";
 import { sound } from "@/lib/sound";
@@ -865,6 +866,8 @@ function getNodeCardStyling(type: SpatialCanvasNode["artifactType"]): string {
       return "border border-violet-500/40 bg-slate-900/90 hover:border-violet-400/80 text-violet-300";
     case "audio_spectrogram":
       return "border border-amber-500/40 bg-slate-900/90 hover:border-amber-400/80 text-amber-300";
+    case "prompt_optimizer":
+      return "border border-indigo-500/40 bg-slate-900/90 hover:border-indigo-400/80 text-indigo-300";
     default:
       return "border border-slate-800 bg-slate-900/90 text-slate-300";
   }
@@ -906,6 +909,8 @@ function getNodeIcon(type: SpatialCanvasNode["artifactType"]) {
       return <Network className="w-3.5 h-3.5 text-violet-400" />;
     case "audio_spectrogram":
       return <Activity className="w-3.5 h-3.5 text-amber-400" />;
+    case "prompt_optimizer":
+      return <Sparkles className="w-3.5 h-3.5 text-indigo-400" />;
   }
 }
 
@@ -945,6 +950,8 @@ function getMiniMapDotColor(type: SpatialCanvasNode["artifactType"]): string {
       return "bg-violet-500";
     case "audio_spectrogram":
       return "bg-amber-500";
+    case "prompt_optimizer":
+      return "bg-indigo-500";
     default:
       return "bg-slate-400";
   }
@@ -986,6 +993,8 @@ function getItemCountLabel(type: SpatialCanvasNode["artifactType"]): string {
       return "entities";
     case "audio_spectrogram":
       return "segments";
+    case "prompt_optimizer":
+      return "candidates";
     default:
       return "items";
   }
@@ -1093,6 +1102,12 @@ function renderNodeGauge(node: SpatialCanvasNode) {
       return (
         <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-950/80 text-amber-300 border border-amber-800/60">
           {`${node.metrics?.score ?? 0} dB SNR`}
+        </span>
+      );
+    case "prompt_optimizer":
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">
+          {`${node.metrics?.score ?? 0}% Eval Score`}
         </span>
       );
   }

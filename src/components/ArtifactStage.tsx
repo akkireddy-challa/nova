@@ -36,6 +36,7 @@ import { GuardrailPolicyCard } from "@/components/GenerativeCards/GuardrailPolic
 import { MultiModalInspectionCard } from "@/components/GenerativeCards/MultiModalInspectionCard";
 import { MemoryGraphCard } from "@/components/GenerativeCards/MemoryGraphCard";
 import { AudioSpectrogramCard } from "@/components/GenerativeCards/AudioSpectrogramCard";
+import { PromptOptimizerCard } from "@/components/GenerativeCards/PromptOptimizerCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -54,6 +55,7 @@ import { guardrailsPolicyToCsv } from "@/lib/security/semantic-guardrails";
 import { multiModalInspectionToCsv } from "@/lib/multimodal/frame-inspector";
 import { memoryGraphToCsv } from "@/lib/graph/memory-graph-engine";
 import { audioSpectrogramToCsv } from "@/lib/audio/spectrogram-inspector";
+import { promptOptimizationToCsv } from "@/lib/optimization/prompt-optimizer";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -245,6 +247,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "prompt_optimizer") {
+      const csvContent = promptOptimizationToCsv(artifact.data);
+      const filename = `${(artifact.data.targetTask || "prompt-optimization").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -317,6 +327,8 @@ export function ArtifactStage({
         return artifact.data.topic || "Memory & Knowledge Graph";
       case "audio_spectrogram":
         return artifact.data.topic || "Acoustic Spectrogram Inspector";
+      case "prompt_optimizer":
+        return artifact.data.targetTask || "Prompt Evolution Studio";
     }
   };
 
@@ -430,7 +442,8 @@ export function ArtifactStage({
             artifact.type === "guardrail_policy" ||
             artifact.type === "multimodal_inspection" ||
             artifact.type === "memory_graph" ||
-            artifact.type === "audio_spectrogram") && (
+            artifact.type === "audio_spectrogram" ||
+            artifact.type === "prompt_optimizer") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1330,6 +1343,13 @@ export function ArtifactStage({
             {artifact.type === "audio_spectrogram" && (
               <div className="space-y-4">
                 <AudioSpectrogramCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* PROMPT OPTIMIZER & DSPY EVOLUTION ARTIFACT */}
+            {artifact.type === "prompt_optimizer" && (
+              <div className="space-y-4">
+                <PromptOptimizerCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -2925,6 +2945,105 @@ export function ArtifactStage({
                       <td className="p-1.5 text-gray-700">
                         {seg.transcriptText}
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Prompt Evolution & Optimization */}
+        {artifact.type === "prompt_optimizer" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Target Task: {artifact.data.targetTask}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Model: {artifact.data.summary.baseModel} | Score: +
+                  {artifact.data.summary.netScoreGainPct}%
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 leading-relaxed font-mono">
+                Optimal Candidate: {artifact.data.summary.bestCandidateId}{" "}
+                (Score: {artifact.data.summary.optimizedScore.toFixed(1)}%,
+                Tokens: {artifact.data.summary.optimizedTokens})
+              </p>
+            </div>
+
+            {/* Metrics Scorecard */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Eval Accuracy
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.optimizedScore.toFixed(1)}% (+
+                  {artifact.data.summary.netScoreGainPct}%)
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Token Footprint
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.optimizedTokens} tokens (
+                  {artifact.data.summary.tokenSavingsPct > 0
+                    ? `-${artifact.data.summary.tokenSavingsPct}%`
+                    : `+${Math.abs(artifact.data.summary.tokenSavingsPct)}%`}
+                  )
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Pareto Candidates
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.paretoEfficientCount} of{" "}
+                  {artifact.data.candidates.length}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Cost Delta
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  -{artifact.data.summary.estimatedCostSavingsPct}% / 1k req
+                </div>
+              </div>
+            </div>
+
+            {/* Test Bench Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Validation Test Bench ({artifact.data.testCases.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Scenario</th>
+                    <th className="p-1.5 text-center">Baseline</th>
+                    <th className="p-1.5 text-center">Optimized</th>
+                    <th className="p-1.5 text-center">Status</th>
+                    <th className="p-1.5">Audit Note</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.testCases.map((tc) => (
+                    <tr key={tc.id}>
+                      <td className="p-1.5 font-bold text-black">{tc.input}</td>
+                      <td className="p-1.5 text-center">
+                        {tc.baselineScore.toFixed(1)}%
+                      </td>
+                      <td className="p-1.5 text-center font-bold text-black">
+                        {tc.optimizedScore.toFixed(1)}%
+                      </td>
+                      <td className="p-1.5 text-center uppercase">
+                        {tc.status}
+                      </td>
+                      <td className="p-1.5 text-gray-700">{tc.reason}</td>
                     </tr>
                   ))}
                 </tbody>

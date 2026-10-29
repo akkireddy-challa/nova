@@ -8,6 +8,7 @@ import type {
   ChartArtifact,
   CodeArtifact,
   DebateArtifact,
+  PromptOptimizationArtifact,
 } from "./types";
 import { sanitizeFileName } from "./session-export";
 import { formatDossierDate } from "./print-dossier";
@@ -115,6 +116,10 @@ export function resolveDossierTitle(
         break;
       case "audio_spectrogram":
         if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
+        break;
+      case "prompt_optimizer":
+        if (artifact.data.targetTask?.trim())
+          return artifact.data.targetTask.trim();
         break;
     }
   }
@@ -764,6 +769,43 @@ function renderDebateSection(debate: DebateArtifact): string {
   }
 
   html += `</section>`;
+  return html;
+}
+
+/**
+ * Renders the DSPy-style Prompt Evolution & Metaprompt Optimization section HTML.
+ */
+function renderPromptOptimizationSection(
+  po: PromptOptimizationArtifact,
+): string {
+  let html = `<section class="dossier-section" id="prompt-optimization">
+    <div class="section-badge">DSPY PROMPT OPTIMIZATION &amp; METAPROMPT STUDIO</div>
+    <h2 class="section-heading">${escapeHtml(po.targetTask || "Prompt Evolution")}</h2>
+    <div class="summary-card">
+      <h3 class="summary-subtitle">Optimization Overview</h3>
+      <p class="summary-text">Target Model: <strong>${escapeHtml(po.summary.baseModel)}</strong> | Eval Score: <strong>${po.summary.optimizedScore.toFixed(1)}% (+${po.summary.netScoreGainPct}%)</strong> | Token Compression: <strong>${po.summary.tokenSavingsPct}%</strong></p>
+    </div>
+
+    <div class="findings-list">
+      <h3 class="summary-subtitle">Evaluated Prompt Candidates (${po.candidates.length})</h3>
+      <div class="perspectives-grid">`;
+
+  po.candidates.forEach((c) => {
+    html += `
+      <div class="perspective-card">
+        <div class="perspective-header">
+          <span class="perspective-persona">${escapeHtml(c.label)}</span>
+          <span class="perspective-stance">${c.selected ? "⭐ SELECTED" : "CANDIDATE"}</span>
+        </div>
+        <div class="perspective-body">
+          <p class="perspective-core"><strong>Score:</strong> ${c.evalScore.toFixed(1)}% | <strong>Tokens:</strong> ${c.tokenCount} | <strong>Technique:</strong> ${escapeHtml(c.technique)}</p>
+          <p class="finding-desc">${escapeHtml(c.rationale)}</p>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div></div></section>`;
   return html;
 }
 
@@ -2232,6 +2274,9 @@ export function generateStandaloneHtmlDossier(
         break;
       case "debate":
         contentHtml = renderDebateSection(artifact.data);
+        break;
+      case "prompt_optimizer":
+        contentHtml = renderPromptOptimizationSection(artifact.data);
         break;
     }
   } else if (session) {

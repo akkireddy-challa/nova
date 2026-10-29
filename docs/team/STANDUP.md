@@ -501,3 +501,30 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with audio spectrogram metadata and Markdown export format.
   - Created `tests/spectrogram-integration.test.ts` (7 integration tests passing).
 - [qa] [done] All 912 tests passing across 67 test files (4,647 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (3.8s). Tauri cargo check passed (0.47s). Strictly zero fake data.
+
+## Sprint 26 — Autonomous DSPy Prompt Evolution & Metaprompt Optimization Studio
+
+- [optimization/engine] [done] Created `src/lib/optimization/prompt-optimizer.ts`:
+  - Pure deterministic token count estimation (`estimateTokenCount`) based on word segmentation and punctuation boundaries.
+  - Line-based prompt difference calculator (`computePromptDiff`) classifying lines into added, removed, and unchanged states.
+  - Multi-objective Pareto frontier engine (`computeParetoOptimalCandidates`) finding candidates with strictly non-dominated evaluation score vs token count.
+  - Dynamic evolutionary prompt synthesis (`synthesizePromptOptimization`) producing Baseline (Zero-Shot Naive), Iteration 1 (DSPy Few-Shot Bootstrap), Iteration 2 (Chain-of-Thought Anchor), and Iteration 3 (DSPy Pareto-Optimal Hybrid) with targeted validation test cases.
+  - RFC 4180 CSV export (`promptOptimizationToCsv`) with CRLF line endings and comprehensive Markdown report generator (`promptOptimizationToMarkdown`).
+  - Strictly ZERO pseudo-randomness, strictly ZERO `Math.random()`.
+  - Created `tests/prompt-optimizer.test.ts` (12 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/PromptOptimizerCard.tsx`:
+  - Rich interactive generative UI dashboard for DSPy-style prompt mutation inspection and token economy tuning.
+  - Scorecard metrics row displaying Eval Accuracy delta, Token Footprint savings, Pareto Frontier candidate count, and cost efficiency.
+  - Candidate selection pills with technique badges (Few-Shot Bootstrap, Chain-of-Thought, Constraint Hardening, DSPy Optimal Hybrid) and token counters.
+  - Split-view Prompt Inspector toggling between Line Diff vs Baseline and Raw Prompt body with 1-click prompt and metaprompt copying.
+  - Accessible validation test cases table conforming to `modern-web-guidance` (`responsive-table` pattern with `role="region"`, `tabindex="0"`, and `aria-label`).
+  - Pareto evolution trajectory visualization showing step-by-step optimization milestones.
+  - Created `tests/prompt-optimizer-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `PromptOptimizationTechnique`, `PromptCandidate`, `PromptTestCase`, `PromptParetoStep`, `PromptOptimizationSummary`, `PromptOptimizationArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "prompt_optimizer"; data: PromptOptimizationArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "prompt_optimizer"`), `Sparkles` icon, indigo badge styling, eval score gauge, and topological edges (`validates`, `synthesizes`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with prompt optimizer metadata and Markdown export format.
+  - Created `tests/prompt-optimizer-integration.test.ts` (7 integration tests passing).
+- [qa] [done] All 936 tests passing across 70 test files (4,736 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.6s). Tauri cargo check passed (0.46s). Strictly zero fake data.
