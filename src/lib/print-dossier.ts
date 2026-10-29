@@ -268,6 +268,10 @@ export function getArtifactMetadata(
       title = artifact.data.title || "Bayesian Optimization Studio";
       modeName = "Bayesian Optimization & Hyperparameter Studio";
       break;
+    case "workflow_orchestrator":
+      title = artifact.data.title || "Workflow Orchestrator Studio";
+      modeName = "Event-Driven Workflow Orchestrator";
+      break;
   }
 
   if (mode) {

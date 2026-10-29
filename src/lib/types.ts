@@ -936,6 +936,79 @@ export interface BayesianOptArtifact {
   technicalNotes?: string;
 }
 
+export type WorkflowStateType =
+  | "initial"
+  | "active"
+  | "wait"
+  | "parallel"
+  | "success"
+  | "failure"
+  | "terminal";
+
+export interface WorkflowRetryPolicy {
+  maxRetries: number;
+  backoffMs: number;
+  timeoutMs: number;
+}
+
+export interface WorkflowStateNode {
+  id: string;
+  name: string;
+  type: WorkflowStateType;
+  description: string;
+  entryAction?: string;
+  exitAction?: string;
+  retryPolicy?: WorkflowRetryPolicy;
+  x: number;
+  y: number;
+}
+
+export interface WorkflowTransition {
+  id: string;
+  source: string;
+  target: string;
+  event: string;
+  guardCondition?: string;
+  compensationAction?: string;
+}
+
+export interface WorkflowExecutionTrace {
+  step: number;
+  fromState: string;
+  toState: string;
+  event: string;
+  durationMs: number;
+  status: "passed" | "retried" | "compensated" | "failed";
+  log: string;
+}
+
+export interface WorkflowOrchestratorSummary {
+  workflowName: string;
+  totalStates: number;
+  totalTransitions: number;
+  initialState: string;
+  terminalStates: string[];
+  stronglyConnectedComponentsCount: number;
+  deadlocksDetected: number;
+  reachabilityScorePct: number;
+  estimatedEndToEndDurationMs: number;
+  resilienceGrade: "A+" | "A" | "B" | "C" | "F";
+}
+
+export interface WorkflowOrchestratorArtifact {
+  id: string;
+  title: string;
+  createdAt: string;
+  summary: WorkflowOrchestratorSummary;
+  states: WorkflowStateNode[];
+  transitions: WorkflowTransition[];
+  simulationTrace: WorkflowExecutionTrace[];
+  xstateDefinitionJson: string;
+  mermaidStateDiagram: string;
+  executiveSummary: string;
+  technicalNotes?: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -957,7 +1030,8 @@ export type GenerativeArtifact =
   | { type: "prompt_optimizer"; data: PromptOptimizationArtifact }
   | { type: "vector_space"; data: VectorSpaceArtifact }
   | { type: "causal_dag"; data: CausalDagArtifact }
-  | { type: "bayesian_opt"; data: BayesianOptArtifact };
+  | { type: "bayesian_opt"; data: BayesianOptArtifact }
+  | { type: "workflow_orchestrator"; data: WorkflowOrchestratorArtifact };
 
 export interface AgentThought {
   id: string;
