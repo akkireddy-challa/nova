@@ -30,7 +30,8 @@ export interface SpatialCanvasNode {
     | "memory_graph"
     | "audio_spectrogram"
     | "prompt_optimizer"
-    | "vector_space";
+    | "vector_space"
+    | "causal_dag";
   title: string;
   summary: string;
   x: number;
@@ -756,6 +757,38 @@ export function extractSpatialNodes(
         metrics.status = "indexed";
         break;
       }
+      case "causal_dag": {
+        const cd = data as {
+          hypothesis?: string;
+          summary?: {
+            averageTreatmentEffect?: number;
+            backdoorCriterionSatisfied?: boolean;
+            eValue?: number;
+          };
+          nodes?: unknown[];
+          edges?: unknown[];
+          counterfactuals?: unknown[];
+          technicalNotes?: string;
+        };
+        title = cd.hypothesis || "Causal Inference Studio";
+        summary =
+          cd.technicalNotes ||
+          `Structural causal model with ${cd.nodes?.length || 0} nodes, ${cd.edges?.length || 0} pathways, and ATE of ${cd.summary?.averageTreatmentEffect || 0} units.`;
+        tags.push("CAUSAL_DAG", "DO_CALCULUS", "ATE", "COUNTERFACTUAL");
+        if (typeof cd.summary?.averageTreatmentEffect === "number") {
+          metrics.score = Math.round(
+            Math.abs(cd.summary.averageTreatmentEffect),
+          );
+        }
+        if (Array.isArray(cd.nodes)) {
+          metrics.itemCount = cd.nodes.length;
+        }
+        if (Array.isArray(cd.counterfactuals)) {
+          metrics.evidenceCount = cd.counterfactuals.length;
+        }
+        metrics.status = "causal";
+        break;
+      }
     }
 
     nodes.push({
@@ -1045,6 +1078,18 @@ export function computeSpatialEdges(
         relationType = "synthesizes";
         label = "Semantic Chunk Indexing";
         baseStrength = 0.9;
+      } else if (types.has("causal_dag") && types.has("simulation")) {
+        relationType = "validates";
+        label = "Chaos Intervention Grounding";
+        baseStrength = 0.95;
+      } else if (types.has("causal_dag") && types.has("matrix")) {
+        relationType = "synthesizes";
+        label = "Causal Trade-off Arbitration";
+        baseStrength = 0.92;
+      } else if (types.has("causal_dag") && types.has("eval_suite")) {
+        relationType = "validates";
+        label = "Causal SCM Validates";
+        baseStrength = 0.94;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

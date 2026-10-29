@@ -260,6 +260,10 @@ export function getArtifactMetadata(
       title = artifact.data.datasetTitle || "Vector Space Studio";
       modeName = "Vector Space & Clustering Studio";
       break;
+    case "causal_dag":
+      title = artifact.data.hypothesis || "Causal Inference Studio";
+      modeName = "Causal Inference & SCM Studio";
+      break;
   }
 
   if (mode) {
