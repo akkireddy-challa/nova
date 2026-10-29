@@ -116,6 +116,10 @@ class SoundEngine {
     this.playCheck();
   }
 
+  public playPop() {
+    this.playCheck();
+  }
+
   public success() {
     this.playSuccess();
   }

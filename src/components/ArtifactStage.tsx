@@ -26,11 +26,13 @@ import { sound } from "@/lib/sound";
 import { KnowledgeGraphCard } from "@/components/GenerativeCards/KnowledgeGraphCard";
 import { DebateCard } from "@/components/GenerativeCards/DebateCard";
 import { PersonaCouncilCard } from "@/components/GenerativeCards/PersonaCouncilCard";
+import { ResilienceSimulationCard } from "@/components/GenerativeCards/ResilienceSimulationCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
 } from "@/lib/research/dialectic-debate";
 import { personaCouncilToCsv } from "@/lib/research/persona-studio";
+import { simulationToCsv } from "@/lib/research/resilience-simulator";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -137,6 +139,14 @@ export function ArtifactStage({
     if (artifact.type === "council") {
       const csvContent = personaCouncilToCsv(artifact.data);
       const filename = `${(artifact.data.topic || "persona-council").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
+    if (artifact.type === "simulation") {
+      const csvContent = simulationToCsv(artifact.data);
+      const filename = `${(artifact.data.title || "resilience-simulation").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
       downloadCsvData(filename, csvContent);
       sound.playSuccess();
       return;
@@ -293,8 +303,10 @@ export function ArtifactStage({
             <span className="hidden sm:inline">Print / PDF</span>
           </button>
 
-          {/* Download CSV button for debate and council */}
-          {(artifact.type === "debate" || artifact.type === "council") && (
+          {/* Download CSV button for debate, council, and simulation */}
+          {(artifact.type === "debate" ||
+            artifact.type === "council" ||
+            artifact.type === "simulation") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1119,6 +1131,20 @@ export function ArtifactStage({
                 />
               </div>
             )}
+
+            {/* RESILIENCE SIMULATION ARTIFACT */}
+            {artifact.type === "simulation" && (
+              <div className="space-y-4">
+                <ResilienceSimulationCard
+                  simulation={artifact.data}
+                  onApplyHardening={(rec) => {
+                    if (onRefinePrompt) {
+                      onRefinePrompt(`Apply architectural hardening: ${rec}`);
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1747,6 +1773,40 @@ export function ArtifactStage({
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Resilience Simulation */}
+        {artifact.type === "simulation" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Resilience Score: {artifact.data.summary.resilienceScore}% (
+                  {artifact.data.summary.cascadingFailureRisk.toUpperCase()}{" "}
+                  RISK)
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Peak Latency: {artifact.data.summary.peakP99LatencyMs}ms | Max
+                  Error: {artifact.data.summary.maxErrorRatePct.toFixed(1)}%
+                </span>
+              </div>
+              <p className="text-xs text-gray-900 leading-relaxed font-semibold">
+                Bottleneck: {artifact.data.summary.bottleneckDiagnosis}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Hardening Recommendations
+              </h2>
+              <ul className="list-disc pl-5 space-y-1 text-xs text-gray-800">
+                {artifact.data.summary.hardeningRecommendations.map(
+                  (rec, idx) => (
+                    <li key={idx}>{rec}</li>
+                  ),
+                )}
+              </ul>
             </div>
           </div>
         )}
