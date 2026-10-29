@@ -22,7 +22,8 @@ export interface SpatialCanvasNode {
     | "simulation"
     | "audio_briefing"
     | "battlecard"
-    | "pareto_frontier";
+    | "pareto_frontier"
+    | "eval_suite";
   title: string;
   summary: string;
   x: number;
@@ -539,6 +540,27 @@ export function extractSpatialNodes(
         metrics.status = "optimized";
         break;
       }
+      case "eval_suite": {
+        const es = data as {
+          topic?: string;
+          summary?: { overallPassRatePct?: number };
+          scenarios?: unknown[];
+          executiveSummary?: string;
+        };
+        title = es.topic || "Regression Evaluator Suite";
+        summary =
+          es.executiveSummary ||
+          `Evaluation suite with ${es.scenarios?.length || 0} automated scenarios.`;
+        tags.push("EVAL", "REGRESSION", "QA");
+        if (typeof es.summary?.overallPassRatePct === "number") {
+          metrics.score = es.summary.overallPassRatePct;
+        }
+        if (Array.isArray(es.scenarios)) {
+          metrics.itemCount = es.scenarios.length;
+        }
+        metrics.status = "evaluated";
+        break;
+      }
     }
 
     nodes.push({
@@ -688,6 +710,30 @@ export function computeSpatialEdges(
       } else if (types.has("pareto_frontier") && types.has("council")) {
         relationType = "debates";
         label = "Council Routing Policy Review";
+        baseStrength = 0.8;
+      } else if (types.has("eval_suite") && types.has("code")) {
+        relationType = "validates";
+        label = "Automated Code QA";
+        baseStrength = 0.9;
+      } else if (types.has("eval_suite") && types.has("research")) {
+        relationType = "validates";
+        label = "Grounding Accuracy Audit";
+        baseStrength = 0.85;
+      } else if (types.has("eval_suite") && types.has("pareto_frontier")) {
+        relationType = "compares";
+        label = "Benchmark Regression Check";
+        baseStrength = 0.85;
+      } else if (types.has("eval_suite") && types.has("simulation")) {
+        relationType = "debates";
+        label = "Chaos Resilience Test";
+        baseStrength = 0.85;
+      } else if (types.has("eval_suite") && types.has("council")) {
+        relationType = "debates";
+        label = "Council Policy Compliance";
+        baseStrength = 0.8;
+      } else if (types.has("eval_suite") && types.has("battlecard")) {
+        relationType = "compares";
+        label = "Competitive Moat QA";
         baseStrength = 0.8;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";

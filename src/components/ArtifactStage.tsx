@@ -30,6 +30,7 @@ import { ResilienceSimulationCard } from "@/components/GenerativeCards/Resilienc
 import { AudioBriefingCard } from "@/components/GenerativeCards/AudioBriefingCard";
 import { CompetitiveBattleCard } from "@/components/GenerativeCards/CompetitiveBattleCard";
 import { ParetoFrontierCard } from "@/components/GenerativeCards/ParetoFrontierCard";
+import { RegressionEvaluatorCard } from "@/components/GenerativeCards/RegressionEvaluatorCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -42,6 +43,7 @@ import {
 } from "@/lib/audio/voice-briefing";
 import { battleCardToCsv } from "@/lib/competitive/battle-card";
 import { paretoFrontierToCsv } from "@/lib/research/pareto-optimizer";
+import { evalSuiteToCsv } from "@/lib/eval/regression-evaluator";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -185,6 +187,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "eval_suite") {
+      const csvContent = evalSuiteToCsv(artifact.data);
+      const filename = `${(artifact.data.topic || "regression-eval").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -245,6 +255,8 @@ export function ArtifactStage({
         return artifact.data.topic || "Competitive Battle-Card";
       case "pareto_frontier":
         return artifact.data.topic || "Cost-Latency Pareto Frontier";
+      case "eval_suite":
+        return artifact.data.topic || "Regression Evaluator Suite";
     }
   };
 
@@ -346,13 +358,14 @@ export function ArtifactStage({
             <span className="hidden sm:inline">Print / PDF</span>
           </button>
 
-          {/* Download CSV button for debate, council, simulation, audio_briefing, battlecard, and pareto_frontier */}
+          {/* Download CSV button for debate, council, simulation, audio_briefing, battlecard, pareto_frontier, and eval_suite */}
           {(artifact.type === "debate" ||
             artifact.type === "council" ||
             artifact.type === "simulation" ||
             artifact.type === "audio_briefing" ||
             artifact.type === "battlecard" ||
-            artifact.type === "pareto_frontier") && (
+            artifact.type === "pareto_frontier" ||
+            artifact.type === "eval_suite") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1210,6 +1223,13 @@ export function ArtifactStage({
             {artifact.type === "pareto_frontier" && (
               <div className="space-y-4">
                 <ParetoFrontierCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* REGRESSION EVALUATOR SUITE ARTIFACT */}
+            {artifact.type === "eval_suite" && (
+              <div className="space-y-4">
+                <RegressionEvaluatorCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -2117,6 +2137,116 @@ export function ArtifactStage({
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Regression Evaluator Suite */}
+        {artifact.type === "eval_suite" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Target Pipeline: {artifact.data.targetPipeline}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Health: {artifact.data.summary.healthGrade} Grade (
+                  {artifact.data.summary.overallPassRatePct}% Pass Rate)
+                </span>
+              </div>
+              {artifact.data.executiveSummary && (
+                <p className="text-xs text-gray-800 leading-relaxed italic">
+                  &ldquo;{artifact.data.executiveSummary}&rdquo;
+                </p>
+              )}
+            </div>
+
+            {/* Evaluation Metrics Summary */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Passed
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.passedCount} /{" "}
+                  {artifact.data.summary.totalScenarios}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Regressions
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.regressedCount}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Avg Latency
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.averageLatencyMs}ms
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Critical Risks
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.criticalRisksIdentified}
+                </div>
+              </div>
+            </div>
+
+            {/* Scenario Evaluation Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Scenario Evaluation Scorecard
+              </h2>
+              <table className="w-full text-left text-xs border border-gray-400 border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-gray-400 text-black font-bold">
+                    <th className="p-1.5 border-r border-gray-300">ID</th>
+                    <th className="p-1.5 border-r border-gray-300">
+                      Scenario Title
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Category
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Status
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Score
+                    </th>
+                    <th className="p-1.5 text-center">Latency</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-300">
+                  {artifact.data.scenarios.map((s) => (
+                    <tr key={s.scenarioId} className="text-gray-900">
+                      <td className="p-1.5 font-mono text-[10px] border-r border-gray-300">
+                        {s.scenarioId}
+                      </td>
+                      <td className="p-1.5 font-semibold border-r border-gray-300">
+                        {s.title}
+                      </td>
+                      <td className="p-1.5 text-center uppercase font-mono text-[10px] border-r border-gray-300">
+                        {s.category.replace(/_/g, " ")}
+                      </td>
+                      <td className="p-1.5 text-center font-bold text-black uppercase font-mono text-[10px] border-r border-gray-300">
+                        {s.status}
+                      </td>
+                      <td className="p-1.5 text-center font-mono border-r border-gray-300">
+                        {s.score}%
+                      </td>
+                      <td className="p-1.5 text-center font-mono">
+                        {s.latencyMs}ms
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

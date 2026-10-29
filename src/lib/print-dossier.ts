@@ -228,6 +228,10 @@ export function getArtifactMetadata(
       title = artifact.data.topic || "Cost-Latency Pareto Frontier";
       modeName = "Pareto Routing Optimizer";
       break;
+    case "eval_suite":
+      title = artifact.data.topic || "Automated Regression Evaluation Suite";
+      modeName = "Dynamic Regression Evaluator";
+      break;
   }
 
   if (mode) {

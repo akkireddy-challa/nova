@@ -348,3 +348,29 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with Pareto frontier metadata and Markdown export format.
   - Created `tests/pareto-integration.test.ts` (9 integration tests passing).
 - [qa] [done] All 756 tests passing across 48 test files (3,988 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (800ms). Tauri cargo check passed (0.46s). Strictly zero fake data.
+
+## Sprint 20 — Automated Scenario Test Generator & Dynamic Regression Evaluator Suite
+
+- [eval/engine] [done] Created `src/lib/eval/regression-evaluator.ts`:
+  - Pure deterministic calculation of automated regression scenario runs across 4 enterprise validation categories: Adversarial Injection (`adversarial_injection`: system prompt extraction, SSRF localhost/metadata probes, delimiter hijacking), Grounding Alignment (`grounding_alignment`: citation precision, unsubstantiated future fact abstention), Edge-Case Robustness (`edge_case_robustness`: 50,000-character overflow, malformed JSON recovery), and Latency SLA Conformance (`latency_sla`: sub-1500ms p95 budget, compaction latency).
+  - Health grade calculation (`computeHealthGrade`: A+, A, B, C, F) and summary statistics (`calculateEvalSummary`: overall pass rate, passed/failed/regressed counts, average latency, critical risk alerts).
+  - Pre-configured golden baseline scenarios (`DEFAULT_EVAL_SCENARIOS`) with regression deltas vs golden snapshots.
+  - Strict RFC 4180 CSV export (`evalSuiteToCsv`) with CRLF line endings and formatted executive Markdown report (`evalSuiteToMarkdown`).
+  - Strictly ZERO pseudo-randomness, strictly ZERO fake data.
+  - Created `tests/regression-evaluator.test.ts` (10 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/RegressionEvaluatorCard.tsx`:
+  - Rich interactive generative UI dashboard for test suites.
+  - Health Grade badge with pulsed status indicator and dynamic color styling (emerald for A+/A, teal for B, amber for C, rose for F).
+  - Metric scorecard: Pass Rate (%), Regressions (vs golden baseline), Avg Latency (ms), and Critical Risks.
+  - Category filter pills: All Scenarios, Adversarial Injection, Grounding Alignment, Edge-Case Robustness, Latency SLA.
+  - Scenario list with status badges, score, regression deltas (+/- %), latency, and expandable drawers showing prompt input, expected assertion checklists, actual output snippets, and remediation actions.
+  - 1-click RFC 4180 CSV export and Markdown clipboard copy with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`, `sound.playTap()`).
+  - Created `tests/regression-evaluator-ui.test.ts` (6 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `EvaluationCategory`, `ScenarioStatus`, `EvaluationScenario`, `RegressionEvalSummary`, `RegressionEvalArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "eval_suite"; data: RegressionEvalArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "eval_suite"`), `FlaskConical` icon, violet badge styling, pass rate gauge, and topological edges (`validates`, `compares`, `debates`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with evaluation suite metadata and Markdown export format.
+  - Created `tests/regression-evaluator-integration.test.ts` (9 integration tests passing).
+- [qa] [done] All 781 tests passing across 51 test files (4,103 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (473ms). Tauri cargo check passed (0.48s). Strictly zero fake data.
