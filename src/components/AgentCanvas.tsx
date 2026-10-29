@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   ChatMessage,
   StudioMode,
@@ -21,6 +21,13 @@ import { ArtifactStage } from "./ArtifactStage";
 import { SessionExportModal } from "./SessionExportModal";
 import { ProviderOnboarding } from "./ProviderOnboarding";
 import { TraceSteps } from "./TraceSteps";
+import { MultiAgentSwarmHUD } from "./MultiAgentSwarmHUD";
+import {
+  mapThoughtsToSwarmEvents,
+  classifyThoughtRole,
+  formatActiveSpecialistThought,
+} from "@/lib/client/swarm-client";
+import { SWARM_ROLES } from "@/lib/research/multi-agent-orchestrator";
 import {
   isErrorMessage,
   isStoppedMessage,
@@ -48,6 +55,8 @@ import {
   FileText,
   Wand2,
   Users,
+  ChevronDown,
+  ChevronRight,
   ArrowRight,
   Maximize2,
   Share2,
@@ -120,6 +129,22 @@ export function AgentCanvas({
   const [selectedArtifact, setSelectedArtifact] =
     useState<GenerativeArtifact | null>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [swarmMode, setSwarmMode] = useState(false);
+  const [isLiveSwarmHUDCollapsed, setIsLiveSwarmHUDCollapsed] = useState(false);
+  const [collapsedMessageHUDs, setCollapsedMessageHUDs] = useState<
+    Record<string, boolean>
+  >({});
+
+  const toggleMessageHUD = (messageId: string) => {
+    setCollapsedMessageHUDs((prev) => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }));
+  };
+
+  const liveSwarm = useMemo(() => {
+    return mapThoughtsToSwarmEvents(streamingThoughts);
+  }, [streamingThoughts]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -812,6 +837,71 @@ export function AgentCanvas({
                   />
                 )}
 
+                {/* Multi-Agent Swarm HUD in assistant message inspection */}
+                {swarmMode &&
+                  msg.thoughts &&
+                  msg.thoughts.length > 0 &&
+                  (() => {
+                    const msgThoughts = isStoppedMessage(msg)
+                      ? settleStoppedSteps(msg.thoughts)
+                      : msg.thoughts;
+                    const msgSwarm = mapThoughtsToSwarmEvents(msgThoughts);
+                    const isCollapsed = collapsedMessageHUDs[msg.id] ?? false;
+
+                    return (
+                      <div className="mt-3 rounded-xl border border-slate-800 bg-slate-900/60 p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5 text-teal-400" />
+                            <span className="text-xs font-semibold text-slate-200">
+                              Multi-Agent Swarm HUD
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-teal-300 border border-slate-700">
+                              {msgSwarm.events.length}{" "}
+                              {msgSwarm.events.length === 1
+                                ? "event"
+                                : "events"}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleMessageHUD(msg.id)}
+                            className="flex items-center gap-1 text-[11px] font-mono text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                            aria-label={
+                              isCollapsed
+                                ? "Expand Swarm HUD"
+                                : "Collapse Swarm HUD"
+                            }
+                          >
+                            <span>
+                              {isCollapsed ? "Expand HUD" : "Collapse HUD"}
+                            </span>
+                            {isCollapsed ? (
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+
+                        <div
+                          className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                            isCollapsed
+                              ? "max-h-0 opacity-0 pointer-events-none"
+                              : "max-h-[1000px] opacity-100"
+                          }`}
+                        >
+                          <MultiAgentSwarmHUD
+                            agentStates={msgSwarm.agentStates}
+                            events={msgSwarm.events}
+                            activeRole={msgSwarm.activeRole}
+                            isExecuting={false}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                 {/* Telemetry footer: only values reported by the server */}
                 {msg.telemetry && (
                   <div className="pl-10 text-[10.5px] font-mono text-slate-500 flex flex-wrap items-center gap-2">
@@ -846,12 +936,29 @@ export function AgentCanvas({
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-teal-300 truncate">
-                      {streamingThoughts.length > 0
-                        ? streamingThoughts[streamingThoughts.length - 1]
-                            ?.action || "Thinking…"
-                        : "Starting request…"}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {swarmMode && (
+                        <span
+                          data-testid="active-specialist-badge"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/40 uppercase tracking-wider shadow-[0_0_8px_rgba(20,184,166,0.2)]"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-ping" />
+                          {SWARM_ROLES[liveSwarm.activeRole]?.name || "Scout"}
+                        </span>
+                      )}
+                      <p className="text-xs font-semibold text-teal-300 truncate">
+                        {streamingThoughts.length > 0
+                          ? swarmMode
+                            ? formatActiveSpecialistThought(
+                                liveSwarm.activeRole,
+                                streamingThoughts[streamingThoughts.length - 1]
+                                  ?.action,
+                              )
+                            : streamingThoughts[streamingThoughts.length - 1]
+                                ?.action || "Thinking…"
+                          : "Starting request…"}
+                      </p>
+                    </div>
                     <p className="text-[10px] font-mono text-slate-400">
                       {streamingThoughts.length > 0
                         ? `${streamingThoughts.length} ${streamingThoughts.length === 1 ? "step" : "steps"} in progress`
@@ -873,34 +980,101 @@ export function AgentCanvas({
                 )}
               </div>
 
+              {/* Dynamic Swarm HUD during execution */}
+              {swarmMode && (
+                <div className="border-t border-teal-500/20 pt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-3.5 h-3.5 text-teal-400" />
+                      <span className="text-xs font-semibold text-slate-200">
+                        Live Swarm Orchestration
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-teal-500/15 text-teal-300 border border-teal-500/30">
+                        {liveSwarm.events.length}{" "}
+                        {liveSwarm.events.length === 1 ? "event" : "events"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setIsLiveSwarmHUDCollapsed((prev) => !prev)
+                      }
+                      className="flex items-center gap-1 text-[11px] font-mono text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                      aria-label={
+                        isLiveSwarmHUDCollapsed
+                          ? "Expand Swarm HUD"
+                          : "Collapse Swarm HUD"
+                      }
+                    >
+                      <span>
+                        {isLiveSwarmHUDCollapsed
+                          ? "Expand HUD"
+                          : "Collapse HUD"}
+                      </span>
+                      {isLiveSwarmHUDCollapsed ? (
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+
+                  <div
+                    className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                      isLiveSwarmHUDCollapsed
+                        ? "max-h-0 opacity-0 pointer-events-none"
+                        : "max-h-[1000px] opacity-100"
+                    }`}
+                  >
+                    <MultiAgentSwarmHUD
+                      agentStates={liveSwarm.agentStates}
+                      events={liveSwarm.events}
+                      activeRole={liveSwarm.activeRole}
+                      isExecuting={true}
+                    />
+                  </div>
+                </div>
+              )}
+
               {streamingThoughts.length > 0 && (
                 <div className="border-t border-teal-500/10 pt-2.5">
                   <ol className="space-y-1.5 pl-2 border-l border-teal-500/20 text-[11px]">
-                    {streamingThoughts.map((step, i) => (
-                      <li key={step.id || i} className="flex items-start gap-2">
-                        {step.status === "success" ? (
-                          <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0 mt-0.5" />
-                        ) : step.status === "warn" ? (
-                          <AlertTriangle className="w-3 h-3 text-amber-400 flex-shrink-0 mt-0.5" />
-                        ) : (
-                          <Loader2 className="w-3 h-3 text-teal-400 animate-spin flex-shrink-0 mt-0.5" />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <span className="font-semibold text-slate-200">
-                            {step.agentName}
-                          </span>
-                          <span className="text-slate-300">
-                            {" "}
-                            · {step.action}
-                          </span>
-                          {step.details && (
-                            <p className="text-slate-400 text-[10.5px] break-words mt-0.5">
-                              {step.details}
-                            </p>
+                    {streamingThoughts.map((step, i) => {
+                      const stepRole = classifyThoughtRole(step);
+                      return (
+                        <li
+                          key={step.id || i}
+                          className="flex items-start gap-2"
+                        >
+                          {step.status === "success" ? (
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0 mt-0.5" />
+                          ) : step.status === "warn" ? (
+                            <AlertTriangle className="w-3 h-3 text-amber-400 flex-shrink-0 mt-0.5" />
+                          ) : (
+                            <Loader2 className="w-3 h-3 text-teal-400 animate-spin flex-shrink-0 mt-0.5" />
                           )}
-                        </div>
-                      </li>
-                    ))}
+                          <div className="min-w-0 flex-1">
+                            <span className="font-semibold text-slate-200">
+                              {step.agentName}
+                            </span>
+                            {swarmMode && (
+                              <span className="ml-1.5 px-1.5 py-0.2 rounded text-[9.5px] font-mono text-teal-300 bg-teal-500/15 border border-teal-500/30">
+                                {SWARM_ROLES[stepRole]?.name || stepRole}
+                              </span>
+                            )}
+                            <span className="text-slate-300">
+                              {" "}
+                              · {step.action}
+                            </span>
+                            {step.details && (
+                              <p className="text-slate-400 text-[10.5px] break-words mt-0.5">
+                                {step.details}
+                              </p>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ol>
                 </div>
               )}
@@ -957,29 +1131,61 @@ export function AgentCanvas({
                   })}
                 </div>
 
-                {/* Thinking Depth Segment */}
-                <div className="hidden sm:flex items-center gap-0.5 bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10.5px] font-mono">
-                  {(["quick", "analytical", "deep"] as const).map((b) => (
-                    <button
-                      key={b}
-                      type="button"
-                      onClick={() => {
-                        sound.playCheck();
-                        setThinkingBudget(b);
-                      }}
-                      className={`px-2 py-0.5 rounded transition cursor-pointer capitalize ${
-                        thinkingBudget === b
-                          ? "bg-slate-800 text-teal-300 font-semibold"
-                          : "text-slate-500 hover:text-slate-300"
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Thinking Depth Segment */}
+                  <div className="hidden sm:flex items-center gap-0.5 bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10.5px] font-mono">
+                    {(["quick", "analytical", "deep"] as const).map((b) => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => {
+                          sound.playCheck();
+                          setThinkingBudget(b);
+                        }}
+                        className={`px-2 py-0.5 rounded transition cursor-pointer capitalize ${
+                          thinkingBudget === b
+                            ? "bg-slate-800 text-teal-300 font-semibold"
+                            : "text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        {b === "quick"
+                          ? "⚡ Quick"
+                          : b === "analytical"
+                            ? "🧠 Analytical"
+                            : "🔬 Deep"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Swarm Mode Toggle */}
+                  <button
+                    type="button"
+                    data-testid="swarm-mode-toggle"
+                    onClick={() => {
+                      sound.playCheck();
+                      setSwarmMode((prev) => !prev);
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-mono transition cursor-pointer shrink-0 border ${
+                      swarmMode
+                        ? "bg-teal-500/15 text-teal-300 border-teal-500/40 shadow-[0_0_12px_rgba(20,184,166,0.3)] font-semibold"
+                        : "text-slate-400 hover:text-slate-200 bg-slate-950/80 hover:bg-slate-800/60 border-slate-800"
+                    }`}
+                    title={
+                      swarmMode
+                        ? "Swarm Mode active: Orchestrating Scout, Analyst, Critic, and Synthesizer"
+                        : "Enable Swarm Mode (multi-agent specialist orchestration)"
+                    }
+                  >
+                    <Users
+                      className={`w-3.5 h-3.5 ${
+                        swarmMode ? "text-teal-400" : "text-slate-400"
                       }`}
-                    >
-                      {b === "quick"
-                        ? "⚡ Quick"
-                        : b === "analytical"
-                          ? "🧠 Analytical"
-                          : "🔬 Deep"}
-                    </button>
-                  ))}
+                    />
+                    <span>Swarm Mode</span>
+                    {swarmMode && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse shadow-[0_0_6px_rgba(45,212,191,0.8)]" />
+                    )}
+                  </button>
                 </div>
               </div>
 

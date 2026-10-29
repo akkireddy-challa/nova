@@ -20,8 +20,10 @@ import {
   ListOrdered,
   Trophy,
   Share2,
+  Network,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
+import { KnowledgeGraphCard } from "@/components/GenerativeCards/KnowledgeGraphCard";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -54,9 +56,9 @@ export function ArtifactStage({
   mode,
   model,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"preview" | "raw" | "sources">(
-    "preview",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "preview" | "raw" | "sources" | "graph"
+  >("preview");
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
@@ -344,6 +346,24 @@ export function ArtifactStage({
             </button>
           )}
 
+          {artifact.type === "research" && (
+            <button
+              type="button"
+              onClick={() => {
+                sound.playCheck();
+                setActiveTab("graph");
+              }}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "graph"
+                  ? "bg-teal-500/15 text-teal-300 border border-teal-500/30 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <Network className="w-3.5 h-3.5" />
+              <span>Graph</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => {
@@ -498,6 +518,10 @@ export function ArtifactStage({
                 ))}
               </div>
             )}
+          </div>
+        ) : activeTab === "graph" && artifact.type === "research" ? (
+          <div className="space-y-4">
+            <KnowledgeGraphCard report={artifact.data} />
           </div>
         ) : (
           <div>
