@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { generate, resolveModel } from "../providers";
+import { findFallbackSelection, generate, resolveModel } from "../providers";
 import type {
   LLMImage,
   LLMMessage,
@@ -92,6 +92,7 @@ export interface PipelineDeps {
   /** Model resolution and generation (injectable for tests). */
   resolveModel?: typeof resolveModel;
   generate?: typeof generate;
+  findFallback?: typeof findFallbackSelection;
   /**
    * Called with every step the moment it is recorded. A step that changes later (a running LLM call
    * that finishes) is reported again with the same `id`; consumers should replace by id.
@@ -596,6 +597,8 @@ interface RunContext {
   log: ThoughtLog;
   totals: LlmUsageTotals;
   generate: typeof generate;
+  findFallback?: typeof findFallbackSelection;
+  activeSelection?: ModelSelection;
   signal?: AbortSignal;
 }
 
@@ -658,6 +661,74 @@ async function callModel(
       });
       throw new PipelineAbortedError();
     }
+
+    const fallbackFn = ctx.findFallback ?? findFallbackSelection;
+    let fallback: ModelSelection | null = null;
+    try {
+      fallback = await fallbackFn(selection);
+    } catch {
+      fallback = null;
+    }
+
+    if (fallback) {
+      log.update(stepId, {
+        action: `${labels.failed}: ${describeFailure(err)}. Failing over to ${fallback.provider}:${fallback.model}…`,
+        status: "warn",
+      });
+      const fallbackLabels = answerLabels(fallback);
+      const fallbackStepId = log.add(
+        fallbackLabels.agentName,
+        `Failover: generating with ${fallback.provider}:${fallback.model}…`,
+        "running",
+      );
+      try {
+        result = await ctx.generate(fallback, {
+          system: request.system,
+          messages: request.messages,
+          images: request.images.length > 0 ? request.images : undefined,
+          json: request.json,
+          maxTokens: request.maxTokens,
+          temperature: request.temperature ?? 0.2,
+          ...(signal ? { signal } : {}),
+        });
+        totals.calls += 1;
+        totals.latencyMs += result.latencyMs;
+        if (result.usage) {
+          totals.inputTokens += result.usage.inputTokens;
+          totals.outputTokens += result.usage.outputTokens;
+        } else {
+          totals.usageComplete = false;
+        }
+        const usage = result.usage
+          ? `${result.usage.inputTokens} input / ${result.usage.outputTokens} output tokens`
+          : undefined;
+        log.update(fallbackStepId, {
+          action: `${result.provider}:${result.model} responded in ${seconds(result.latencyMs)} (failover)`,
+          status: "success",
+          details: usage,
+        });
+        ctx.activeSelection = {
+          provider: result.provider,
+          model: result.model,
+        };
+        throwIfAborted(signal);
+        return result;
+      } catch (fallbackErr) {
+        if (signal?.aborted) {
+          log.update(fallbackStepId, {
+            action: `${fallbackLabels.failed}: stopped`,
+            status: "warn",
+          });
+          throw new PipelineAbortedError();
+        }
+        log.update(fallbackStepId, {
+          action: `${fallbackLabels.failed}: ${describeFailure(fallbackErr)}`,
+          status: "warn",
+        });
+        throw err;
+      }
+    }
+
     log.update(stepId, {
       action: `${labels.failed}: ${describeFailure(err)}`,
       status: "warn",
@@ -676,6 +747,7 @@ async function callModel(
     ? `${result.usage.inputTokens} input / ${result.usage.outputTokens} output tokens`
     : undefined;
   log.update(stepId, { ...labels.done(result), details: usage });
+  ctx.activeSelection = { provider: result.provider, model: result.model };
   throwIfAborted(signal);
   return result;
 }
@@ -859,6 +931,7 @@ export async function runPipeline(
     log,
     totals,
     generate: deps.generate ?? generate,
+    findFallback: deps.findFallback ?? findFallbackSelection,
     signal,
   };
   const { images, texts } = splitAttachments(input.attachments ?? [], log);
@@ -907,14 +980,17 @@ export async function runPipeline(
   const finish = (
     content: string,
     artifact?: GenerativeArtifact,
-  ): PipelineResult => ({
-    content,
-    thoughts: log.thoughts,
-    ...(artifact ? { artifact } : {}),
-    sources,
-    provider: selection.provider,
-    telemetry: buildTelemetry(selection, startedAt, totals, budget),
-  });
+  ): PipelineResult => {
+    const active = ctx.activeSelection ?? selection;
+    return {
+      content,
+      thoughts: log.thoughts,
+      ...(artifact ? { artifact } : {}),
+      sources,
+      provider: active.provider,
+      telemetry: buildTelemetry(active, startedAt, totals, budget),
+    };
+  };
 
   if (PLAIN_MODES.has(input.mode)) {
     const result = await callModel(

@@ -33,6 +33,7 @@ import {
   TrendingUp,
   FlaskConical,
   Lock,
+  Eye,
 } from "lucide-react";
 import type { Session, StudioMode, GenerativeArtifact } from "@/lib/types";
 import { sound } from "@/lib/sound";
@@ -857,6 +858,8 @@ function getNodeCardStyling(type: SpatialCanvasNode["artifactType"]): string {
       return "border border-rose-500/40 bg-slate-900/90 hover:border-rose-400/80 text-rose-300";
     case "guardrail_policy":
       return "border border-emerald-500/40 bg-slate-900/90 hover:border-emerald-400/80 text-emerald-300";
+    case "multimodal_inspection":
+      return "border border-cyan-500/40 bg-slate-900/90 hover:border-cyan-400/80 text-cyan-300";
     default:
       return "border border-slate-800 bg-slate-900/90 text-slate-300";
   }
@@ -892,6 +895,8 @@ function getNodeIcon(type: SpatialCanvasNode["artifactType"]) {
       return <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />;
     case "guardrail_policy":
       return <Lock className="w-3.5 h-3.5 text-emerald-400" />;
+    case "multimodal_inspection":
+      return <Eye className="w-3.5 h-3.5 text-cyan-400" />;
   }
 }
 
@@ -925,6 +930,8 @@ function getMiniMapDotColor(type: SpatialCanvasNode["artifactType"]): string {
       return "bg-rose-500";
     case "guardrail_policy":
       return "bg-emerald-500";
+    case "multimodal_inspection":
+      return "bg-cyan-500";
     default:
       return "bg-slate-400";
   }
@@ -960,6 +967,8 @@ function getItemCountLabel(type: SpatialCanvasNode["artifactType"]): string {
       return "vectors";
     case "guardrail_policy":
       return "violations";
+    case "multimodal_inspection":
+      return "frames";
     default:
       return "items";
   }
@@ -1049,6 +1058,12 @@ function renderNodeGauge(node: SpatialCanvasNode) {
       return (
         <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
           {`${node.metrics?.score ?? 0}% Clean`}
+        </span>
+      );
+    case "multimodal_inspection":
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-800/60">
+          {`${node.metrics?.score ?? 0}% Grounded`}
         </span>
       );
   }

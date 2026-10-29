@@ -33,6 +33,7 @@ import { ParetoFrontierCard } from "@/components/GenerativeCards/ParetoFrontierC
 import { RegressionEvaluatorCard } from "@/components/GenerativeCards/RegressionEvaluatorCard";
 import { RedTeamAuditCard } from "@/components/GenerativeCards/RedTeamAuditCard";
 import { GuardrailPolicyCard } from "@/components/GenerativeCards/GuardrailPolicyCard";
+import { MultiModalInspectionCard } from "@/components/GenerativeCards/MultiModalInspectionCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -48,6 +49,7 @@ import { paretoFrontierToCsv } from "@/lib/research/pareto-optimizer";
 import { evalSuiteToCsv } from "@/lib/eval/regression-evaluator";
 import { redTeamAuditToCsv } from "@/lib/security/red-team-auditor";
 import { guardrailsPolicyToCsv } from "@/lib/security/semantic-guardrails";
+import { multiModalInspectionToCsv } from "@/lib/multimodal/frame-inspector";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -215,6 +217,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "multimodal_inspection") {
+      const csvContent = multiModalInspectionToCsv(artifact.data);
+      const filename = `${(artifact.data.topic || "multimodal-inspection").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -281,6 +291,8 @@ export function ArtifactStage({
         return artifact.data.topic || "Dialectic Red-Team Security Audit";
       case "guardrail_policy":
         return artifact.data.topic || "Semantic Guardrail Policy";
+      case "multimodal_inspection":
+        return artifact.data.topic || "Multimodal Vision Inspector";
     }
   };
 
@@ -391,7 +403,8 @@ export function ArtifactStage({
             artifact.type === "pareto_frontier" ||
             artifact.type === "eval_suite" ||
             artifact.type === "red_team_audit" ||
-            artifact.type === "guardrail_policy") && (
+            artifact.type === "guardrail_policy" ||
+            artifact.type === "multimodal_inspection") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1270,6 +1283,13 @@ export function ArtifactStage({
             {artifact.type === "guardrail_policy" && (
               <div className="space-y-4">
                 <GuardrailPolicyCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* MULTIMODAL VISION INSPECTION ARTIFACT */}
+            {artifact.type === "multimodal_inspection" && (
+              <div className="space-y-4">
+                <MultiModalInspectionCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -2531,6 +2551,107 @@ export function ArtifactStage({
               <pre className="p-3 text-[11px] font-mono text-black bg-gray-50 border border-gray-300 rounded overflow-x-auto whitespace-pre-wrap leading-relaxed">
                 {artifact.data.sanitizedPreview}
               </pre>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Multimodal Vision Inspection */}
+        {artifact.type === "multimodal_inspection" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Target: {artifact.data.topic}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Grounding Index: {artifact.data.summary.visualGroundingIndex}%
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 leading-relaxed">
+                {artifact.data.executiveSummary}
+              </p>
+            </div>
+
+            {/* Metrics Summary */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Total Frames
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.totalFrames}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Total Regions
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.totalRegions}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Avg Conf
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.averageConfidencePct}%
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Audit Status
+                </div>
+                <div className="font-bold text-black uppercase">
+                  {artifact.data.summary.auditStatus}
+                </div>
+              </div>
+            </div>
+
+            {/* Frame Scorecard */}
+            <div className="space-y-3">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-black border-b border-black pb-1">
+                Frame Grounding &amp; Spatial Bounding Boxes
+              </h2>
+              <div className="space-y-2">
+                {artifact.data.frames.map((frame, idx) => (
+                  <div
+                    key={idx}
+                    className="border border-gray-300 p-2.5 rounded bg-white print-avoid-break"
+                  >
+                    <div className="flex justify-between items-center text-[10px] font-mono font-bold text-gray-700">
+                      <span>
+                        Frame {idx + 1} ({frame.width}&times;{frame.height})
+                        &mdash; {frame.label}
+                      </span>
+                      <span>{frame.regions.length} bounding region(s)</span>
+                    </div>
+                    {frame.regions.length > 0 && (
+                      <div className="mt-2 text-[10px] font-mono text-gray-600 space-y-0.5">
+                        {frame.regions.map((box, bIdx) => (
+                          <div key={bIdx}>
+                            &bull; [{box.label}] conf: {box.confidencePct}%
+                            &mdash; [x:{box.xmin}-{box.xmax}, y:{box.ymin}-
+                            {box.ymax}]
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {frame.citations.length > 0 && (
+                      <div className="mt-2 pt-1.5 border-t border-gray-200 text-[10.5px] space-y-1">
+                        {frame.citations.map((c, cIdx) => (
+                          <div key={cIdx} className="text-gray-700">
+                            &ldquo;{c.claim}&rdquo; &mdash;{" "}
+                            <span className="font-mono text-[9.5px] text-teal-700">
+                              Box: {c.boxId} | Source: {c.verifiableSource}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

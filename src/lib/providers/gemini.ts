@@ -205,24 +205,60 @@ export const geminiProvider: LLMProvider = {
       body.generationConfig = generationConfig;
 
     const start = performance.now();
-    let data: GeminiResponse;
-    try {
-      const res = await fetch(
-        `${BASE_URL}/models/${encodeURIComponent(model)}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "x-goog-api-key": key,
-            "Content-Type": "application/json",
+    let data: GeminiResponse | undefined;
+    const maxRetries = 2;
+    let lastErr: unknown;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch(
+          `${BASE_URL}/models/${encodeURIComponent(model)}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "x-goog-api-key": key,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+            signal: withTimeout(
+              request.signal,
+              attempt === 0 ? 30_000 : 45_000,
+            ),
           },
-          body: JSON.stringify(body),
-          signal: withTimeout(request.signal),
-        },
-      );
-      if (!res.ok) throw await errorFromResponse(ID, LABEL, res, [key]);
-      data = (await res.json()) as GeminiResponse;
-    } catch (err) {
-      throw errorFromException(ID, LABEL, err, request.signal);
+        );
+        if (!res.ok) {
+          const err = await errorFromResponse(ID, LABEL, res, [key]);
+          const isRetryable =
+            (res.status === 503 || res.status === 429 || res.status === 500) &&
+            attempt < maxRetries;
+          if (isRetryable && !request.signal?.aborted) {
+            const delayMs = (attempt + 1) * 1000;
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+            continue;
+          }
+          throw err;
+        }
+        data = (await res.json()) as GeminiResponse;
+        break;
+      } catch (err) {
+        lastErr = err;
+        const isTimeout =
+          err instanceof Error &&
+          (err.name === "TimeoutError" ||
+            err.message.toLowerCase().includes("timed out"));
+        if (isTimeout && attempt < maxRetries && !request.signal?.aborted) {
+          const delayMs = (attempt + 1) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+        if (attempt >= maxRetries || request.signal?.aborted) {
+          throw errorFromException(ID, LABEL, err, request.signal);
+        }
+      }
+    }
+
+    if (!data) {
+      throw errorFromException(ID, LABEL, lastErr, request.signal);
     }
 
     const candidate = data.candidates?.[0];

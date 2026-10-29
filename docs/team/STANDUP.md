@@ -426,3 +426,29 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with guardrail policy metadata and Markdown export format.
   - Created `tests/guardrail-policy-integration.test.ts` (10 integration tests passing).
 - [qa] [done] All 842 tests passing across 57 test files (4,313 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (2.8s). Tauri cargo check passed (0.48s). Strictly zero fake data.
+
+## Sprint 23 — Autonomous Multi-Modal Vision & Audio Ingestion Inspector, Automated Provider Failover, and Local Ollama Integration
+
+- [provider/resilience] [done] Automated Provider Retry, Dynamic Failover, & Sovereign Ollama:
+  - In `src/lib/providers/gemini.ts`: Added exponential backoff retry for transient 503 ("This model is currently experiencing high demand"), 429 ("Resource exhausted"), and network timeouts.
+  - In `src/lib/providers/index.ts`: Added `findFallbackSelection(current: ModelSelection)` finding alternative configured LLM providers (Anthropic, local Ollama).
+  - In `src/lib/research/pipeline.ts`: Integrated automated provider failover in `callModel`. When a primary provider encounters a transient failure or quota exhaustion, an honest thought step is recorded in the pipeline log, and execution immediately falls over to an alternative provider (Anthropic or local Ollama) without crashing the user session.
+  - Local Ollama sovereign operation: Verified local Ollama daemon on `localhost:11434` with `qwen2.5:0.5b` active and operational for zero-quota local inference.
+  - Created `tests/failover.test.ts` (2 tests passing).
+- [multimodal/engine] [done] Created `src/lib/multimodal/frame-inspector.ts`:
+  - Pure deterministic spatial bounding box IoU calculation (`computeBoundingBoxIoU`), coordinate normalization (`normalizeCoordinates`), visual grounding index calculation (`calculateVisualGroundingIndex`), inspection summary statistics (`calculateInspectionSummary`), RFC 4180 CSV export (`multiModalInspectionToCsv`), and Markdown report (`multiModalInspectionToMarkdown`).
+  - Strictly ZERO pseudo-random numbers, strictly ZERO fake data.
+  - Created `tests/frame-inspector.test.ts` (11 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/MultiModalInspectionCard.tsx`:
+  - Rich interactive generative UI dashboard for multimodal vision inspection.
+  - Interactive multi-modal vision canvas overlay with scaled bounding boxes, floating confidence chips, frame scrubber/stepper, grounded visual citations inspector, and CSV/Markdown export.
+  - Created `tests/multimodal-inspection-ui.test.ts` (6 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `SpatialBoundingBox`, `VisualCitation`, `MultiModalFrame`, `MultiModalInspectorSummary`, `MultiModalInspectionArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "multimodal_inspection"; data: MultiModalInspectionArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "multimodal_inspection"`), `Eye` icon, cyan badge styling, grounding index gauge, and topological edges (`validates`, `debates`, `implements`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with multimodal inspection metadata and Markdown export format.
+  - Created `tests/multimodal-inspection-integration.test.ts` (6 tests passing).
+- [security/audit] [done] Documented Dependabot Security Alert #1 (`GHSA-wrw7-89jp-8q8g` on `glib::VariantStrIter` via `tauri` -> `wry` -> `webkit2gtk`) in `SECURITY.md`, confirming zero attack surface on macOS/Windows and uninvoked path.
+- [qa] [done] Verified full test suite, format check, lint check, build check, and Tauri cargo check. Zero regressions.

@@ -148,6 +148,19 @@ export async function resolveModel(id?: string): Promise<ModelSelection> {
   throw new NoProviderConfiguredError();
 }
 
+/** Finds an alternative configured provider if the current provider fails. */
+export async function findFallbackSelection(
+  current: ModelSelection,
+): Promise<ModelSelection | null> {
+  const providers = await getConfiguredProviders();
+  const alternatives = providers.filter((p) => p.id !== current.provider);
+  for (const provider of alternatives) {
+    const model = await safeDefault(provider);
+    if (model) return { provider: provider.id, model };
+  }
+  return null;
+}
+
 export async function generate(
   selection: ModelSelection,
   request: Omit<LLMRequest, "model">,

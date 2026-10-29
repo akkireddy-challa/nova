@@ -25,7 +25,8 @@ export interface SpatialCanvasNode {
     | "pareto_frontier"
     | "eval_suite"
     | "red_team_audit"
-    | "guardrail_policy";
+    | "guardrail_policy"
+    | "multimodal_inspection";
   title: string;
   summary: string;
   x: number;
@@ -609,6 +610,30 @@ export function extractSpatialNodes(
         metrics.status = "enforced";
         break;
       }
+      case "multimodal_inspection": {
+        const mi = data as {
+          topic?: string;
+          summary?: { visualGroundingIndex?: number; totalRegions?: number };
+          frames?: unknown[];
+          executiveSummary?: string;
+        };
+        title = mi.topic || "Multimodal Vision Inspector";
+        summary =
+          mi.executiveSummary ||
+          `Multimodal frame inspection with ${mi.frames?.length || 0} visual frame(s).`;
+        tags.push("MULTIMODAL", "VISION", "SPATIAL", "GROUNDING");
+        if (typeof mi.summary?.visualGroundingIndex === "number") {
+          metrics.score = mi.summary.visualGroundingIndex;
+        }
+        if (Array.isArray(mi.frames)) {
+          metrics.itemCount = mi.frames.length;
+        }
+        if (typeof mi.summary?.totalRegions === "number") {
+          metrics.evidenceCount = mi.summary.totalRegions;
+        }
+        metrics.status = "grounded";
+        break;
+      }
     }
 
     nodes.push({
@@ -823,6 +848,31 @@ export function computeSpatialEdges(
         relationType = "validates";
         label = "Compliance Regulatory Alignment";
         baseStrength = 0.8;
+      } else if (types.has("multimodal_inspection") && types.has("research")) {
+        relationType = "validates";
+        label = "Visual Empirical Evidence";
+        baseStrength = 0.9;
+      } else if (
+        types.has("multimodal_inspection") &&
+        types.has("eval_suite")
+      ) {
+        relationType = "validates";
+        label = "Vision Grounding Regression QA";
+        baseStrength = 0.88;
+      } else if (
+        types.has("multimodal_inspection") &&
+        types.has("red_team_audit")
+      ) {
+        relationType = "debates";
+        label = "Visual Adversarial Prompt Audit";
+        baseStrength = 0.85;
+      } else if (
+        types.has("multimodal_inspection") &&
+        types.has("guardrail_policy")
+      ) {
+        relationType = "implements";
+        label = "Visual Safety Sanitization";
+        baseStrength = 0.85;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

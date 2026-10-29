@@ -240,6 +240,10 @@ export function getArtifactMetadata(
       title = artifact.data.topic || "Semantic Guardrail Policy";
       modeName = "Semantic Guardrail Policy";
       break;
+    case "multimodal_inspection":
+      title = artifact.data.topic || "Multimodal Vision Inspector";
+      modeName = "Multimodal Vision Grounding";
+      break;
   }
 
   if (mode) {
