@@ -29,7 +29,8 @@ export interface SpatialCanvasNode {
     | "multimodal_inspection"
     | "memory_graph"
     | "audio_spectrogram"
-    | "prompt_optimizer";
+    | "prompt_optimizer"
+    | "vector_space";
   title: string;
   summary: string;
   x: number;
@@ -726,6 +727,35 @@ export function extractSpatialNodes(
         metrics.status = "optimized";
         break;
       }
+      case "vector_space": {
+        const vs = data as {
+          datasetTitle?: string;
+          summary?: {
+            embeddingDimension?: number;
+            reductionMethod?: string;
+            silhouetteScore?: number;
+          };
+          points?: unknown[];
+          clusters?: unknown[];
+          technicalNotes?: string;
+        };
+        title = vs.datasetTitle || "Vector Space Studio";
+        summary =
+          vs.technicalNotes ||
+          `2D semantic embedding projection with ${vs.points?.length || 0} vectors across ${vs.clusters?.length || 0} clusters.`;
+        tags.push("VECTOR_SPACE", "EMBEDDINGS", "CLUSTERING", "PCA");
+        if (typeof vs.summary?.silhouetteScore === "number") {
+          metrics.score = Math.round(vs.summary.silhouetteScore * 100);
+        }
+        if (Array.isArray(vs.points)) {
+          metrics.itemCount = vs.points.length;
+        }
+        if (Array.isArray(vs.clusters)) {
+          metrics.evidenceCount = vs.clusters.length;
+        }
+        metrics.status = "indexed";
+        break;
+      }
     }
 
     nodes.push({
@@ -1007,6 +1037,14 @@ export function computeSpatialEdges(
         relationType = "synthesizes";
         label = "Research Prompt Adaptation";
         baseStrength = 0.91;
+      } else if (types.has("vector_space") && types.has("memory_graph")) {
+        relationType = "validates";
+        label = "Embedding Topology Alignment";
+        baseStrength = 0.93;
+      } else if (types.has("vector_space") && types.has("research")) {
+        relationType = "synthesizes";
+        label = "Semantic Chunk Indexing";
+        baseStrength = 0.9;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

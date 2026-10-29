@@ -758,6 +758,58 @@ export interface PromptOptimizationArtifact {
   technicalNotes?: string;
 }
 
+// --- Vector Space & Semantic Cluster Visualizer Types ---
+export type VectorDimensionReductionMethod = "pca" | "tsne" | "umap" | "svd";
+
+export interface VectorEmbeddingPoint {
+  id: string;
+  label: string;
+  chunkText: string;
+  tokenCount: number;
+  x: number; // normalized coordinate (-1.0 to 1.0 or canvas space)
+  y: number; // normalized coordinate (-1.0 to 1.0 or canvas space)
+  clusterId: number;
+  clusterLabel: string;
+  cosineDistanceToQuery: number; // 0.0 to 1.0 (lower = closer)
+  isOutlier: boolean;
+  sourceId?: string;
+}
+
+export interface VectorCluster {
+  id: number;
+  label: string;
+  color: string;
+  centroidX: number;
+  centroidY: number;
+  pointCount: number;
+  averageTokenCount: number;
+  radius: number;
+  topKeywords: string[];
+}
+
+export interface VectorSpaceSummary {
+  totalVectors: number;
+  clusterCount: number;
+  embeddingDimension: number;
+  reductionMethod: VectorDimensionReductionMethod;
+  explainedVarianceRatio: number; // 0.0 to 1.0
+  silhouetteScore: number; // -1.0 to 1.0
+  outlierCount: number;
+  averageCosineSimilarity: number;
+}
+
+export interface VectorSpaceArtifact {
+  id: string;
+  datasetTitle: string;
+  targetQuery?: string;
+  createdAt: string;
+  summary: VectorSpaceSummary;
+  points: VectorEmbeddingPoint[];
+  clusters: VectorCluster[];
+  executiveSummary: string;
+  technicalNotes?: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -776,7 +828,8 @@ export type GenerativeArtifact =
   | { type: "multimodal_inspection"; data: MultiModalInspectionArtifact }
   | { type: "memory_graph"; data: MemoryGraphArtifact }
   | { type: "audio_spectrogram"; data: AudioSpectrogramArtifact }
-  | { type: "prompt_optimizer"; data: PromptOptimizationArtifact };
+  | { type: "prompt_optimizer"; data: PromptOptimizationArtifact }
+  | { type: "vector_space"; data: VectorSpaceArtifact };
 
 export interface AgentThought {
   id: string;

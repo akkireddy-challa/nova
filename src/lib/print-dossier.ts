@@ -256,6 +256,10 @@ export function getArtifactMetadata(
       title = artifact.data.targetTask || "Prompt Evolution Studio";
       modeName = "DSPy Prompt Evolution Studio";
       break;
+    case "vector_space":
+      title = artifact.data.datasetTitle || "Vector Space Studio";
+      modeName = "Vector Space & Clustering Studio";
+      break;
   }
 
   if (mode) {
