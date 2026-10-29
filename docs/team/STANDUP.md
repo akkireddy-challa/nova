@@ -152,3 +152,28 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Created `tests/gap-analysis.test.ts` (26 unit tests passing).
 - [qa] [done] All 480 tests passing across 27 test files (2,538 expect assertions). Zero lint errors, clean Next.js 16 build. Zero fake data.
 - [desktop/tauri] [done] Installed `@tauri-apps/cli@^2` as devDependency in `package.json`. Added `src-tauri/src/lib.rs`, updated `src-tauri/src/main.rs` to call `nova_desktop_lib::run()`, generated required Tauri icons (32x32, 128x128, ICNS, ICO) via `nova-icon.svg`, and verified `cargo check` and `cargo build` pass in 0.72s. Ignored `src-tauri/target/` in `.gitignore` and `eslint.config.mjs`.
+
+## Sprint 13 — Multi-Agent Dialectic Debate Arena & Red Team Adjudicator
+
+- [debate/engine] [done] Created `src/lib/research/dialectic-debate.ts`:
+  - Pure deterministic calculation and synthesis engine for Multi-Agent Dialectic Debates (`DebateArtifact`).
+  - Derived `consensusScore` (0-100) agreement density metric calculated from domain keyword Jaccard overlap, concession indicators, dispute/blocker penalties, and summary alignment. Strictly ZERO `Math.random()` or invented telemetry.
+  - Claim & evidence extraction (`advocateEvidenceCount`, `criticEvidenceCount`).
+  - Shared agreements discovery: discovers mutual common ground across opposing perspectives and caveat concessions.
+  - Irreconcilable tradeoffs analysis: maps architectural tensions across 7 core dimensions (latency, cost, developer velocity, reliability, security, flexibility, vendor lock-in) with deterministic severity triage (`high`, `medium`, `low`).
+  - Arbiter ruling: determines winner (`advocate_favored`, `critic_favored`, or `balanced_compromise`), confidence score (0-100), decisive factors checklist, and actionable strategic recommendations.
+  - Generates 3 sequential dialectic rounds (Opening Theses, Cross-Examination & Stress Tests, Arbiter Adjudication) with consensus delta progression.
+  - RFC 4180 CSV export with escaped quotes/newlines and Markdown briefing report generation.
+  - Created `tests/dialectic-debate.test.ts` (34 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/DialecticDebateCard.tsx`:
+  - Rich interactive dialectic debate arena component with live SVG circular consensus gauge (color progression: rose <40%, amber 40-70%, emerald >70%).
+  - Round selector tabs: `[Round 1: Assertions]` | `[Round 2: Cross-Examination]` | `[Round 3: Arbiter Verdict]`.
+  - Side-by-side advocate vs red team critic comparison, tradeoff severity matrix, shared agreements checklist, arbiter ruling card with confidence score and strategic recommendations.
+  - 1-click RFC 4180 CSV download and Markdown clipboard copy with acoustic feedback (`sound.playSuccess()`, `sound.playCheck()`).
+  - Created `tests/debate-card.test.ts` (9 unit tests passing).
+- [frontend/integration] [done] Updated `src/components/GenerativeCards/DebateCard.tsx` and `src/components/ArtifactStage.tsx`:
+  - Upgraded `DebateCard.tsx` with `[Arena Stream]` vs `[Classic Overview]` tab switcher with audio feedback.
+  - Integrated `DialecticDebateCard` into `ArtifactStage.tsx` with dedicated CSV and Markdown export handling for debate artifacts.
+  - Created `tests/debate-integration.test.ts` (8 unit tests passing).
+- [qa] [done] All 532 tests passing across 30 test files (2,774 expect assertions). Next.js 16 build passed (1,067ms). Cargo check passed (0.96s). Zero lint errors or warnings. Strictly zero fake data.
+
