@@ -22,6 +22,7 @@ import type {
   AudioSpectrogramArtifact,
   PromptOptimizationArtifact,
   VectorSpaceArtifact,
+  CausalDagArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -493,6 +494,39 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
         md += `**Semantic Clusters (${vs.clusters.length}):**\n`;
         vs.clusters.forEach((c) => {
           md += `- 🏷️ **${c.label}** (${c.pointCount} vectors, centroid: [${c.centroidX.toFixed(2)}, ${c.centroidY.toFixed(2)}]): \`${c.topKeywords.join(", ")}\`\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "causal_dag": {
+      const cd: CausalDagArtifact = artifact.data;
+      md += `#### 🔀 Causal DAG & Counterfactual Studio: ${cd.hypothesis}\n\n`;
+      md += `*ATE:* **${cd.summary.averageTreatmentEffect >= 0 ? "+" : ""}${cd.summary.averageTreatmentEffect.toFixed(2)}** • *E-Value:* **${cd.summary.eValue.toFixed(2)}** • *Backdoor Criterion:* **${cd.summary.backdoorCriterionSatisfied ? "Satisfied (Zero Unblocked Confounders)" : "Violated"}** • *Identifiability:* \`${cd.summary.causalIdentifiability}\`\n\n`;
+      if (cd.executiveSummary) {
+        md += `> ${cd.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (cd.nodes && cd.nodes.length > 0) {
+        md += `**Causal Nodes (${cd.nodes.length}):**\n`;
+        cd.nodes.forEach((n) => {
+          md += `- 🏷️ **${n.label}** (\`${n.role}\`, observed mean: ${n.observedMean} ${n.unit}): ${n.description}\n`;
+        });
+        md += "\n";
+      }
+      if (cd.edges && cd.edges.length > 0) {
+        md += `**Structural Pathways (${cd.edges.length}):**\n`;
+        cd.edges.forEach((e) => {
+          const src = cd.nodes.find((n) => n.id === e.source);
+          const tgt = cd.nodes.find((n) => n.id === e.target);
+          md += `- 🔗 **${src?.label || e.source}** → **${tgt?.label || e.target}** (β = ${e.coefficient >= 0 ? "+" : ""}${e.coefficient.toFixed(2)}, p = ${e.pValue.toFixed(3)}): ${e.mechanism}\n`;
+        });
+        md += "\n";
+      }
+      if (cd.counterfactuals && cd.counterfactuals.length > 0) {
+        md += `**Counterfactual Scenarios (${cd.counterfactuals.length}):**\n`;
+        cd.counterfactuals.forEach((s) => {
+          md += `- 🔮 **${s.name}**: ${s.explanation} (Intervention: \`${s.intervention}\`, ITE: ${s.individualTreatmentEffect >= 0 ? "+" : ""}${s.individualTreatmentEffect.toFixed(2)})\n`;
         });
         md += "\n";
       }

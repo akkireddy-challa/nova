@@ -810,6 +810,68 @@ export interface VectorSpaceArtifact {
   technicalNotes?: string;
 }
 
+// --- Causal Inference & Counterfactual DAG Types ---
+export type CausalNodeType =
+  "treatment" | "outcome" | "confounder" | "mediator" | "instrumental";
+
+export interface CausalNode {
+  id: string;
+  label: string;
+  role: CausalNodeType;
+  description: string;
+  observedMean: number;
+  unit: string;
+  x: number;
+  y: number;
+}
+
+export interface CausalEdge {
+  id: string;
+  source: string;
+  target: string;
+  coefficient: number; // path coefficient (-1.0 to 1.0)
+  pValue: number;
+  isBackdoorPath: boolean;
+  isBlocked: boolean;
+  mechanism: string;
+}
+
+export interface CounterfactualScenario {
+  id: string;
+  name: string;
+  factualCondition: string;
+  factualOutcome: string;
+  intervention: string; // e.g. "do(T = 1.0)"
+  counterfactualOutcome: string;
+  individualTreatmentEffect: number;
+  confidenceInterval95: [number, number];
+  explanation: string;
+}
+
+export interface CausalInferenceSummary {
+  treatmentNode: string;
+  outcomeNode: string;
+  averageTreatmentEffect: number; // ATE
+  relativeRiskRatio: number;
+  confoundersControlled: string[];
+  backdoorCriterionSatisfied: boolean;
+  causalIdentifiability:
+    "identifiable" | "partially_identifiable" | "unidentifiable";
+  eValue: number; // Ding & VanderWeele robustness
+}
+
+export interface CausalDagArtifact {
+  id: string;
+  hypothesis: string;
+  createdAt: string;
+  summary: CausalInferenceSummary;
+  nodes: CausalNode[];
+  edges: CausalEdge[];
+  counterfactuals: CounterfactualScenario[];
+  executiveSummary: string;
+  technicalNotes?: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -829,7 +891,8 @@ export type GenerativeArtifact =
   | { type: "memory_graph"; data: MemoryGraphArtifact }
   | { type: "audio_spectrogram"; data: AudioSpectrogramArtifact }
   | { type: "prompt_optimizer"; data: PromptOptimizationArtifact }
-  | { type: "vector_space"; data: VectorSpaceArtifact };
+  | { type: "vector_space"; data: VectorSpaceArtifact }
+  | { type: "causal_dag"; data: CausalDagArtifact };
 
 export interface AgentThought {
   id: string;

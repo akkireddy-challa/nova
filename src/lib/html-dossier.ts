@@ -10,6 +10,7 @@ import type {
   DebateArtifact,
   PromptOptimizationArtifact,
   VectorSpaceArtifact,
+  CausalDagArtifact,
 } from "./types";
 import { sanitizeFileName } from "./session-export";
 import { formatDossierDate } from "./print-dossier";
@@ -125,6 +126,10 @@ export function resolveDossierTitle(
       case "vector_space":
         if (artifact.data.datasetTitle?.trim())
           return artifact.data.datasetTitle.trim();
+        break;
+      case "causal_dag":
+        if (artifact.data.hypothesis?.trim())
+          return artifact.data.hypothesis.trim();
         break;
     }
   }
@@ -841,6 +846,43 @@ function renderVectorSpaceSection(vs: VectorSpaceArtifact): string {
         <div class="perspective-body">
           <p class="perspective-core"><strong>Centroid:</strong> (${c.centroidX.toFixed(2)}, ${c.centroidY.toFixed(2)}) | <strong>Radius:</strong> ${c.radius.toFixed(2)} | <strong>Avg Tokens:</strong> ${c.averageTokenCount}</p>
           <p class="finding-desc"><strong>Top Concepts:</strong> ${escapeHtml(c.topKeywords.join(", "))}</p>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div></div></section>`;
+  return html;
+}
+
+/**
+ * Renders the Structural Causal Model & Counterfactual DAG section HTML.
+ */
+function renderCausalDagSection(cd: CausalDagArtifact): string {
+  let html = `<section class="dossier-section" id="causal-dag">
+    <div class="section-badge">CAUSAL INFERENCE &amp; COUNTERFACTUAL STUDIO</div>
+    <h2 class="section-heading">${escapeHtml(cd.hypothesis || "Causal DAG Analysis")}</h2>
+    <div class="summary-card">
+      <h3 class="summary-subtitle">Causal Identification Overview</h3>
+      <p class="summary-text">${escapeHtml(cd.executiveSummary)}</p>
+      <p class="summary-text"><strong>Treatment:</strong> ${escapeHtml(cd.summary.treatmentNode)} → <strong>Outcome:</strong> ${escapeHtml(cd.summary.outcomeNode)} | <strong>ATE:</strong> ${cd.summary.averageTreatmentEffect} units | <strong>Backdoor Criterion:</strong> ${cd.summary.backdoorCriterionSatisfied ? "Satisfied" : "Violated"} | <strong>E-Value:</strong> ${cd.summary.eValue.toFixed(2)}</p>
+    </div>
+
+    <div class="findings-list">
+      <h3 class="summary-subtitle">Counterfactual "What-If" Interventions (${cd.counterfactuals.length})</h3>
+      <div class="perspectives-grid">`;
+
+  cd.counterfactuals.forEach((cf) => {
+    html += `
+      <div class="perspective-card">
+        <div class="perspective-header">
+          <span class="perspective-persona">${escapeHtml(cf.name)}</span>
+          <span class="perspective-stance">ITE: ${cf.individualTreatmentEffect > 0 ? `+${cf.individualTreatmentEffect}` : cf.individualTreatmentEffect}</span>
+        </div>
+        <div class="perspective-body">
+          <p class="perspective-core"><strong>Intervention:</strong> <code>${escapeHtml(cf.intervention)}</code></p>
+          <p class="perspective-core"><strong>Factual:</strong> ${escapeHtml(cf.factualOutcome)} → <strong>Counterfactual:</strong> ${escapeHtml(cf.counterfactualOutcome)}</p>
+          <p class="finding-desc">${escapeHtml(cf.explanation)}</p>
         </div>
       </div>
     `;
@@ -2321,6 +2363,9 @@ export function generateStandaloneHtmlDossier(
         break;
       case "vector_space":
         contentHtml = renderVectorSpaceSection(artifact.data);
+        break;
+      case "causal_dag":
+        contentHtml = renderCausalDagSection(artifact.data);
         break;
     }
   } else if (session) {

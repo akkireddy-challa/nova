@@ -38,6 +38,7 @@ import { MemoryGraphCard } from "@/components/GenerativeCards/MemoryGraphCard";
 import { AudioSpectrogramCard } from "@/components/GenerativeCards/AudioSpectrogramCard";
 import { PromptOptimizerCard } from "@/components/GenerativeCards/PromptOptimizerCard";
 import { VectorSpaceCard } from "@/components/GenerativeCards/VectorSpaceCard";
+import { CausalDagCard } from "@/components/GenerativeCards/CausalDagCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -58,6 +59,7 @@ import { memoryGraphToCsv } from "@/lib/graph/memory-graph-engine";
 import { audioSpectrogramToCsv } from "@/lib/audio/spectrogram-inspector";
 import { promptOptimizationToCsv } from "@/lib/optimization/prompt-optimizer";
 import { vectorSpaceToCsv } from "@/lib/vector/vector-space-engine";
+import { causalDagToCsv } from "@/lib/causal/causal-dag-engine";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -265,6 +267,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "causal_dag") {
+      const csvContent = causalDagToCsv(artifact.data);
+      const filename = `${(artifact.data.hypothesis || "causal-dag").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -341,6 +351,8 @@ export function ArtifactStage({
         return artifact.data.targetTask || "Prompt Evolution Studio";
       case "vector_space":
         return artifact.data.datasetTitle || "Vector Space Studio";
+      case "causal_dag":
+        return artifact.data.hypothesis || "Causal Inference Studio";
     }
   };
 
@@ -456,7 +468,8 @@ export function ArtifactStage({
             artifact.type === "memory_graph" ||
             artifact.type === "audio_spectrogram" ||
             artifact.type === "prompt_optimizer" ||
-            artifact.type === "vector_space") && (
+            artifact.type === "vector_space" ||
+            artifact.type === "causal_dag") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1370,6 +1383,13 @@ export function ArtifactStage({
             {artifact.type === "vector_space" && (
               <div className="space-y-4">
                 <VectorSpaceCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* CAUSAL INFERENCE & COUNTERFACTUAL DAG ARTIFACT */}
+            {artifact.type === "causal_dag" && (
+              <div className="space-y-4">
+                <CausalDagCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -3161,6 +3181,108 @@ export function ArtifactStage({
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Causal DAG & Counterfactual Inference */}
+        {artifact.type === "causal_dag" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Hypothesis: {artifact.data.hypothesis}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  ATE: {artifact.data.summary.averageTreatmentEffect} units |
+                  E-Value: {artifact.data.summary.eValue.toFixed(2)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 leading-relaxed font-sans">
+                {artifact.data.executiveSummary}
+              </p>
+            </div>
+
+            {/* Metrics Scorecard */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Average Treatment Effect
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.averageTreatmentEffect} units
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  E-Value Robustness
+                </div>
+                <div className="text-xs font-bold text-black mt-1">
+                  {artifact.data.summary.eValue.toFixed(2)}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Backdoor Criterion
+                </div>
+                <div className="text-xs font-bold text-black mt-1 uppercase">
+                  {artifact.data.summary.backdoorCriterionSatisfied
+                    ? "Satisfied"
+                    : "Violated"}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Identifiability
+                </div>
+                <div className="text-xs font-bold text-black mt-1 uppercase">
+                  {artifact.data.summary.causalIdentifiability}
+                </div>
+              </div>
+            </div>
+
+            {/* Structural Pathways Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Structural Pathways &amp; Mechanisms (
+                {artifact.data.edges.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Source</th>
+                    <th className="p-1.5">Target</th>
+                    <th className="p-1.5 text-center">Coeff (β)</th>
+                    <th className="p-1.5 text-center">Status</th>
+                    <th className="p-1.5">Mechanism</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.edges.map((e) => {
+                    const src =
+                      artifact.data.nodes.find((n) => n.id === e.source)
+                        ?.label || e.source;
+                    const tgt =
+                      artifact.data.nodes.find((n) => n.id === e.target)
+                        ?.label || e.target;
+                    return (
+                      <tr key={e.id}>
+                        <td className="p-1.5 font-bold text-black">{src}</td>
+                        <td className="p-1.5 font-bold text-black">{tgt}</td>
+                        <td className="p-1.5 text-center">
+                          {e.coefficient > 0
+                            ? `+${e.coefficient.toFixed(2)}`
+                            : e.coefficient.toFixed(2)}
+                        </td>
+                        <td className="p-1.5 text-center uppercase">
+                          {e.isBackdoorPath ? "Backdoor" : "Direct"}
+                        </td>
+                        <td className="p-1.5 text-gray-700">{e.mechanism}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -554,3 +554,30 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with vector space metadata and Markdown export format.
   - Created `tests/vector-space-integration.test.ts` (7 integration tests passing).
 - [qa] [done] All 958 tests passing across 73 test files (4,816 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (891ms). Tauri cargo check passed (0.44s). Strictly zero fake data.
+
+## Sprint 28 — Autonomous Causal Inference & Counterfactual DAG Engine
+
+- [causal/engine] [done] Created `src/lib/causal/causal-dag-engine.ts`:
+  - Pure deterministic statistical primitives: Average Treatment Effect (`computeAverageTreatmentEffect` with standard error, 95% confidence intervals, and p-value).
+  - Ding & VanderWeele sensitivity analysis (`computeEValue`) quantifying minimum unmeasured confounding strength required to explain away observed treatment effects.
+  - Pearl's do-calculus and backdoor criterion verification (`verifyBackdoorCriterion`) tracking backdoor paths and blocking confounders.
+  - SCM synthesis (`synthesizeCausalDag`) producing structural equations, observed means, path coefficients, and counterfactual "what-if" scenarios.
+  - RFC 4180 CSV export (`causalDagToCsv`) with CRLF line endings and comprehensive Markdown report generator (`causalDagToMarkdown`).
+  - Strictly ZERO pseudo-randomness, strictly ZERO `Math.random()`.
+  - Created `tests/causal-dag-engine.test.ts` (8 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/CausalDagCard.tsx`:
+  - Rich interactive generative UI dashboard for structural causal models and counterfactual analysis.
+  - Interactive SVG DAG canvas (`role="graphics-document"`, `tabindex="0"`, `aria-label`) featuring directed edge bezier curves, path coefficients ($\beta$), backdoor path indicators, and color-coded node type badges (Treatment, Outcome, Confounder, Mediator, Instrument).
+  - Scorecard metrics row: Average Treatment Effect ($E[Y|do(T=1)]$), Ding & VanderWeele E-Value, Relative Risk Ratio, Backdoor Criterion validation status.
+  - Interactive node drawer displaying observed baseline values, descriptions, and incoming/outgoing causal pathways.
+  - 3 view tabs: "Structural DAG", "Pathways & Mechanisms", and "Counterfactual 'What-If'".
+  - 1-click RFC 4180 CSV download and Markdown report copy with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`, `sound.playTap()`).
+  - Created `tests/causal-dag-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `CausalNodeType`, `CausalNode`, `CausalEdge`, `CounterfactualScenario`, `CausalInferenceSummary`, `CausalDagArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "causal_dag"; data: CausalDagArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "causal_dag"`), `GitMerge` icon, emerald badge styling, ATE gauge, and topological edges (`validates`, `synthesizes`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with causal DAG metadata and Markdown export format.
+  - Created `tests/causal-dag-integration.test.ts` (7 integration tests passing).
+- [qa] [done] All 978 tests passing across 76 test files (4,892 expect assertions). Zero lint errors (`bun run lint`). Next.js 16 build passed cleanly (1.3s). Tauri cargo check passed (0.42s). Strictly zero fake data.
