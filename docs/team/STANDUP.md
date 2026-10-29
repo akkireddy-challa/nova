@@ -374,3 +374,28 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with evaluation suite metadata and Markdown export format.
   - Created `tests/regression-evaluator-integration.test.ts` (9 integration tests passing).
 - [qa] [done] All 781 tests passing across 51 test files (4,103 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (473ms). Tauri cargo check passed (0.48s). Strictly zero fake data.
+
+## Sprint 21 — Autonomous Multi-Turn Dialectic Red-Teamer & Adversarial Vulnerability Auditor
+
+- [security/engine] [done] Created `src/lib/security/red-team-auditor.ts`:
+  - Pure deterministic calculation of multi-turn adversarial red-team attack chains across OWASP Top 10 for LLM Applications (LLM01 Prompt Injection, LLM02 Sensitive Information Disclosure, LLM04 Data and Model Poisoning, LLM06 Excessive Agency, LLM10 Unbounded Consumption).
+  - Multi-turn probe turns with attacker prompt, target model response snippet, defensive status (`defended` vs `breached`), assertion verification, and remediation guardrail synthesis.
+  - Defense posture scoring (`computeDefensePosture`: "hardened", "resilient", "vulnerable", "compromised") and summary metrics (`calculateAuditSummary`: immunity score 0-100%, total chains, neutralized count, exploited count, critical vulnerabilities count, high vulnerabilities count).
+  - Strict RFC 4180 CSV export (`redTeamAuditToCsv`) with CRLF line endings (`\r\n`) and formatted executive Markdown report (`redTeamAuditToMarkdown`).
+  - Strictly ZERO pseudo-random numbers, strictly ZERO fake data.
+  - Created `tests/red-team-auditor.test.ts` (13 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/RedTeamAuditCard.tsx`:
+  - Rich interactive generative UI dashboard for adversarial red-team vulnerability audits.
+  - Defense Posture badge with dynamic color indicator (emerald for HARDENED, teal for RESILIENT, amber for VULNERABLE, rose for COMPROMISED).
+  - Metric scorecard: Immunity Score (0-100%), Breaches Exploited, Critical Vulnerabilities, High Vulnerabilities.
+  - Multi-turn attack chain inspector: expandable vector cards with OWASP badge, severity pill, vulnerability analysis summary, turn-by-turn dialogue stepper (attacker prompt vs target response snippet with breach detection status), and recommended architectural guardrail box.
+  - 1-click RFC 4180 CSV export and Markdown clipboard copy with acoustic feedback (`sound.playPop()`, `sound.playSuccess()`, `sound.playTap()`).
+  - Created `tests/red-team-audit-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `OwaspLlmCategory`, `AttackSeverity`, `RedTeamProbeTurn`, `RedTeamAttackChain`, `RedTeamAuditSummary`, `RedTeamAuditArtifact` to `src/lib/types.ts`.
+  - Added `{ type: "red_team_audit"; data: RedTeamAuditArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated preview card, 1-click CSV download button, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "red_team_audit"`), `ShieldAlert` icon, rose badge styling, immunity score gauge, and topological edges (`validates`, `debates`, `compares`).
+  - Updated `src/lib/print-dossier.ts`, `src/lib/html-dossier.ts`, and `src/lib/session-export.ts` with red-team audit metadata and Markdown export format.
+  - Created `tests/red-team-integration.test.ts` (10 integration tests passing).
+- [qa] [done] All 809 tests passing across 54 test files (4,214 expect assertions). Zero lint errors or warnings (`bun run lint`). Next.js 16 build passed cleanly (823ms). Tauri cargo check passed (0.47s). Strictly zero fake data.

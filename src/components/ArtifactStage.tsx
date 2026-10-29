@@ -31,6 +31,7 @@ import { AudioBriefingCard } from "@/components/GenerativeCards/AudioBriefingCar
 import { CompetitiveBattleCard } from "@/components/GenerativeCards/CompetitiveBattleCard";
 import { ParetoFrontierCard } from "@/components/GenerativeCards/ParetoFrontierCard";
 import { RegressionEvaluatorCard } from "@/components/GenerativeCards/RegressionEvaluatorCard";
+import { RedTeamAuditCard } from "@/components/GenerativeCards/RedTeamAuditCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -44,6 +45,7 @@ import {
 import { battleCardToCsv } from "@/lib/competitive/battle-card";
 import { paretoFrontierToCsv } from "@/lib/research/pareto-optimizer";
 import { evalSuiteToCsv } from "@/lib/eval/regression-evaluator";
+import { redTeamAuditToCsv } from "@/lib/security/red-team-auditor";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -195,6 +197,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "red_team_audit") {
+      const csvContent = redTeamAuditToCsv(artifact.data);
+      const filename = `${(artifact.data.topic || "red-team-audit").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -257,6 +267,8 @@ export function ArtifactStage({
         return artifact.data.topic || "Cost-Latency Pareto Frontier";
       case "eval_suite":
         return artifact.data.topic || "Regression Evaluator Suite";
+      case "red_team_audit":
+        return artifact.data.topic || "Dialectic Red-Team Security Audit";
     }
   };
 
@@ -358,14 +370,15 @@ export function ArtifactStage({
             <span className="hidden sm:inline">Print / PDF</span>
           </button>
 
-          {/* Download CSV button for debate, council, simulation, audio_briefing, battlecard, pareto_frontier, and eval_suite */}
+          {/* Download CSV button for debate, council, simulation, audio_briefing, battlecard, pareto_frontier, eval_suite, and red_team_audit */}
           {(artifact.type === "debate" ||
             artifact.type === "council" ||
             artifact.type === "simulation" ||
             artifact.type === "audio_briefing" ||
             artifact.type === "battlecard" ||
             artifact.type === "pareto_frontier" ||
-            artifact.type === "eval_suite") && (
+            artifact.type === "eval_suite" ||
+            artifact.type === "red_team_audit") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1230,6 +1243,13 @@ export function ArtifactStage({
             {artifact.type === "eval_suite" && (
               <div className="space-y-4">
                 <RegressionEvaluatorCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* RED-TEAM SECURITY AUDIT ARTIFACT */}
+            {artifact.type === "red_team_audit" && (
+              <div className="space-y-4">
+                <RedTeamAuditCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -2250,6 +2270,130 @@ export function ArtifactStage({
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* Content Section: Red-Team Security Audit */}
+        {artifact.type === "red_team_audit" && (
+          <div className="space-y-6">
+            <div className="p-3.5 border-2 border-black rounded bg-gray-50 print-avoid-break space-y-2">
+              <div className="flex items-center justify-between border-b border-gray-300 pb-1">
+                <span className="text-[10px] font-mono font-bold uppercase text-gray-700">
+                  Target: {artifact.data.targetSystem}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-black">
+                  Posture: {artifact.data.summary.defensePosture} (
+                  {artifact.data.summary.immunityScore}% Immunity)
+                </span>
+              </div>
+              {artifact.data.executiveSummary && (
+                <p className="text-xs text-gray-800 leading-relaxed italic">
+                  &ldquo;{artifact.data.executiveSummary}&rdquo;
+                </p>
+              )}
+            </div>
+
+            {/* Red Team Metrics Summary */}
+            <div className="grid grid-cols-4 gap-2 text-xs print-avoid-break">
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Total Chains
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.totalAttackChains}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Exploited
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.exploitedCount}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Critical Risks
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.criticalVulnerabilities}
+                </div>
+              </div>
+              <div className="p-2 border border-gray-300 rounded bg-white">
+                <div className="text-[10px] text-gray-600 font-mono">
+                  Immunity Score
+                </div>
+                <div className="font-bold text-black">
+                  {artifact.data.summary.immunityScore}%
+                </div>
+              </div>
+            </div>
+
+            {/* Attack Chains Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Adversarial Attack Chains Scorecard
+              </h2>
+              <table className="w-full text-left text-xs border border-gray-400 border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-gray-400 text-black font-bold">
+                    <th className="p-1.5 border-r border-gray-300">Chain ID</th>
+                    <th className="p-1.5 border-r border-gray-300">Name</th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      OWASP Category
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Severity
+                    </th>
+                    <th className="p-1.5 border-r border-gray-300 text-center">
+                      Turns
+                    </th>
+                    <th className="p-1.5 text-center">Breached</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-300">
+                  {artifact.data.attackChains.map((c) => (
+                    <tr key={c.chainId} className="text-gray-900">
+                      <td className="p-1.5 font-mono text-[10px] border-r border-gray-300">
+                        {c.chainId}
+                      </td>
+                      <td className="p-1.5 font-semibold border-r border-gray-300">
+                        {c.vectorName}
+                      </td>
+                      <td className="p-1.5 text-center font-mono text-[10px] border-r border-gray-300">
+                        {c.owaspCategory}
+                      </td>
+                      <td className="p-1.5 text-center font-bold uppercase font-mono text-[10px] border-r border-gray-300">
+                        {c.severity}
+                      </td>
+                      <td className="p-1.5 text-center font-mono border-r border-gray-300">
+                        {c.turns.length}
+                      </td>
+                      <td className="p-1.5 text-center font-mono font-bold">
+                        {c.status === "exploited" ? "YES" : "NO"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Remediation Guardrails */}
+            {artifact.data.attackChains.some((c) => c.recommendedGuardrail) && (
+              <div className="space-y-1.5 print-avoid-break">
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                  Recommended Remediation Guardrails
+                </h3>
+                <ul className="list-disc pl-5 text-xs text-gray-800 space-y-1">
+                  {artifact.data.attackChains
+                    .map((c) => c.recommendedGuardrail)
+                    .filter(Boolean)
+                    .map((rec, i) => (
+                      <li key={i}>{rec}</li>
+                    ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
