@@ -377,6 +377,53 @@ export interface ParetoFrontierArtifact {
   generatedAt: string;
 }
 
+export type EvaluationCategory =
+  | "adversarial_injection"
+  | "grounding_alignment"
+  | "edge_case_robustness"
+  | "latency_sla";
+
+export type ScenarioStatus = "passed" | "failed" | "regressed";
+
+export interface EvaluationScenario {
+  scenarioId: string;
+  title: string;
+  category: EvaluationCategory;
+  promptInput: string;
+  expectedConstraints: string[];
+  actualOutputSnippet: string;
+  status: ScenarioStatus;
+  score: number; // 0 - 100
+  latencyMs: number;
+  baselineScore?: number;
+  regressionDelta?: number;
+  failureRationale?: string;
+  remediationAction?: string;
+}
+
+export interface RegressionEvalSummary {
+  totalScenarios: number;
+  passedCount: number;
+  failedCount: number;
+  regressedCount: number;
+  overallPassRatePct: number;
+  averageLatencyMs: number;
+  criticalRisksIdentified: number;
+  healthGrade: "A+" | "A" | "B" | "C" | "F";
+}
+
+export interface RegressionEvalArtifact {
+  id: string;
+  topic: string;
+  targetPipeline: string;
+  baselineVersion: string;
+  evaluatedVersion: string;
+  summary: RegressionEvalSummary;
+  scenarios: EvaluationScenario[];
+  executiveSummary: string;
+  generatedAt: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -388,7 +435,8 @@ export type GenerativeArtifact =
   | { type: "simulation"; data: ResilienceSimulationArtifact }
   | { type: "audio_briefing"; data: AudioBriefingArtifact }
   | { type: "battlecard"; data: CompetitiveBattleCardArtifact }
-  | { type: "pareto_frontier"; data: ParetoFrontierArtifact };
+  | { type: "pareto_frontier"; data: ParetoFrontierArtifact }
+  | { type: "eval_suite"; data: RegressionEvalArtifact };
 
 export interface AgentThought {
   id: string;

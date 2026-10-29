@@ -98,6 +98,9 @@ export function resolveDossierTitle(
       case "pareto_frontier":
         if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
         break;
+      case "eval_suite":
+        if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
+        break;
     }
   }
   if (session?.title?.trim()) {

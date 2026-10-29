@@ -14,6 +14,7 @@ import type {
   AudioBriefingArtifact,
   CompetitiveBattleCardArtifact,
   ParetoFrontierArtifact,
+  RegressionEvalArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -310,6 +311,29 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
         md += `**Strategic Routing Recommendations:**\n`;
         pf.recommendations.forEach((r) => {
           md += `- **${r.title}** (Primary: \`${r.primaryProviderId}\`, Fallback: \`${r.fallbackProviderId}\`): ${r.rationale} *[Estimated savings: ${r.estimatedMonthlySavingsPct}%]*\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "eval_suite": {
+      const es: RegressionEvalArtifact = artifact.data;
+      md += `#### 🧪 Automated Regression Evaluation Suite: ${es.topic}\n\n`;
+      md += `*Target Pipeline:* \`${es.targetPipeline}\` • *Health Grade:* **${es.summary.healthGrade}** (${es.summary.overallPassRatePct}% Pass Rate)\n\n`;
+      if (es.executiveSummary) {
+        md += `> ${es.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (es.scenarios && es.scenarios.length > 0) {
+        md += `**Evaluation Scenarios (${es.summary.passedCount}/${es.summary.totalScenarios} Passed):**\n`;
+        es.scenarios.forEach((s) => {
+          const icon =
+            s.status === "passed"
+              ? "✅"
+              : s.status === "regressed"
+                ? "⚠️"
+                : "❌";
+          md += `- ${icon} **${s.title}** (\`${s.scenarioId}\`, ${s.category}): ${s.score}% *[${s.latencyMs}ms]*\n`;
         });
         md += "\n";
       }
