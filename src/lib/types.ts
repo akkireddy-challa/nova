@@ -218,6 +218,54 @@ export interface PersonaCouncilArtifact {
   generatedAt: string;
 }
 
+export interface SimulationMetricPoint {
+  step: number;
+  timestampSeconds: number;
+  throughputRps: number;
+  latencyP99Ms: number;
+  errorRatePct: number;
+  cpuSaturationPct: number;
+  circuitBreakerState: "closed" | "open" | "half_open";
+  activeIncident: string | null;
+}
+
+export interface ChaosInjectionOption {
+  id: string;
+  name: string;
+  description: string;
+  category:
+    | "network_partition"
+    | "traffic_spike"
+    | "dependency_failure"
+    | "resource_starvation";
+  severity: "moderate" | "severe" | "critical";
+  triggerStep: number;
+  durationSteps: number;
+}
+
+export interface SimulationSummary {
+  scenarioName: string;
+  resilienceScore: number; // 0-100
+  peakP99LatencyMs: number;
+  maxErrorRatePct: number;
+  recoveryTimeSteps: number;
+  cascadingFailureRisk: "low" | "moderate" | "critical";
+  bottleneckDiagnosis: string;
+  hardeningRecommendations: string[];
+}
+
+export interface ResilienceSimulationArtifact {
+  id: string;
+  title: string;
+  description: string;
+  totalSteps: number;
+  baselineRps: number;
+  summary: SimulationSummary;
+  telemetrySeries: SimulationMetricPoint[];
+  activeInjections: ChaosInjectionOption[];
+  generatedAt: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -225,7 +273,8 @@ export type GenerativeArtifact =
   | { type: "matrix"; data: DecisionMatrix }
   | { type: "code"; data: CodeArtifact }
   | { type: "debate"; data: DebateArtifact }
-  | { type: "council"; data: PersonaCouncilArtifact };
+  | { type: "council"; data: PersonaCouncilArtifact }
+  | { type: "simulation"; data: ResilienceSimulationArtifact };
 
 export interface AgentThought {
   id: string;

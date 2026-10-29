@@ -12,7 +12,14 @@ export interface SpatialCanvasNode {
   id: string;
   messageId: string;
   artifactType:
-    "research" | "plan" | "chart" | "matrix" | "code" | "debate" | "council";
+    | "research"
+    | "plan"
+    | "chart"
+    | "matrix"
+    | "code"
+    | "debate"
+    | "council"
+    | "simulation";
   title: string;
   summary: string;
   x: number;
@@ -423,6 +430,36 @@ export function extractSpatialNodes(
         metrics.status = "evaluated";
         break;
       }
+      case "simulation": {
+        const sim = data as {
+          title?: string;
+          description?: string;
+          summary?: {
+            resilienceScore?: number;
+            bottleneckDiagnosis?: string;
+            cascadingFailureRisk?: string;
+          };
+          telemetrySeries?: unknown[];
+          activeInjections?: unknown[];
+        };
+        title = sim.title || "Resilience Chaos Simulation";
+        summary =
+          sim.summary?.bottleneckDiagnosis ||
+          sim.description ||
+          "Discrete event stress test simulation.";
+        tags.push("SIMULATION", "CHAOS");
+        if (typeof sim.summary?.resilienceScore === "number") {
+          metrics.score = sim.summary.resilienceScore;
+        }
+        if (Array.isArray(sim.telemetrySeries)) {
+          metrics.itemCount = sim.telemetrySeries.length;
+        }
+        if (Array.isArray(sim.activeInjections)) {
+          metrics.evidenceCount = sim.activeInjections.length;
+        }
+        metrics.status = "simulated";
+        break;
+      }
     }
 
     nodes.push({
@@ -509,6 +546,18 @@ export function computeSpatialEdges(
         relationType = "compares";
         label = "Council Scorecard Review";
         baseStrength = 0.75;
+      } else if (types.has("simulation") && types.has("research")) {
+        relationType = "validates";
+        label = "Resilience Verification";
+        baseStrength = 0.85;
+      } else if (types.has("simulation") && types.has("plan")) {
+        relationType = "debates";
+        label = "Stress Tests Roadmap";
+        baseStrength = 0.8;
+      } else if (types.has("simulation") && types.has("council")) {
+        relationType = "compares";
+        label = "Council Chaos Validation";
+        baseStrength = 0.8;
       } else if (similarity >= 0.25) {
         relationType = "synthesizes";
         label = "Shared Domain Synthesis";

@@ -212,6 +212,10 @@ export function getArtifactMetadata(
       title = artifact.data.topic || "Multi-Persona Executive Council";
       modeName = "Executive Council Briefing";
       break;
+    case "simulation":
+      title = artifact.data.title || "Resilience Chaos Simulation";
+      modeName = "Resilience & Chaos Simulation";
+      break;
   }
 
   if (mode) {

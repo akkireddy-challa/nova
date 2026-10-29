@@ -238,3 +238,33 @@ Format: `[role] [done|in-progress|blocked] what changed, files touched, what is 
   - Updated `src/lib/print-dossier.ts` metadata resolver for council artifacts.
   - Created `tests/persona-integration.test.ts` (14 integration tests passing).
 - [qa] [done] All 638 tests passing across 36 test files (3,353 expect assertions). Zero lint errors or warnings. Next.js 16 build passed (814ms). Tauri cargo check passed (0.37s). Strictly zero fake data.
+
+## Sprint 16 — Discrete Event Resilience Simulator & Chaos Stress Testing Engine
+
+- [simulator/engine] [done] Created `src/lib/research/resilience-simulator.ts`:
+  - Pure deterministic discrete event traffic and queueing simulation engine (`ResilienceSimulationArtifact`).
+  - Derived Little's Law latency approximation ($\rho = \text{throughput} / \text{capacity}$) with dynamic overhead and backpressure queues.
+  - 3-state Circuit Breaker state machine (`closed`, `open`, `half_open`) with deterministic trip thresholds and recovery cooldown.
+  - Multi-dimensional resilience score calculation (`calculateResilienceScore`) penalizing latency blowouts, error surges, and sustained circuit trips.
+  - Preset chaos injections (`PRESET_CHAOS_INJECTIONS`): database failover partition, flash crowd surge, downstream auth outage, and thread pool starvation.
+  - Generates empirical bottleneck failure mode diagnosis and prioritized architectural hardening checklists.
+  - Strict RFC 4180 CSV export (`simulationToCsv`) with escaped quotes, commas, newlines, and CRLF (`\r\n`).
+  - Formatted executive markdown briefing report (`simulationToMarkdown`).
+  - Strictly ZERO `Math.random()`, strictly ZERO fake data.
+  - Created `tests/resilience-simulator.test.ts` (17 unit tests passing).
+- [frontend/card] [done] Created `src/components/GenerativeCards/ResilienceSimulationCard.tsx`:
+  - Rich interactive resilience simulator dashboard component with play/pause/reset/step playback scrubber.
+  - SVG dual-curve throughput and latency chart with animated scrubber marker and dynamic incident zones.
+  - Real-time telemetry gauges (Throughput, P99 Latency, Error Rate, Circuit Breaker State) synchronized with playback step.
+  - Chaos injection toggle drawer allowing on-the-fly scenario modification and dynamic resimulation.
+  - Failure mode bottleneck diagnosis and architectural hardening checklist.
+  - 1-click RFC 4180 CSV download and Markdown clipboard copy with acoustic feedback (`sound.playSuccess()`, `sound.playPop()`, `sound.playCheck()`).
+  - Created `tests/resilience-simulation-ui.test.ts` (5 unit tests passing).
+- [frontend/integration] [done] Fullstack stage & spatial canvas integration:
+  - Added `ResilienceSimulationArtifact`, `SimulationMetricPoint`, `ChaosInjectionOption`, and `SimulationSummary` to `src/lib/types.ts`.
+  - Added `{ type: "simulation"; data: ResilienceSimulationArtifact }` to `GenerativeArtifact` union.
+  - Upgraded `src/components/ArtifactStage.tsx` with dedicated simulation preview card, 1-click CSV download, and formal print dossier layout.
+  - Updated `src/lib/canvas/spatial-canvas.ts` and `src/components/SpatialIntelligenceCanvas.tsx` with 2D spatial extraction (`artifactType: "simulation"`), `Activity` icon, resilience score pill, and topological relationship edges (`validates`, `debates`, `compares`).
+  - Updated `src/lib/print-dossier.ts` metadata resolver for simulation artifacts.
+  - Created `tests/simulation-integration.test.ts` (9 integration tests passing).
+- [qa] [done] All 669 tests passing across 39 test files (3,464 expect assertions). Zero lint errors or warnings. Next.js 16 build passed cleanly (1,577ms). Tauri cargo check passed (0.36s). Strictly zero fake data.
