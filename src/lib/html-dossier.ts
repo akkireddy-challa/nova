@@ -107,6 +107,9 @@ export function resolveDossierTitle(
       case "guardrail_policy":
         if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
         break;
+      case "multimodal_inspection":
+        if (artifact.data.topic?.trim()) return artifact.data.topic.trim();
+        break;
     }
   }
   if (session?.title?.trim()) {

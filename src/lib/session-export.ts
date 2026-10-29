@@ -17,6 +17,7 @@ import type {
   RegressionEvalArtifact,
   RedTeamAuditArtifact,
   SemanticGuardrailArtifact,
+  MultiModalInspectionArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -389,6 +390,28 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
         gp.violations.forEach((v) => {
           const icon = v.severity === "critical" ? "🚨" : "⚠️";
           md += `- ${icon} **${v.description}** (\`${v.type}\`, [${v.offsetStart}-${v.offsetEnd}]): substituted with \`${v.redactedReplacement}\`\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "multimodal_inspection": {
+      const mi: MultiModalInspectionArtifact = artifact.data;
+      md += `#### 👁️ Multimodal Vision Inspection: ${mi.topic}\n\n`;
+      md += `*Visual Grounding Index:* **${mi.summary.visualGroundingIndex}%** • *Frames:* ${mi.summary.totalFrames} • *Regions:* ${mi.summary.totalRegions} • *Avg Conf:* ${mi.summary.averageConfidencePct}%\n\n`;
+      if (mi.executiveSummary) {
+        md += `> ${mi.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (mi.frames && mi.frames.length > 0) {
+        md += `**Inspected Frames (${mi.frames.length}):**\n`;
+        mi.frames.forEach((f, idx) => {
+          md += `- 🖼️ **Frame ${idx + 1}** (${f.width}x${f.height}, ${f.regions.length} regions): ${f.label}\n`;
+          if (f.citations && f.citations.length > 0) {
+            f.citations.forEach((c) => {
+              md += `  - 📌 *"${c.claim}"* (Box: \`${c.boxId}\`, Source: ${c.verifiableSource})\n`;
+            });
+          }
         });
         md += "\n";
       }

@@ -535,6 +535,56 @@ export interface SemanticGuardrailArtifact {
   generatedAt: string;
 }
 
+export interface SpatialBoundingBox {
+  id: string;
+  ymin: number; // 0 - 1000 normalized coordinates
+  xmin: number;
+  ymax: number;
+  xmax: number;
+  label: string;
+  confidencePct: number;
+  colorHex?: string;
+}
+
+export interface VisualCitation {
+  citationId: string;
+  claim: string;
+  boxId: string;
+  frameIndex: number;
+  verifiableSource: string;
+}
+
+export interface MultiModalFrame {
+  frameIndex: number;
+  timestampMs: number;
+  label: string;
+  width: number;
+  height: number;
+  regions: SpatialBoundingBox[];
+  citations: VisualCitation[];
+  visualSaliencyPct: number;
+}
+
+export interface MultiModalInspectorSummary {
+  totalFrames: number;
+  totalRegions: number;
+  averageConfidencePct: number;
+  visualGroundingIndex: number; // 0 - 100
+  modalityType: "vision_video" | "screen_ui" | "audio_spectrogram";
+  auditStatus: "verified" | "calibrated" | "occluded";
+}
+
+export interface MultiModalInspectionArtifact {
+  id: string;
+  topic: string;
+  mediaSource: string;
+  frames: MultiModalFrame[];
+  summary: MultiModalInspectorSummary;
+  executiveSummary: string;
+  technicalNotes?: string;
+  generatedAt: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -549,7 +599,8 @@ export type GenerativeArtifact =
   | { type: "pareto_frontier"; data: ParetoFrontierArtifact }
   | { type: "eval_suite"; data: RegressionEvalArtifact }
   | { type: "red_team_audit"; data: RedTeamAuditArtifact }
-  | { type: "guardrail_policy"; data: SemanticGuardrailArtifact };
+  | { type: "guardrail_policy"; data: SemanticGuardrailArtifact }
+  | { type: "multimodal_inspection"; data: MultiModalInspectionArtifact };
 
 export interface AgentThought {
   id: string;
