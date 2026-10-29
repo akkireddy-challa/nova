@@ -1086,6 +1086,69 @@ export interface FormalProverArtifact {
   technicalNotes?: string;
 }
 
+// --- Epistemic Consensus & Bayesian Truth Serum Types ---
+export interface AgentBeliefEndorsement {
+  agentId: string;
+  agentName: string;
+  role: string;
+  expertiseWeight: number;
+  personalEndorsement: number;
+  predictedCrowdMean: number;
+  informationScore: number;
+  predictionScore: number;
+  btsTotalScore: number;
+  confidenceInterval90: [number, number];
+  justification: string;
+  x: number;
+  y: number;
+}
+
+export interface DelphiRoundTrace {
+  round: number;
+  shannonEntropyBits: number;
+  jensenShannonDivergence: number;
+  medianEndorsement: number;
+  consensusVariance: number;
+  keyShiftArgument: string;
+}
+
+export interface QuadraticVoteAllocation {
+  optionId: string;
+  optionLabel: string;
+  rawCreditsSpent: number;
+  effectiveVotes: number;
+  voteSharePct: number;
+  isConsensusChoice: boolean;
+}
+
+export interface EpistemicConsensusSummary {
+  deliberationTopic: string;
+  consensusIndexPct: number;
+  totalAgents: number;
+  delphiRoundsCompleted: number;
+  shannonEntropyInitialBits: number;
+  shannonEntropyFinalBits: number;
+  entropyReductionPct: number;
+  surprisinglyCommonVerdict: string;
+  majorityVsBtsDivergence: boolean;
+  governanceModel:
+    "Bayesian_Truth_Serum_Prelec" | "Quadratic_Voting" | "Hybrid_Delphi";
+  verdictConfidenceGrade: "A+" | "A" | "B" | "C" | "F";
+}
+
+export interface EpistemicConsensusArtifact {
+  id: string;
+  title: string;
+  createdAt: string;
+  summary: EpistemicConsensusSummary;
+  agents: AgentBeliefEndorsement[];
+  delphiRounds: DelphiRoundTrace[];
+  quadraticAllocations: QuadraticVoteAllocation[];
+  mathematicalProofNotes: string;
+  executiveSummary: string;
+  technicalNotes?: string;
+}
+
 export type GenerativeArtifact =
   | { type: "research"; data: ResearchReport }
   | { type: "plan"; data: GoalPlan }
@@ -1109,7 +1172,8 @@ export type GenerativeArtifact =
   | { type: "causal_dag"; data: CausalDagArtifact }
   | { type: "bayesian_opt"; data: BayesianOptArtifact }
   | { type: "workflow_orchestrator"; data: WorkflowOrchestratorArtifact }
-  | { type: "formal_prover"; data: FormalProverArtifact };
+  | { type: "formal_prover"; data: FormalProverArtifact }
+  | { type: "epistemic_consensus"; data: EpistemicConsensusArtifact };
 
 export interface AgentThought {
   id: string;

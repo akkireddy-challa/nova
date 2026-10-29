@@ -42,6 +42,7 @@ import { CausalDagCard } from "@/components/GenerativeCards/CausalDagCard";
 import { BayesianOptCard } from "@/components/GenerativeCards/BayesianOptCard";
 import { WorkflowOrchestratorCard } from "@/components/GenerativeCards/WorkflowOrchestratorCard";
 import { FormalProverCard } from "@/components/GenerativeCards/FormalProverCard";
+import { EpistemicConsensusCard } from "@/components/GenerativeCards/EpistemicConsensusCard";
 import {
   analyzeDialecticDebate,
   debateToCsv,
@@ -66,6 +67,7 @@ import { causalDagToCsv } from "@/lib/causal/causal-dag-engine";
 import { bayesianOptToCsv } from "@/lib/optimization/bayesian-opt-engine";
 import { workflowOrchestratorToCsv } from "@/lib/workflow/orchestrator-engine";
 import { formalProverToCsv } from "@/lib/formal/formal-prover-engine";
+import { consensusToCsv } from "@/lib/consensus/consensus-engine";
 import {
   getArtifactMetadata,
   prepareBibliography,
@@ -305,6 +307,14 @@ export function ArtifactStage({
       return;
     }
 
+    if (artifact.type === "epistemic_consensus") {
+      const csvContent = consensusToCsv(artifact.data);
+      const filename = `${(artifact.data.title || "consensus").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`;
+      downloadCsvData(filename, csvContent);
+      sound.playSuccess();
+      return;
+    }
+
     let filename = "nova-artifact";
     let content = "";
     let mimeType = "text/plain";
@@ -389,6 +399,8 @@ export function ArtifactStage({
         return artifact.data.title || "Workflow Orchestrator Studio";
       case "formal_prover":
         return artifact.data.title || "Formal Verification Studio";
+      case "epistemic_consensus":
+        return artifact.data.title || "Epistemic Consensus Studio";
     }
   };
 
@@ -508,7 +520,8 @@ export function ArtifactStage({
             artifact.type === "causal_dag" ||
             artifact.type === "bayesian_opt" ||
             artifact.type === "workflow_orchestrator" ||
-            artifact.type === "formal_prover") && (
+            artifact.type === "formal_prover" ||
+            artifact.type === "epistemic_consensus") && (
             <button
               type="button"
               onClick={handleDownload}
@@ -1450,6 +1463,13 @@ export function ArtifactStage({
             {artifact.type === "formal_prover" && (
               <div className="space-y-4">
                 <FormalProverCard artifact={artifact.data} />
+              </div>
+            )}
+
+            {/* EPISTEMIC CONSENSUS & BAYESIAN TRUTH SERUM ARTIFACT */}
+            {artifact.type === "epistemic_consensus" && (
+              <div className="space-y-4">
+                <EpistemicConsensusCard artifact={artifact.data} />
               </div>
             )}
           </div>
@@ -3673,6 +3693,118 @@ export function ArtifactStage({
                       </td>
                       <td className="p-1.5 text-right font-bold text-black">
                         {inv.holds ? "HOLDS" : "VIOLATED"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content Section: Epistemic Consensus & Bayesian Truth Serum Studio */}
+        {artifact.type === "epistemic_consensus" && (
+          <div className="space-y-6 print-avoid-break">
+            <div className="p-4 border border-gray-300 rounded bg-gray-50 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold uppercase text-black">
+                  Prelec Bayesian Truth Serum Consensus
+                </span>
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-gray-200 text-black border border-gray-400">
+                  {artifact.data.summary.consensusIndexPct}% CONSENSUS (GRADE{" "}
+                  {artifact.data.summary.verdictConfidenceGrade})
+                </span>
+              </div>
+              <p className="text-xs text-gray-800 font-sans leading-relaxed">
+                {artifact.data.executiveSummary}
+              </p>
+              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-gray-200 text-center font-mono text-[10px]">
+                <div>Agents: {artifact.data.summary.totalAgents}</div>
+                <div>
+                  Delphi Rounds: {artifact.data.summary.delphiRoundsCompleted}
+                </div>
+                <div>
+                  Entropy: {artifact.data.summary.shannonEntropyFinalBits} bits
+                </div>
+                <div>
+                  Reduction: -{artifact.data.summary.entropyReductionPct}%
+                </div>
+              </div>
+            </div>
+
+            {/* Agent Endorsements & BTS Scores Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Agent Belief Endorsements &amp; BTS Scores (
+                {artifact.data.agents.length})
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Agent / Role</th>
+                    <th className="p-1.5">Endorsement x_i</th>
+                    <th className="p-1.5">Predicted y_i</th>
+                    <th className="p-1.5">Info Score</th>
+                    <th className="p-1.5 text-right">BTS Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.agents.map((a) => (
+                    <tr key={a.agentId}>
+                      <td className="p-1.5 font-bold text-black">
+                        {a.agentName} ({a.role})
+                      </td>
+                      <td className="p-1.5 text-gray-700 font-bold">
+                        {(a.personalEndorsement * 100).toFixed(0)}%
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {(a.predictedCrowdMean * 100).toFixed(0)}%
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        +{a.informationScore}
+                      </td>
+                      <td className="p-1.5 text-right font-bold text-black">
+                        +{a.btsTotalScore}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Delphi Rounds Table */}
+            <div className="space-y-2 print-avoid-break">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1">
+                Delphi Multi-Round Convergence Trace (
+                {artifact.data.delphiRounds.length} Rounds)
+              </h3>
+              <table className="w-full text-left text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100 font-mono text-[10px] border-b border-gray-300">
+                    <th className="p-1.5">Round</th>
+                    <th className="p-1.5">Entropy</th>
+                    <th className="p-1.5">JSD Divergence</th>
+                    <th className="p-1.5">Median Endorsement</th>
+                    <th className="p-1.5">Key Rationale</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 font-mono text-[10px]">
+                  {artifact.data.delphiRounds.map((r) => (
+                    <tr key={r.round}>
+                      <td className="p-1.5 font-bold text-black">
+                        Round {r.round}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {r.shannonEntropyBits} bits
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {r.jensenShannonDivergence}
+                      </td>
+                      <td className="p-1.5 text-gray-700">
+                        {(r.medianEndorsement * 100).toFixed(0)}%
+                      </td>
+                      <td className="p-1.5 text-gray-600 font-sans text-[10px]">
+                        {r.keyShiftArgument}
                       </td>
                     </tr>
                   ))}

@@ -276,6 +276,10 @@ export function getArtifactMetadata(
       title = artifact.data.title || "Formal Verification Studio";
       modeName = "Automated Theorem Prover & SMT Verification";
       break;
+    case "epistemic_consensus":
+      title = artifact.data.title || "Epistemic Consensus Studio";
+      modeName = "Bayesian Truth Serum Consensus";
+      break;
   }
 
   if (mode) {

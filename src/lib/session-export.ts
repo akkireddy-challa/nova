@@ -26,6 +26,7 @@ import type {
   BayesianOptArtifact,
   WorkflowOrchestratorArtifact,
   FormalProverArtifact,
+  EpistemicConsensusArtifact,
   Attachment,
   StudioMode,
 } from "./types";
@@ -607,6 +608,30 @@ export function formatArtifactMarkdown(artifact: GenerativeArtifact): string {
         md += `**Hoare Logic Inductive Invariants (${fp.hoareInvariants.length}):**\n`;
         fp.hoareInvariants.forEach((inv) => {
           md += `- 🔒 **${inv.property}**: \`{${inv.precondition}}\` → \`${inv.operation}\` → \`{${inv.postcondition}}\` (${inv.holds ? "✅ Holds" : "❌ Violated"})\n`;
+        });
+        md += "\n";
+      }
+      break;
+    }
+
+    case "epistemic_consensus": {
+      const ec: EpistemicConsensusArtifact = artifact.data;
+      md += `#### 🏛️ Bayesian Truth Serum Consensus: ${ec.title}\n\n`;
+      md += `*Consensus Index:* **${ec.summary.consensusIndexPct}%** • *Grade:* **${ec.summary.verdictConfidenceGrade}** • *Entropy Reduction:* **-${ec.summary.entropyReductionPct}%** • *Delphi Rounds:* ${ec.summary.delphiRoundsCompleted} • *Governance:* \`${ec.summary.governanceModel}\`\n\n`;
+      if (ec.executiveSummary) {
+        md += `> ${ec.executiveSummary.replace(/\n/g, "\n> ")}\n\n`;
+      }
+      if (ec.agents && ec.agents.length > 0) {
+        md += `**Agent Belief Endorsements & Prelec BTS Scores (${ec.agents.length}):**\n`;
+        ec.agents.forEach((a) => {
+          md += `- 👤 **${a.agentName}** (${a.role}): Endorsement ${(a.personalEndorsement * 100).toFixed(0)}%, Predicted ${(a.predictedCrowdMean * 100).toFixed(0)}%, BTS Total **+${a.btsTotalScore}** (Info: +${a.informationScore})\n`;
+        });
+        md += "\n";
+      }
+      if (ec.delphiRounds && ec.delphiRounds.length > 0) {
+        md += `**Delphi Convergence Rounds (${ec.delphiRounds.length}):**\n`;
+        ec.delphiRounds.forEach((r) => {
+          md += `- 🔄 **Round ${r.round}**: Entropy ${r.shannonEntropyBits} bits, JSD ${r.jensenShannonDivergence}, Median ${(r.medianEndorsement * 100).toFixed(0)}% — ${r.keyShiftArgument}\n`;
         });
         md += "\n";
       }
